@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='short_sequence_finder',
-    version='0.1.0',
+    name='Evolutionary Failure Mode Calculator',
+    version='2.1.0',
     packages=find_packages(), 
     install_requires=[
         'pandas', 
