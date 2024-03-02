@@ -17,7 +17,7 @@ def filter_redundant(df):
             # resets the index values of the similar df
             similar = similar.reset_index(drop=True)
 
-            # print(similar)
+
             x = 0
             count = df.loc[i, 'Occurrences']
             if count < len(similar) and count == similar.loc[x + count, 'Occurrences']:
