@@ -1,6 +1,5 @@
 import argparse
 import time
-import pkg_resources
 import logging
 import Bio.SeqIO as SeqIO
 import pandas as pd
@@ -10,6 +9,7 @@ from .short_seq_finder import predict_RMDs
 
 from Bio.SeqRecord import SeqRecord
 from typing import Union, List
+from importlib.metadata import version, PackageNotFoundError
 
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -23,21 +23,24 @@ def _main():
 
     parser = argparse.ArgumentParser(description="Find Short Sequences from Fasta File")
     parser.add_argument(
-        "-i", "--input",
+        "-i",
+        "--input",
         action="store",
         dest="inpath",
         required=True,
         help="the path to fasta file",
     )
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         action="store",
         dest="outpath",
         required=True,
         help="path to out csv file name",
     )
     parser.add_argument(
-        "-c", "--circular",
+        "-c",
+        "--circular",
         dest="circular",
         action="store_true",
         required=False,
@@ -45,16 +48,16 @@ def _main():
     )
     parser.add_argument(
         "--debug",
-        action = "store_true",
+        action="store_true",
         dest="verbose",
         required=False,
         help="--debug/--no-debug prints debug information",
     )
 
     try:
-        version = pkg_resources.get_distribution("efmcalculator").version
-    except pkg_resources.DistributionNotFound:
-        version = "unknown"
+        pkgversion = version("efmcalculator")
+    except PackageNotFoundError:
+        pkgversion = "unknown"
 
     # Sanity check filepaths
 
@@ -74,23 +77,20 @@ def _main():
     else:
         logger.setLevel(logging.INFO)
 
-
-    logger.info("EFM Calculator version: {}".format(version))
+    logger.info("EFM Calculator version: {}".format(pkgversion))
 
     # Set up circular
 
     args.isCirc = args.circular
 
     # Run
-    
+
     sequences = SeqIO.parse(args.inpath, "fasta")
 
     # Unpack sequences into list
     sequences = list(sequences)
 
-    df = efmcalculator(
-        sequences=sequences,
-        isCircular=args.isCirc)
+    df = efmcalculator(sequences=sequences, isCircular=args.isCirc)
 
     df.sort_values(["Size"], ascending=[True]).to_csv(args.outpath, index=False)
 
@@ -102,9 +102,11 @@ def _main():
     logger.debug("\nTime taken: {}hour:{}min:{}sec".format(t_hour, t_min, t_sec))
 
 
-def efmcalculator(sequences: Union[SeqRecord, List[SeqRecord]], isCircular: bool) -> pd.DataFrame:
+def efmcalculator(
+    sequences: Union[SeqRecord, List[SeqRecord]], isCircular: bool
+) -> pd.DataFrame:
     """Runs EFM calculator on input SeqRecords. Returns a pandas DataFrame of repeats.
-    
+
     Args:
         sequences (Union[SeqRecord, List[SeqRecord]]): Input SeqRecords
         isCircular (bool): Treat input sequences as circular
@@ -131,6 +133,7 @@ def efmcalculator(sequences: Union[SeqRecord, List[SeqRecord]], isCircular: bool
         seq_len = len(seq)
         predict_RMDs(seq, df, seq_len, isCircular)
     return df
+
 
 if __name__ == "__main__":
     _main()
