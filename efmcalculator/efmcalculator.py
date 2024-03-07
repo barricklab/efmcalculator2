@@ -6,6 +6,7 @@ import pandas as pd
 import pathlib
 
 from .short_seq_finder import predict_RMDs
+from .SRS_filter import filter_redundant
 
 from Bio.SeqRecord import SeqRecord
 from typing import Union, List
@@ -91,8 +92,7 @@ def _main():
     sequences = list(sequences)
 
     df = efmcalculator(sequences=sequences, isCircular=args.isCirc)
-
-    df.sort_values(["Size"], ascending=[True]).to_csv(args.outpath, index=False)
+    df = filter_redundant(df)
 
     # Logging
     logger.debug(df.head())
@@ -132,7 +132,22 @@ def efmcalculator(
         seq = record.seq.strip("\n")
         seq_len = len(seq)
         predict_RMDs(seq, df, seq_len, isCircular)
-    return df
+
+    # Create dataframe of observed repeats, rather than of observed sequences that have duplicates
+
+    df['position'] = list(zip(df['Start-Pos'], df['End-Pos']))
+    results = df.groupby('Sequence').agg('position').agg(['unique'])
+
+    consolidated_df = pd.DataFrame(results)
+    consolidated_df = consolidated_df.reset_index().rename(columns={"Sequence":"sequence", "unique":"positions"})
+    consolidated_df['length'] = consolidated_df['sequence'].apply(lambda x: len(x))
+    consolidated_df['occurrences'] = consolidated_df['positions'].apply(lambda x: len(x))
+
+    # Drop repeats with one occurance
+
+    consolidated_df = consolidated_df[consolidated_df['occurrences'] > 1]
+
+    return consolidated_df
 
 
 if __name__ == "__main__":
