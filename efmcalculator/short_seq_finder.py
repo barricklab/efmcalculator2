@@ -11,6 +11,7 @@ MAX_SHORT_SEQ_LEN = 17
 def predict_RMDs(seq, df, seq_len, isCircular):
     _build_sub_seq_from_seq(seq, df, seq_len, isCircular)
 
+
 def _build_sub_seq_from_seq(seq, df, seq_len, isCircular):
     for i, letter in enumerate(seq):
         for j in range(MAX_SHORT_SEQ_LEN, MIN_SHORT_SEQ_LEN, -1):
@@ -41,9 +42,7 @@ def _find_short_seq(seq, sub_seq, df, seq_len, isCircular):
         # df_filter = df[df['Sequence'].str.contains(str(sub_seq))]
         # if df_filter.empty:
 
-        for seq_attr in scan_short_sequence(
-            seq, sub_seq, seq_len, isCircular, count
-        ):
+        for seq_attr in scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
             logger.debug(
                 "Sequence = {} : Size = {} : Distance = {} : Start-Pos = {} : End-Pos = {}".format(
                     seq_attr.sub_seq,
@@ -62,5 +61,6 @@ def _find_short_seq(seq, sub_seq, df, seq_len, isCircular):
             ]
             if count <= 1 or str(sub_seq) not in visited_sequences:
                 visited_sequences.add(str(sub_seq))
+
 
 # EOF

@@ -135,17 +135,21 @@ def efmcalculator(
 
     # Create dataframe of observed repeats, rather than of observed sequences that have duplicates
 
-    df['position'] = list(zip(df['Start-Pos'], df['End-Pos']))
-    results = df.groupby('Sequence').agg('position').agg(['unique'])
+    df["position"] = list(zip(df["Start-Pos"], df["End-Pos"]))
+    results = df.groupby("Sequence").agg("position").agg(["unique"])
 
     consolidated_df = pd.DataFrame(results)
-    consolidated_df = consolidated_df.reset_index().rename(columns={"Sequence":"sequence", "unique":"positions"})
-    consolidated_df['length'] = consolidated_df['sequence'].apply(lambda x: len(x))
-    consolidated_df['occurrences'] = consolidated_df['positions'].apply(lambda x: len(x))
+    consolidated_df = consolidated_df.reset_index().rename(
+        columns={"Sequence": "sequence", "unique": "positions"}
+    )
+    consolidated_df["length"] = consolidated_df["sequence"].apply(lambda x: len(x))
+    consolidated_df["occurrences"] = consolidated_df["positions"].apply(
+        lambda x: len(x)
+    )
 
     # Drop repeats with one occurance
 
-    consolidated_df = consolidated_df[consolidated_df['occurrences'] > 1]
+    consolidated_df = consolidated_df[consolidated_df["occurrences"] > 1]
 
     return consolidated_df
 
