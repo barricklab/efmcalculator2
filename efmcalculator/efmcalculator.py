@@ -64,9 +64,6 @@ def _main():
 
     args = parser.parse_args()
 
-    if not pathlib.Path(args.inpath).exists():
-        raise ValueError("File {} does not exist.".format(args.inpath))
-
     # Check to see if output is a directory
     if pathlib.Path(args.outpath).is_dir():
         raise ValueError("File {} is a directory.".format(args.outpath))
@@ -84,9 +81,16 @@ def _main():
 
     args.isCirc = args.circular
 
-    # Run
-
-    sequences = SeqIO.parse(args.inpath, "fasta")
+    # Grab sequence information
+    inpath = pathlib.Path(args.inpath)
+    if not inpath.exists():
+        raise ValueError("File {} does not exist.".format(args.inpath))
+    elif inpath.suffix in [".fasta", ".fa"]:
+        sequences = SeqIO.parse(args.inpath, "fasta")
+    elif inpath.suffix in [".gb", ".gbk", ".gbff"]:
+        sequences = SeqIO.parse(args.inpath, "genbank")
+    else:
+        raise ValueError("File {} is not a known file format. Must be in FASTA or GenBank.".format(args.inpath))
 
     # Unpack sequences into list
     sequences = list(sequences)
