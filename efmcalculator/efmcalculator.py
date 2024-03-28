@@ -98,6 +98,9 @@ def _main():
     df = efmcalculator(sequences=sequences, isCircular=args.isCirc)
     df = filter_redundant(df)
 
+    # Output
+    df.to_csv(args.outpath, index=False)
+
     # Logging
     logger.debug(df.head())
     t_sec = round(time.time() - start_time)
