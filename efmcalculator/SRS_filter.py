@@ -22,7 +22,6 @@ def filter_redundant(df):
                         df = df.reset_index(drop=True)
                         i -= 1
                         deleted = True
-                        print("redundant")
                 x += 1
         i += 1
     return df
