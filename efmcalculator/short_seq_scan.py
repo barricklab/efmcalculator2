@@ -27,7 +27,7 @@ def scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
         if isCircular == True:
             if distance > seq_len / 2:
                 distance = (seq_len + prv_start_pos) - end_pos
-            if start_pos < seq_len and not (count == 2 and end_pos <= 20):
+            if start_pos < seq_len:
                 yield SeqAttr(sub_seq, distance, start_pos, end_pos)
         else:
             yield SeqAttr(sub_seq, distance, start_pos, end_pos)

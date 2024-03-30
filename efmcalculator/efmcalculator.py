@@ -133,11 +133,11 @@ def efmcalculator(
     for record in sequences:
         # seq_len = len(record.seq)
         # adds first 20 bp to end
+        seq_len = len(record.seq.strip("\n"))
         if isCircular:
             record = record + record[0:20]
         # Strips of new line special character
         seq = record.seq.strip("\n")
-        seq_len = len(seq)
         predict_RMDs(seq, df, seq_len, isCircular)
 
     # Create dataframe of observed repeats, rather than of observed sequences that have duplicates
