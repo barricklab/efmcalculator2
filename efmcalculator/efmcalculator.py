@@ -122,7 +122,7 @@ def efmcalculator(
         pd.DataFrame: Pandas DataFrame of repeats
     """
 
-    data = {"Sequence": [], "Size": [], "Distance": [], "Start-Pos": [], "End-Pos": []}
+    data = {"Sequence": [], "Size": [], "Distance": [], "Start-Pos": [], "End-Pos": [], 'Classifier': [], 'Repeat Rate':[],'Mutation Rate':[]}
     df = pd.DataFrame(data)
 
     if isinstance(sequences, SeqRecord):
