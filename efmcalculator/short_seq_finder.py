@@ -1,11 +1,12 @@
 import logging
 from .short_seq_scan import scan_short_sequence
 from .mut_rate_finder import get_mut_rate,get_recombo_rate
+from collections import namedtuple
 
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-MIN_SHORT_SEQ_LEN = 5
+MIN_SHORT_SEQ_LEN = 2
 MAX_SHORT_SEQ_LEN = 17
 UNKNOWN_REC_TYPE = "unknown"
 SUB_RATE = float(2.2 * 10 ** (-10))
@@ -47,15 +48,15 @@ def _find_short_seq(seq, sub_seq, df, seq_len, isCircular):
         # if df_filter.empty:
         
         
-        first_find = True    
-        loop_end = False
-        ssr_count = 0
-        sav_seq_attr = []
+        ssrStruct = namedtuple("ssrStruct",["first_find", "loop_end", "ssr_count", "sav_seq_attr"])
+        ssrStruct.first_find=True
+        ssrStruct.loop_end=False
+        ssrStruct.ssr_count=0
+        ssrStruct.sav_seq_attr=[]
         mu_rate = 0
         for seq_attr in scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
-            logger.info("test sequence finder")
             if seq_attr.length >= 2 and seq_attr.length <= 3:
-                 _find_ssr(df,seq_attr,sav_seq_attr,first_find,loop_end,ssr_count)
+                ssrStruct= _find_ssr(df,seq_attr,ssrStruct.first_find,ssrStruct.loop_end,ssrStruct.ssr_count,ssrStruct.sav_seq_attr)
 
             elif (seq_attr.length >= 6 and seq_attr.length <= 14):
                  _write_to_df(df,seq_attr,"SRS",str(count),mu_rate)
@@ -68,9 +69,9 @@ def _find_short_seq(seq, sub_seq, df, seq_len, isCircular):
 
         if seq_attr.length >= 2 and seq_attr.length <= 3:
             loop_end = True
-            _find_ssr(df,seq_attr)
-        
+            _find_ssr(df,seq_attr,ssrStruct.first_find,loop_end,ssrStruct.ssr_count,ssrStruct.sav_seq_attr)
 
+        
 
 
 def _find_ssr(df,seq_attr,first_find,loop_end,ssr_count,sav_seq_attr):
@@ -87,22 +88,19 @@ def _find_ssr(df,seq_attr,first_find,loop_end,ssr_count,sav_seq_attr):
                             "SSR", 
                             str(ssr_count), 
                             get_mut_rate(ssr_count,sav_seq_attr.length, "ecoli"))
+                ssr_count = 0
             if sav_seq_attr.sub_seq == seq_attr.sub_seq:
                 sav_seq_attr = seq_attr
                 ssr_count = 0
+        
+       ssrStruct = namedtuple("ssrStruct",["first_find", "loop_end", "ssr_count", "sav_seq_attr"])
+       return ssrStruct(first_find,loop_end,ssr_count,sav_seq_attr)
+
 
 
 def _write_to_df(df,seq_attr,rep_type, rep_rate, mu_rate):
 
-    logger.debug (
-        """Sequence = {} 
-        : Size = {} 
-        : Distance = {} 
-        : Start-Pos = {} 
-        : End-Pos = {}
-        : rep_type = {}
-        : rep_rate  = {}
-        : mu_rate""".format(
+    logger.debug ("Sequence = {}  : Size = {}  : Distance = {}  : Start-Pos = {} : End-Pos = {}: rep_type = {}: rep_rate  = {} : mu_rate".format(
         seq_attr.sub_seq,
         seq_attr.length,
         seq_attr.distance,

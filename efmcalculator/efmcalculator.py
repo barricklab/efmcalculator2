@@ -71,9 +71,9 @@ def _main():
     # Set up logger
     logging.basicConfig()
     if args.verbose:
-        logger.setLevel(logging.DEBUG)
+        logging.root.setLevel(logging.DEBUG)
     else:
-        logger.setLevel(logging.INFO)
+        logging.root.setLevel(logging.INFO)
 
     logger.info("EFM Calculator version: {}".format(pkgversion))
 
@@ -142,7 +142,7 @@ def efmcalculator(
 
     # Create dataframe of observed repeats, rather than of observed sequences that have duplicates
 
-    df["position"] = list(zip(df["Start-Pos"], df["End-Pos"]))
+    df["position"] = list(zip(df["Start-Pos"], df["End-Pos"],df["Classifier"], df["Repeat Rate"], df["Mutation Rate"]))
     results = df.groupby("Sequence").agg("position").agg(["unique"])
 
     consolidated_df = pd.DataFrame(results)
