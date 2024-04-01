@@ -15,7 +15,13 @@ SUB_RATE = float(2.2 * 10 ** (-10))
 
 def predict_RMDs(seq, df, seq_len, isCircular):
     _build_sub_seq_from_seq(seq, df, seq_len, isCircular)
+    #df.sort_values(['Size'], ascending=[True]).to_csv(output, index=False)
+    # get RIP
+    # Assuming df is your DataFrame
+    tot_ssr_mut_rate = df["Mutation Rate"].where(df["Classifier"]=='SSR').sum()
+    tot_rmd_mut_rate = df["Mutation Rate"].where(df["Classifier"]=='RMD').sum()
 
+    logger.info(_find_rip(tot_ssr_mut_rate , tot_rmd_mut_rate ))
 
 def _build_sub_seq_from_seq(seq, df, seq_len, isCircular):
     for i, letter in enumerate(seq):
@@ -83,7 +89,7 @@ def _find_ssr(df,seq_attr,first_find,loop_end,ssr_count,sav_seq_attr):
             first_find = False
        else:
             if ssr_count > 1:
-                ssr_count += 1
+                #ssr_count += 1
                 _write_to_df(df,sav_seq_attr,
                             "SSR", 
                             str(ssr_count), 
@@ -91,7 +97,7 @@ def _find_ssr(df,seq_attr,first_find,loop_end,ssr_count,sav_seq_attr):
                 ssr_count = 0
             if sav_seq_attr.sub_seq == seq_attr.sub_seq:
                 sav_seq_attr = seq_attr
-                ssr_count = 0
+                ssr_count = 1
         
        ssrStruct = namedtuple("ssrStruct",["first_find", "loop_end", "ssr_count", "sav_seq_attr"])
        return ssrStruct(first_find,loop_end,ssr_count,sav_seq_attr)
@@ -123,4 +129,21 @@ def _write_to_df(df,seq_attr,rep_type, rep_rate, mu_rate):
             ]
 
 
-# EOF
+def _find_rip(ssr_sum, rmd_sum):
+    """
+    Calculates an RIP score for given sequence
+    :param repeats: List of dictionaries of repeats
+    :param seq_len: Length of input sequence
+    :return: Total predicted RIP score for whole sequence
+    """ 
+    print(ssr_sum)
+    print(rmd_sum)
+    base_rate = float(1000) * float(SUB_RATE)
+    # Add in the mutation rate of an individual nucleotide
+    r_sum = ssr_sum + rmd_sum + base_rate
+    # Set the maximum rate sum to 1 for now.
+    if r_sum > 1:
+        r_sum = float(1)
+    rel_rate = (float(r_sum) / float(base_rate))
+
+    return {'rip': rel_rate, 'ssr_sum': ssr_sum, 'rmd_sum': rmd_sum, 'bps_sum': base_rate}
