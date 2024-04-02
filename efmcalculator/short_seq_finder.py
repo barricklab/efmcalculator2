@@ -64,10 +64,10 @@ def _find_short_seq(seq, sub_seq, df, seq_len, isCircular):
             if seq_attr.length >= 2 and seq_attr.length <= 3:
                 ssrStruct= _find_ssr(df,seq_attr,ssrStruct.first_find,ssrStruct.loop_end,ssrStruct.ssr_count,ssrStruct.sav_seq_attr)
 
-            elif (seq_attr.length >= 6 and seq_attr.length <= 14):
+            elif (seq_attr.length >= 6 and seq_attr.length <= 14) and seq_attr.note != "skip for RMD":
                  _write_to_df(df,seq_attr,"SRS",str(count),mu_rate)
 
-            elif seq_attr.length >= 15 and get_recombo_rate(seq_attr.length, seq_attr.distance,"ecoli" )!= 0:
+            elif seq_attr.length >= 15 and get_recombo_rate(seq_attr.length, seq_attr.distance,"ecoli" )!= 0 and seq_attr.note != "skip for RMD":
                   _write_to_df(df,seq_attr,"RMD",str(count),get_recombo_rate(seq_attr.length, seq_attr.distance,"ecoli" ))
 
             if count <= 1 or str(sub_seq) not in visited_sequences:
@@ -81,26 +81,26 @@ def _find_short_seq(seq, sub_seq, df, seq_len, isCircular):
 
 
 def _find_ssr(df,seq_attr,first_find,loop_end,ssr_count,sav_seq_attr):
-       if first_find == True:
-           sav_seq_attr = seq_attr
-           first_find = False
-       if loop_end == False and seq_attr.distance == 1:
-            ssr_count += 1
-            first_find = False
-       else:
-            if ssr_count > 1:
-                #ssr_count += 1
-                _write_to_df(df,sav_seq_attr,
-                            "SSR", 
-                            str(ssr_count), 
-                            get_mut_rate(ssr_count,sav_seq_attr.length, "ecoli"))
-                ssr_count = 0
-            if sav_seq_attr.sub_seq == seq_attr.sub_seq:
+       if seq_attr.note != "skip for SSR":
+            if first_find == True:
                 sav_seq_attr = seq_attr
-                ssr_count = 1
+                first_find = False
+            if loop_end == False and seq_attr.distance == 1:
+                    ssr_count += 1
+                    first_find = False
+            else:
+                    if ssr_count > 1:
+                        #ssr_count += 1
+                        _write_to_df(df,sav_seq_attr,
+                                    "SSR", 
+                                    str(ssr_count), 
+                                    get_mut_rate(ssr_count,sav_seq_attr.length, "ecoli"))
+                    if sav_seq_attr.sub_seq == seq_attr.sub_seq:
+                        sav_seq_attr = seq_attr
+                        ssr_count = 1
         
-       ssrStruct = namedtuple("ssrStruct",["first_find", "loop_end", "ssr_count", "sav_seq_attr"])
-       return ssrStruct(first_find,loop_end,ssr_count,sav_seq_attr)
+            ssrStruct = namedtuple("ssrStruct",["first_find", "loop_end", "ssr_count", "sav_seq_attr"])
+            return ssrStruct(first_find,loop_end,ssr_count,sav_seq_attr)
 
 
 

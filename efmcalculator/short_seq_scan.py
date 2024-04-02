@@ -1,10 +1,11 @@
 class SeqAttr:
-    def __init__(self, sub_seq, distance, start_pos, end_pos):
+    def __init__(self, sub_seq, distance, start_pos, end_pos, note):
         self.sub_seq = str(sub_seq)
         self.length = len(sub_seq)
         self.distance = distance
         self.start_pos = start_pos
         self.end_pos = end_pos
+        self.note = note
 
 
 def scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
@@ -14,12 +15,13 @@ def scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
     end_pos = 0
     prv_end_pos = 0
     prv_start_pos = 0
+    note = ""
 
     start_pos = seq.find(sub_seq, rem_start)
     while start_pos != -1:
         end_pos = start_pos + len(sub_seq)
-        if end_pos >= seq_len:
-            end_pos = end_pos - seq_len
+        #if end_pos >= seq_len:
+         #   end_pos = end_pos - seq_len
         start_pos += 1
         distance = start_pos - prv_end_pos
 
@@ -28,9 +30,19 @@ def scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
             if distance > seq_len / 2:
                 distance = (seq_len + prv_start_pos) - end_pos
             if start_pos < seq_len:
-                yield SeqAttr(sub_seq, distance, start_pos, end_pos)
+                if end_pos >= seq_len:
+                    end_pos = end_pos - seq_len
+                    if end_pos >= prv_start_pos:
+                        note = "skip for SSR"
+                        if not count == 2:
+                            note = "skip for RMD"
+                        yield SeqAttr(sub_seq, distance, start_pos, end_pos, note)
+                    else:
+                        yield SeqAttr(sub_seq, distance, start_pos, end_pos, note)
+                else:
+                    yield SeqAttr(sub_seq, distance, start_pos, end_pos, note)
         else:
-            yield SeqAttr(sub_seq, distance, start_pos, end_pos)
+            yield SeqAttr(sub_seq, distance, start_pos, end_pos, note)
         rem_start = start_pos + 1
         prv_end_pos = end_pos
         prv_start_pos = start_pos
