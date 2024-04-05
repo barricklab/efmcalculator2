@@ -155,8 +155,9 @@ def efmcalculator(
     )
 
     # Drop repeats with one occurance
-
-    consolidated_df = consolidated_df[consolidated_df["occurrences"] > 1]
+    RMD_df = consolidated_df["occurrences"] > 1
+    SSR_df = consolidated_df["positions"].apply(lambda pos: any('SSR' in p for p in pos))
+    consolidated_df = consolidated_df[RMD_df | SSR_df]
 
     return consolidated_df
 
