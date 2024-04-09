@@ -4,6 +4,8 @@ def filter_redundant(df):
     i = 0
     while i < len(df):
         deleted = False
+
+        # Delete rows with overlapping repeats and only 2 occurrences (not a real repeat) 
         if df.loc[i, "occurrences"] == 2:
              first_pos = df.loc[i, "positions"][0]
              second_pos = df.loc[i, "positions"][1]
@@ -13,8 +15,24 @@ def filter_redundant(df):
                  df = df.reset_index(drop=True)
                  i -= 1
                  deleted = True
-        # creates new df with only repeats that contain the sequence of the row
+
+        # corrects output of SSR with length >= 6 and <= 15
         if not deleted:
+            if df.loc[i, "occurrences"] > 1:
+                if df.loc[i, "positions"][1][2] == "SSR":
+                    print("detected")
+                    repeat_count = int(df.loc[i, "positions"][1][3])
+                    start_pos = df.loc[i, "positions"][1][0]
+                    end_pos = df.loc[i, "positions"][1][1]
+                    repeat_length = df.loc[i, "length"]
+                    mut_rate = df.loc[i, "positions"][1][4]
+                    new_positions = [(start_pos, end_pos, "SSR", repeat_count, mut_rate)]
+                    # replaces positions column in df with correct information 
+                    df.at[i, "positions"] = new_positions
+                    df.at[i, "occurrences"] = 1
+
+            # Delete redundant repeats
+            # creates new df with only repeats that contain the sequence of the row
             similar = df[df["sequence"].str.contains(df.loc[i, "sequence"])]
             # if similar contains a repeat other than the repeat we're looking at
             if len(similar) > 1:

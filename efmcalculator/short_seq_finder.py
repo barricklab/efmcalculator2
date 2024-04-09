@@ -6,7 +6,7 @@ from collections import namedtuple
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-MIN_SHORT_SEQ_LEN = 2
+MIN_SHORT_SEQ_LEN = 1
 MAX_SHORT_SEQ_LEN = 17
 UNKNOWN_REC_TYPE = "unknown"
 SUB_RATE = float(2.2 * 10 ** (-10))
@@ -61,27 +61,33 @@ def _find_short_seq(seq, sub_seq, df, seq_len, isCircular):
         ssrStruct.sav_seq_attr=[]
         mu_rate = 0
         for seq_attr in scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
-            if seq_attr.length >= 2 and seq_attr.length <= 3:
+            if seq_attr.length >= 2 and seq_attr.length <= 5:
                 ssrStruct= _find_ssr(df,seq_attr,ssrStruct.first_find,ssrStruct.loop_end,ssrStruct.ssr_count,ssrStruct.sav_seq_attr)
 
-            elif (seq_attr.length >= 6 and seq_attr.length <= 14) and seq_attr.note != "skip for RMD":
-                 _write_to_df(df,seq_attr,"SRS",str(count),mu_rate)
+            elif (seq_attr.length >= 6 and seq_attr.length <= 15) and seq_attr.note != "skip":
+                 if seq_attr.note == "SSR":
+                      ssrStruct= _find_ssr(df,seq_attr,ssrStruct.first_find,ssrStruct.loop_end,ssrStruct.ssr_count,ssrStruct.sav_seq_attr)
+                 else:
+                      _write_to_df(df,seq_attr,"SRS",str(count),mu_rate)
 
-            elif seq_attr.length >= 15 and get_recombo_rate(seq_attr.length, seq_attr.distance,"ecoli" )!= 0 and seq_attr.note != "skip for RMD":
+            elif seq_attr.length >= 16 and get_recombo_rate(seq_attr.length, seq_attr.distance,"ecoli" )!= 0 and seq_attr.note != "skip":
                   _write_to_df(df,seq_attr,"RMD",str(count),get_recombo_rate(seq_attr.length, seq_attr.distance,"ecoli" ))
 
             if count <= 1 or str(sub_seq) not in visited_sequences:
                 visited_sequences.add(str(sub_seq))
 
-        if seq_attr.length >= 2 and seq_attr.length <= 3:
+        if seq_attr.length >= 2 and seq_attr.length <= 5:
             loop_end = True
             _find_ssr(df,seq_attr,ssrStruct.first_find,loop_end,ssrStruct.ssr_count,ssrStruct.sav_seq_attr)
+        elif (seq_attr.length >= 6 and seq_attr.length <= 15) and seq_attr.note == "SSR":
+             loop_end = True
+             _find_ssr(df,seq_attr,ssrStruct.first_find,loop_end,ssrStruct.ssr_count+1,ssrStruct.sav_seq_attr)
 
         
 
 
 def _find_ssr(df,seq_attr,first_find,loop_end,ssr_count,sav_seq_attr):
-       if seq_attr.note != "skip for SSR":
+       if seq_attr.note != ("skip for SSR" or "skip"):
             if first_find == True:
                 sav_seq_attr = seq_attr
                 first_find = False
@@ -89,8 +95,7 @@ def _find_ssr(df,seq_attr,first_find,loop_end,ssr_count,sav_seq_attr):
                     ssr_count += 1
                     first_find = False
             else:
-                    if ssr_count > 1:
-                        #ssr_count += 1
+                    if (seq_attr.length >= 2 and ssr_count >= 3) or (seq_attr.length == 1 and ssr_count >= 4):
                         _write_to_df(df,sav_seq_attr,
                                     "SSR", 
                                     str(ssr_count), 

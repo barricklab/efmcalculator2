@@ -29,13 +29,18 @@ def scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
         if isCircular == True:
             if distance > seq_len / 2:
                 distance = (seq_len + prv_start_pos) - end_pos
+            if distance == 1:
+                note = "SSR"
             if start_pos < seq_len:
+                # if repeat wraps around
                 if end_pos >= seq_len:
+                    # fix end_pos
                     end_pos = end_pos - seq_len
+                    # if overlapping
                     if end_pos >= prv_start_pos:
                         note = "skip for SSR"
-                        if not count == 2:
-                            note = "skip for RMD"
+                        if count == 2:
+                            note = "skip"
                         yield SeqAttr(sub_seq, distance, start_pos, end_pos, note)
                     else:
                         yield SeqAttr(sub_seq, distance, start_pos, end_pos, note)
