@@ -16,7 +16,8 @@ def filter_redundant(df):
                  i -= 1
                  deleted = True
 
-        # corrects output of SSR with length >= 6 and <= 15
+        # Corrects output of SSR with length >= 6 and <= 15
+
         if not deleted:
             if df.loc[i, "occurrences"] > 1:
                 if df.loc[i, "positions"][1][2] == "SSR":
@@ -31,25 +32,43 @@ def filter_redundant(df):
                     df.at[i, "positions"] = new_positions
                     df.at[i, "occurrences"] = 1
 
-            # Delete redundant repeats
+            # Delete redundant SRS repeats / Display SSR with highest mut rate
+
             # creates new df with only repeats that contain the sequence of the row
-            similar = df[df["sequence"].str.contains(df.loc[i, "sequence"])]
+            similar = df[df["sequence"].str.contains(df.loc[i, "sequence"]) & df["positions"].apply(lambda x: x[0][2] == df.loc[i, "positions"][0][2])]
+            
             # if similar contains a repeat other than the repeat we're looking at
             if len(similar) > 1:
                 # resets the index values of the similar df
                 similar = similar.reset_index(drop=True)
 
+                # Delete redundant SRS repeats
+
                 x = 0
-                while x < len(similar):
-                    # check if this is the repeat we were looking at
-                    if similar.loc[x, "length"] > df.loc[i, "length"]:
-                        # check if they have the same number of positions
-                        if similar.loc[x, "occurrences"] == df.loc[i, "occurrences"]:
-                            # delete the row we were looking at
-                            df.drop([i], inplace=True)
-                            df = df.reset_index(drop=True)
-                            i -= 1
-                            deleted = True
+                while x < len(similar) and not deleted:
+                    # Delete redundant SRS repeats
+                    if df.loc[i, "positions"][0][2] == "SRS":
+                        # check if longer repeat is found
+                        if similar.loc[x, "length"] > df.loc[i, "length"]:
+                            # check if they have the same number of positions
+                            if similar.loc[x, "occurrences"] == df.loc[i, "occurrences"]:
+                                # delete the row we were looking at
+                                df.drop([i], inplace=True)
+                                df = df.reset_index(drop=True)
+                                i -= 1
+                                deleted = True
+
+                    # Display SSR with highest mut rate
+
+                    elif df.loc[i, "positions"][0][2] == "SSR":
+                        # make sure both SSRs are starting from the same position
+                        if df.loc[i, "positions"][0][0] == df.loc[x, "positions"][0][0]:
+                            # Compare mutation rates of both SSRs
+                            if df.loc[i, "positions"][0][4] < df.loc[x, "positions"][0][4]:
+                                df.drop([i], inplace=True)
+                                df = df.reset_index(drop=True)
+                                i -= 1
+                                deleted = True
                     x += 1
         i += 1
     return df

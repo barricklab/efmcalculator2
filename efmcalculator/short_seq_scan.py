@@ -15,10 +15,10 @@ def scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
     end_pos = 0
     prv_end_pos = 0
     prv_start_pos = 0
-    note = ""
 
     start_pos = seq.find(sub_seq, rem_start)
     while start_pos != -1:
+        note = ""
         end_pos = start_pos + len(sub_seq)
         #if end_pos >= seq_len:
          #   end_pos = end_pos - seq_len
@@ -47,8 +47,13 @@ def scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
                 else:
                     yield SeqAttr(sub_seq, distance, start_pos, end_pos, note)
         else:
+            if distance == 1:
+                note = "SSR"
             yield SeqAttr(sub_seq, distance, start_pos, end_pos, note)
         rem_start = start_pos + 1
         prv_end_pos = end_pos
         prv_start_pos = start_pos
-        start_pos = seq.find(sub_seq, rem_start)
+        if len(sub_seq) == 1:
+            start_pos = seq.find(sub_seq, rem_start-1)
+        else:
+            start_pos = seq.find(sub_seq, rem_start)

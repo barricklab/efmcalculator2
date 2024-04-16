@@ -131,10 +131,9 @@ def efmcalculator(
     logger.debug("Number of sequences: {}".format(len(sequences)))
 
     for record in sequences:
-        # seq_len = len(record.seq)
-        # adds first 20 bp to end
         seq_len = len(record.seq.strip("\n"))
         if isCircular:
+            # adds first 20 bp to end
             record = record + record[0:20]
         # Strips of new line special character
         seq = record.seq.strip("\n")
