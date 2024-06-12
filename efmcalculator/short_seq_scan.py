@@ -33,7 +33,7 @@ def scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
                 note = "SSR"
             if start_pos < seq_len:
                 # if repeat wraps around
-                if end_pos >= seq_len:
+                if end_pos > seq_len:
                     # fix end_pos
                     end_pos = end_pos - seq_len
                     # if overlapping
