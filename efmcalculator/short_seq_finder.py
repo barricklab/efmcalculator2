@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 MIN_SHORT_SEQ_LEN = 0
-MAX_SHORT_SEQ_LEN = 17
+MAX_SHORT_SEQ_LEN = 15
 UNKNOWN_REC_TYPE = "unknown"
 SUB_RATE = float(2.2 * 10 ** (-10))
 
@@ -25,7 +25,25 @@ def predict_RMDs(seq, df, seq_len, isCircular):
 
 def _build_sub_seq_from_seq(seq, df, seq_len, isCircular):
     for i, letter in enumerate(seq):
+        # iterate by 1/2 length while searching for RMD
+        MAX_SHORT_SEQ_LEN = int(seq_len/2)
+        found = False
+        while MAX_SHORT_SEQ_LEN >= 16 and not found:
+            MAX_SHORT_SEQ_LEN = int(MAX_SHORT_SEQ_LEN/2)
+            print(str(MAX_SHORT_SEQ_LEN))
+            sub_seq = seq[i : i + int(MAX_SHORT_SEQ_LEN)]
+            count = seq.count(sub_seq)
+            if count > 1:
+                found = True
+                print("found = " + str(sub_seq))
+                print("new max = " + str(MAX_SHORT_SEQ_LEN))
+            else:
+                MAX_SHORT_SEQ_LEN = int(MAX_SHORT_SEQ_LEN/2)
+
+        # iterate by 1
+        MAX_SHORT_SEQ_LEN = int(2*MAX_SHORT_SEQ_LEN)
         for j in range(MAX_SHORT_SEQ_LEN, MIN_SHORT_SEQ_LEN, -1):
+            print("iterating by 1: " + str(j))
             if len(seq[i : i + j]) > MIN_SHORT_SEQ_LEN:
                 sub_seq = seq[i : i + j]
                 _find_short_seq(seq, sub_seq, df, seq_len, isCircular)
@@ -55,7 +73,7 @@ def _find_short_seq(seq, sub_seq, df, seq_len, isCircular):
                  else:
                       _write_to_df(df,seq_attr,"SRS",str(count),mu_rate)
 
-            elif seq_attr.length >= 16 and get_recombo_rate(seq_attr.length, seq_attr.distance,"ecoli" )!= 0 and seq_attr.note != "skip":
+            elif seq_attr.length >= 16 and seq_attr.note != "skip":
                   _write_to_df(df,seq_attr,"RMD",str(count),get_recombo_rate(seq_attr.length, seq_attr.distance,"ecoli" ))
 
             if count <= 1 or str(sub_seq) not in visited_sequences:
