@@ -19,6 +19,7 @@ def filter_redundant(df):
         # Corrects output of SSR with length >= 6 and <= 15
 
         if not deleted:
+            
             if df.loc[i, "occurrences"] > 1:
                 if df.loc[i, "positions"][1][2] == "SSR":
                     print("detected")
@@ -32,7 +33,7 @@ def filter_redundant(df):
                     df.at[i, "positions"] = new_positions
                     df.at[i, "occurrences"] = 1
 
-            # Delete redundant SRS repeats / Display SSR with highest mut rate
+            # Delete redundant SRS and RMD repeats, and Keep SSR with lowest length
 
             # creates new df with only repeats that contain the sequence of the row
             similar = df[df["sequence"].str.contains(df.loc[i, "sequence"]) & df["positions"].apply(lambda x: x[0][2] == df.loc[i, "positions"][0][2])]
@@ -47,7 +48,7 @@ def filter_redundant(df):
                 x = 0
                 while x < len(similar) and not deleted:
                     # Delete redundant SRS repeats
-                    if df.loc[i, "positions"][0][2] == "SRS":
+                    if df.loc[i, "positions"][0][2] in {"SRS", "RMD"}:
                         # check if longer repeat is found
                         if similar.loc[x, "length"] > df.loc[i, "length"]:
                             # check if they have the same number of positions
@@ -58,13 +59,13 @@ def filter_redundant(df):
                                 i -= 1
                                 deleted = True
 
-                    # Display SSR with highest mut rate
+                    # Keep SSR with lowest length
 
                     elif df.loc[i, "positions"][0][2] == "SSR":
                         # make sure both SSRs are starting from the same position
                         if df.loc[i, "positions"][0][0] == df.loc[x, "positions"][0][0]:
-                            # Compare mutation rates of both SSRs
-                            if df.loc[i, "positions"][0][4] < df.loc[x, "positions"][0][4]:
+                            # Compare lengths of both SSRs
+                            if df.loc[i, "length"] > df.loc[x, "length"]:
                                 df.drop([i], inplace=True)
                                 df = df.reset_index(drop=True)
                                 i -= 1
