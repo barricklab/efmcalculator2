@@ -33,7 +33,7 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
 
     # Curate target sequences
     if logger.isEnabledFor(logging.INFO):
-        bar = IncrementalBar('Searching', max=len(seq))
+        bar = IncrementalBar('Curating target sequences', max=len(seq))
     else:
         bar = FakeBar()
 
@@ -62,11 +62,21 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
             #print("iterating by 1: " + str(j))
             if len(seq[i : i + j]) > MIN_SHORT_SEQ_LEN:
                 sub_seq = seq[i : i + j]
-                _find_short_seq(seq, sub_seq, df, seq_len, isCircular)
+                target_sequences.append(sub_seq)
         bar.next()
     bar.finish()
+    target_sequences = set(target_sequences)
 
     # Run scan
+    if logger.isEnabledFor(logging.INFO):
+        bar = IncrementalBar('Scanning for repeats', max=len(target_sequences))
+    else:
+        bar = FakeBar()
+
+    for sub_seq in target_sequences:
+        bar.next()
+        _find_short_seq(seq, sub_seq, df, seq_len, isCircular)
+    bar.finish()
 
 
 
