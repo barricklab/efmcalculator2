@@ -22,7 +22,7 @@ def filter_redundant(df):
             
             if df.loc[i, "occurrences"] > 1:
                 if df.loc[i, "positions"][1][2] == "SSR":
-                    print("detected")
+                    #print("detected")
                     repeat_count = int(df.loc[i, "positions"][1][3])
                     start_pos = df.loc[i, "positions"][1][0]
                     end_pos = df.loc[i, "positions"][1][1]

@@ -11,7 +11,14 @@ from .SRS_filter import filter_redundant
 from Bio.SeqRecord import SeqRecord
 from typing import Union, List
 from importlib.metadata import version, PackageNotFoundError
+from progress.bar import IncrementalBar
+from rich.logging import RichHandler
 
+
+FORMAT = "%(message)s"
+logging.basicConfig(
+    level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+)
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -29,7 +36,7 @@ def _main():
         action="store",
         dest="inpath",
         required=True,
-        help="the path to fasta file",
+        help="the path to fasta/genbank file",
     )
     parser.add_argument(
         "-o",
@@ -48,11 +55,23 @@ def _main():
         help="Is circular?",
     )
     parser.add_argument(
-        "--debug",
-        action="store_true",
+        "-j",
+        "--threads",
+        dest="threads",
+        action="store",
+        required=False,
+        type=int,
+        help="Number of threads to use",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbosity",
+        action="store",
+        type=int,
         dest="verbose",
         required=False,
-        help="--debug/--no-debug prints debug information",
+        default=1,
+        help="0 - Silent | 1 Basic Information | 2 Debug",
     )
 
     try:
@@ -70,12 +89,21 @@ def _main():
 
     # Set up logger
     logging.basicConfig()
-    if args.verbose:
+    if args.verbose == 0:
+        logging.root.setLevel(logging.ERROR)
+    elif args.verbose == 1:
+        logging.root.setLevel(logging.INFO)
+    elif args.verbose == 2:
         logging.root.setLevel(logging.DEBUG)
     else:
-        logging.root.setLevel(logging.INFO)
+        logger.error(f"Invalid value for verbosity flag '{args.verbose}'")
+        parser.print_help()
+        exit(1)
 
-    logger.info("EFM Calculator version: {}".format(pkgversion))
+    if args.verbose < 1:
+        logger.error(f"Invalid value for thread flag '{args.threads}'")
+
+    logger.info("EFM Calculator {}".format(pkgversion))
 
     # Set up circular
 
@@ -106,17 +134,20 @@ def _main():
     t_sec = round(time.time() - start_time)
     t_min, t_sec = divmod(t_sec, 60)
     t_hour, t_min = divmod(t_min, 60)
-    logger.debug("\nTime taken: {}hour:{}min:{}sec".format(t_hour, t_min, t_sec))
+    logger.info(f"EFMCalculator completed in {t_hour}:{t_min}:{t_sec}")
 
 
 def efmcalculator(
-    sequences: Union[SeqRecord, List[SeqRecord]], isCircular: bool
+    sequences: Union[SeqRecord, List[SeqRecord]],
+    isCircular: bool,
+    threads: int = 1
 ) -> pd.DataFrame:
     """Runs EFM calculator on input SeqRecords. Returns a pandas DataFrame of repeats.
 
     Args:
         sequences (Union[SeqRecord, List[SeqRecord]]): Input SeqRecords
         isCircular (bool): Treat input sequences as circular
+        threads: Number of threads to use
 
     Returns:
         pd.DataFrame: Pandas DataFrame of repeats
@@ -128,7 +159,6 @@ def efmcalculator(
     if isinstance(sequences, SeqRecord):
         sequences = [sequences]
 
-    logger.debug("Number of sequences: {}".format(len(sequences)))
 
     for record in sequences:
         seq_len = len(record.seq.strip("\n"))
@@ -137,7 +167,7 @@ def efmcalculator(
             record = record + record[0:20]
         # Strips of new line special character
         seq = record.seq.strip("\n")
-        predict_RMDs(seq, df, seq_len, isCircular)
+        predict_RMDs(seq, df, seq_len, isCircular, threads)
 
     # Create dataframe of observed repeats, rather than of observed sequences that have duplicates
 

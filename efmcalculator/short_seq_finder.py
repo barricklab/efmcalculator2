@@ -2,6 +2,7 @@ import logging
 from .short_seq_scan import scan_short_sequence
 from .mut_rate_finder import get_mut_rate,get_recombo_rate
 from collections import namedtuple
+from progress.bar import IncrementalBar
 
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -11,42 +12,63 @@ MAX_SHORT_SEQ_LEN = 15
 UNKNOWN_REC_TYPE = "unknown"
 SUB_RATE = float(2.2 * 10 ** (-10))
 
+class FakeBar():
+    def next():
+        return
+    def finish():
+        return
 
-
-def predict_RMDs(seq, df, seq_len, isCircular):
-    _build_sub_seq_from_seq(seq, df, seq_len, isCircular)
+def predict_RMDs(seq, df, seq_len, isCircular, threads):
+    _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads)
     #df.sort_values(['Size'], ascending=[True]).to_csv(output, index=False)
     # get RIP
     # Assuming df is your DataFrame
     tot_ssr_mut_rate = df["Mutation Rate"].where(df["Classifier"]=='SSR').sum()
     tot_rmd_mut_rate = df["Mutation Rate"].where(df["Classifier"]=='RMD').sum()
 
-    logger.info(_find_rip(tot_ssr_mut_rate , tot_rmd_mut_rate ))
+    result = _find_rip(tot_ssr_mut_rate , tot_rmd_mut_rate)
+    logger.info(f"RIP Score: {result['rip']} \n ------------------ \nRMDs: {result['rmd_sum']} \nSSRs: {result['ssr_sum']}, \nBase: {result['bps_sum']}")
 
-def _build_sub_seq_from_seq(seq, df, seq_len, isCircular):
+def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
+
+    # Curate target sequences
+    if logger.isEnabledFor(logging.INFO):
+        bar = IncrementalBar('Searching', max=len(seq))
+    else:
+        bar = FakeBar()
+
+    target_sequences = []
+
+
     for i, letter in enumerate(seq):
         # iterate by 1/2 length while searching for RMD
         MAX_SHORT_SEQ_LEN = int(seq_len/2)
         found = False
         while MAX_SHORT_SEQ_LEN >= 16 and not found:
             MAX_SHORT_SEQ_LEN = int(MAX_SHORT_SEQ_LEN/2)
-            print(str(MAX_SHORT_SEQ_LEN))
+            #print(str(MAX_SHORT_SEQ_LEN))
             sub_seq = seq[i : i + int(MAX_SHORT_SEQ_LEN)]
             count = seq.count(sub_seq)
             if count > 1:
                 found = True
-                print("found = " + str(sub_seq))
-                print("new max = " + str(MAX_SHORT_SEQ_LEN))
+                #print("found = " + str(sub_seq))
+                #print("new max = " + str(MAX_SHORT_SEQ_LEN))
             else:
                 MAX_SHORT_SEQ_LEN = int(MAX_SHORT_SEQ_LEN/2)
 
         # iterate by 1
         MAX_SHORT_SEQ_LEN = int(2*MAX_SHORT_SEQ_LEN)
         for j in range(MAX_SHORT_SEQ_LEN, MIN_SHORT_SEQ_LEN, -1):
-            print("iterating by 1: " + str(j))
+            #print("iterating by 1: " + str(j))
             if len(seq[i : i + j]) > MIN_SHORT_SEQ_LEN:
                 sub_seq = seq[i : i + j]
                 _find_short_seq(seq, sub_seq, df, seq_len, isCircular)
+        bar.next()
+    bar.finish()
+
+    # Run scan
+
+
 
 
 
@@ -144,8 +166,8 @@ def _find_rip(ssr_sum, rmd_sum):
     :param seq_len: Length of input sequence
     :return: Total predicted RIP score for whole sequence
     """ 
-    print(ssr_sum)
-    print(rmd_sum)
+    #print(ssr_sum)
+    #print(rmd_sum)
     base_rate = float(1000) * float(SUB_RATE)
     # Add in the mutation rate of an individual nucleotide
     r_sum = ssr_sum + rmd_sum + base_rate
