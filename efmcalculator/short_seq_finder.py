@@ -1,12 +1,13 @@
 import logging
 import polars as pl
-from .short_seq_scan import return_start_positions, build_seq_attr, scan_short_sequence
+from .short_seq_scan import _find_repeat_positions, _build_seq_attr
 from .mut_rate_finder import get_mut_rate,get_recombo_rate
 from collections import namedtuple
 from progress.bar import IncrementalBar
 from collections import Counter, defaultdict
 from rich import print
 import Bio
+import tempfile
 
 
 
@@ -37,43 +38,47 @@ def predict_RMDs(seq, df, seq_len, isCircular, threads):
     logger.info(f"RIP Score: {result['rip']} \n ------------------ \nRMDs: {result['rmd_sum']} \nSSRs: {result['ssr_sum']}, \nBase: {result['bps_sum']}")
 
 
-def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
-
-    # Curate target sequences
+def collect_subsequences(seq, window_max=16) -> pl.LazyFrame:
+    '''Scans across a given input sequence and returns a list of subsequences'''
     if logger.isEnabledFor(logging.INFO):
         bar = IncrementalBar('Scanning for repeats', max=len(seq))
     else:
         bar = FakeBar()
 
-    target_sequences = defaultdict(list)
-    positions = []
 
-    placeholder = []
+    def scan_genome():
+        # Probably room for optimizations here
+        for i, _ in enumerate(seq):
+            for j in range(MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN):
+                if len(seq[i : i + j]) > MIN_SHORT_SEQ_LEN:
+                    sub_seq = seq[i : i + j]
+                    yield {'repeat': str(sub_seq), 'position': i}
+            bar.next()
 
-
-    for i, letter in enumerate(seq):
-        for j in range(MAX_SHORT_SEQ_LEN, MIN_SHORT_SEQ_LEN, -1):
-            #print("iterating by 1: " + str(j))
-            if len(seq[i : i + j]) > MIN_SHORT_SEQ_LEN:
-                sub_seq = seq[i : i + j]
-                target_sequences[str(sub_seq)].append(i)
-                placeholder.append(sub_seq)
-        bar.next()
+    repeats = (pl.LazyFrame(scan_genome()).
+                groupby('repeat').
+                agg(pl.col("position")).
+                collect())
     bar.finish()
 
+    return repeats
+
+
+
+def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
+
+    # Curate target sequences
+
+    repeats = collect_subsequences(seq)
+
     # Filter out sequences
-    target_sequences = {key: sorted(list(set(value))) for key, value in target_sequences.items()}
-    repeats = pl.from_dict({"repeat": target_sequences.keys(),
-                            "position": target_sequences.values()})
-    
     repeats = repeats.filter(pl.col('position').list.len()> 1)
     num_repeated_sequences = repeats.select(pl.len()).item()
 
 
     # --- Debugging
-
     def map_function(row):
-        result = return_start_positions(seq, row[0], seq_len, isCircular, len(row[1]))
+        result = _find_repeat_positions(seq, row[0], seq_len, isCircular, len(row[1]))
         return (row[0], result)
 
     results = repeats.map_rows(map_function)
@@ -87,26 +92,23 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
             #print(row)
             pass
 
-    repeats = debug.filter(pl.col("position") != pl.col("position_corrected"))
-    print(repeats)
+    repeats = debug
+    position_source = 2 # 1 for rhobust, 2 for preexisting
 
     # -- end debugging
 
 
     # Calculate
-    placeholder = set(placeholder)
     if logger.isEnabledFor(logging.INFO):
         bar = IncrementalBar('Calculating mutation rates', max=num_repeated_sequences)
     else:
         bar = FakeBar()
 
     def map_function(row):
-        _find_short_seq(seq, row[0], df, seq_len, row[1], isCircular, bar)
+        _find_short_seq(seq, row[0], df, seq_len, row[position_source], isCircular, bar)
         return ()
     repeats.map_rows(map_function)
     bar.finish()
-
-
 
 
 
@@ -125,8 +127,7 @@ def _find_short_seq(seq, sub_seq, df, seq_len, start_positions, isCircular, bar)
         ssrStruct.sav_seq_attr=[]
         mu_rate = 0
 
-        for seq_attr in scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
-        #for seq_attr in build_seq_attr(sub_seq, seq_len, start_positions, isCircular, count):
+        for seq_attr in _build_seq_attr(sub_seq, seq_len, start_positions, isCircular, count):
             if seq_attr.length <= 5:
                 ssrStruct= _find_ssr(df,seq_attr,ssrStruct.first_find,ssrStruct.loop_end,ssrStruct.ssr_count,ssrStruct.sav_seq_attr)
 
