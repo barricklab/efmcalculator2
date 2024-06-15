@@ -1,3 +1,5 @@
+import logging
+
 class SeqAttr:
     def __init__(self, sub_seq, distance, start_pos, end_pos, note):
         self.sub_seq = str(sub_seq)
@@ -6,6 +8,9 @@ class SeqAttr:
         self.start_pos = start_pos
         self.end_pos = end_pos
         self.note = note
+
+logger = logging.getLogger(__name__)
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
 def scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
@@ -16,6 +21,9 @@ def scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
     prv_end_pos = 0
     prv_start_pos = 0
 
+    print("\n" + sub_seq)
+
+
     start_pos = seq.find(sub_seq, rem_start)
     while start_pos != -1:
         note = ""
@@ -24,7 +32,6 @@ def scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
          #   end_pos = end_pos - seq_len
         start_pos += 1
         distance = start_pos - prv_end_pos
-
         # fixes distance for
         if isCircular == True:
             if distance > seq_len / 2:
@@ -65,6 +72,8 @@ def build_seq_attr(sub_seq, seq_len, start_positions, isCircular, count):
     end_pos = 0
     prv_end_pos = 0
     prv_start_pos = 0
+
+    print("\n" + sub_seq)
 
     for start_pos in start_positions:
         note = ""
