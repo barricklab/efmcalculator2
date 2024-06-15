@@ -1,8 +1,15 @@
 import logging
-from .short_seq_scan import scan_short_sequence
+import polars as pl
+from .short_seq_scan import scan_short_sequence, return_start_positions, build_seq_attr
 from .mut_rate_finder import get_mut_rate,get_recombo_rate
 from collections import namedtuple
 from progress.bar import IncrementalBar
+from collections import Counter, defaultdict
+from rich import print
+import Bio
+
+from polars.testing import assert_frame_equal
+
 
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -38,6 +45,9 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
         bar = FakeBar()
 
     target_sequences = []
+    positions = []
+
+    placeholder = []
 
 
     for i, letter in enumerate(seq):
@@ -62,27 +72,58 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
             #print("iterating by 1: " + str(j))
             if len(seq[i : i + j]) > MIN_SHORT_SEQ_LEN:
                 sub_seq = seq[i : i + j]
-                target_sequences.append(sub_seq)
+                target_sequences.append((str(sub_seq), i))
+                placeholder.append(sub_seq)
         bar.next()
     bar.finish()
+
+    # Filter out sequences
+
+    unique_sequences = [x[0] for x in target_sequences]
+    counts = Counter(unique_sequences)
+    target_sequences = [subseq for subseq in target_sequences if counts[subseq[0]] > 1]
     target_sequences = set(target_sequences)
+    reversed_dict = defaultdict(list)
+    for seq_hit, position in target_sequences:
+        reversed_dict[seq_hit].append(position)
+
+    reversed_dict = {k: sorted([l for l in j]) for k, j in reversed_dict.items()}
+
+    def map_function(row):
+        result = return_start_positions(seq, row[0], seq_len, isCircular, len(row[1]))
+        return (row[0], result)
+    
+    repeats = pl.from_dict({"repeat": reversed_dict.keys(),
+                            "position": reversed_dict.values()}, strict=False)
+
+    # --- Correct for circular
+
+    # --- Correct for overlapping
+
+
+    repeats.filter(pl.col('position').list.len()> 1)
+    num_repeated_sequences = repeats.select(pl.len()).item()
+    print(num_repeated_sequences)
 
     # Run scan
+    placeholder = set(placeholder)
     if logger.isEnabledFor(logging.INFO):
-        bar = IncrementalBar('Scanning for repeats', max=len(target_sequences))
+        bar = IncrementalBar('Scanning for repeats', max=num_repeated_sequences)
     else:
         bar = FakeBar()
 
-    for sub_seq in target_sequences:
-        bar.next()
-        _find_short_seq(seq, sub_seq, df, seq_len, isCircular)
+    def map_function(row):
+        _find_short_seq(seq, row[0], df, seq_len, row[1], isCircular, bar)
+        return ()
+    repeats.map_rows(map_function)
     bar.finish()
 
 
 
 
 
-def _find_short_seq(seq, sub_seq, df, seq_len, isCircular):
+def _find_short_seq(seq, sub_seq, df, seq_len, start_positions, isCircular, bar):
+    sub_seq = Bio.Seq.Seq(data=sub_seq)
     count = seq.count_overlap(sub_seq)
     visited_sequences = set()
     if count > 1 and str(sub_seq) not in visited_sequences:
@@ -95,7 +136,7 @@ def _find_short_seq(seq, sub_seq, df, seq_len, isCircular):
         ssrStruct.ssr_count=0
         ssrStruct.sav_seq_attr=[]
         mu_rate = 0
-        for seq_attr in scan_short_sequence(seq, sub_seq, seq_len, isCircular, count):
+        for seq_attr in build_seq_attr(sub_seq, seq_len, start_positions, isCircular, count):
             if seq_attr.length <= 5:
                 ssrStruct= _find_ssr(df,seq_attr,ssrStruct.first_find,ssrStruct.loop_end,ssrStruct.ssr_count,ssrStruct.sav_seq_attr)
 
@@ -117,6 +158,7 @@ def _find_short_seq(seq, sub_seq, df, seq_len, isCircular):
         elif (seq_attr.length >= 6 and seq_attr.length <= 15) and seq_attr.note == "SSR":
              loop_end = True
              _find_ssr(df,seq_attr,ssrStruct.first_find,loop_end,ssrStruct.ssr_count+1,ssrStruct.sav_seq_attr)
+    bar.next()
 
         
 
