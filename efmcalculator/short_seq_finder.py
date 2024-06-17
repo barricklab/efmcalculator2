@@ -34,8 +34,11 @@ def predict_RMDs(seq, df, seq_len, isCircular, threads):
     tot_ssr_mut_rate = df["Mutation Rate"].where(df["Classifier"]=='SSR').sum()
     tot_rmd_mut_rate = df["Mutation Rate"].where(df["Classifier"]=='RMD').sum()
 
+    results = df["Classifier"].value_counts()
+
     result = _find_rip(tot_ssr_mut_rate , tot_rmd_mut_rate)
     logger.info(f"RIP Score: {result['rip']} \n ------------------ \nRMDs: {result['rmd_sum']} \nSSRs: {result['ssr_sum']}, \nBase: {result['bps_sum']}")
+    print(results)
 
 
 def collect_subsequences(seq, window_max=16) -> pl.LazyFrame:
@@ -69,11 +72,11 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
 
     # Curate target sequences
 
-    repeats = collect_subsequences(seq)
+    repeat_df = collect_subsequences(seq)
 
     # Filter out sequences
-    repeats = repeats.filter(pl.col('position').list.len()> 1)
-    num_repeated_sequences = repeats.select(pl.len()).item()
+    repeat_df = repeat_df.filter(pl.col('position').list.len()> 1)
+    num_repeated_sequences = repeat_df.select(pl.len()).item()
 
 
     # --- Debugging
@@ -81,10 +84,10 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
         result = _find_repeat_positions(seq, row[0], seq_len, isCircular, len(row[1]))
         return (row[0], result)
 
-    results = repeats.map_rows(map_function)
-    results = results.rename({"column_0": 'repeat',
+    repeat_df = repeat_df.map_rows(map_function)
+    repeat_df = repeat_df.rename({"column_0": 'repeat',
                     "column_1": 'position_corrected'})
-    debug = repeats.join(results, on='repeat')
+    debug = repeat_df.join(repeat_df, on='repeat')
     for row in debug.rows(named=True):
         try:
             assert row['position'] == row['position_corrected']
@@ -92,13 +95,16 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
             #print(row)
             pass
 
-    repeats = debug
+    repeat_df = debug
     position_source = 2 # 1 for rhobust, 2 for preexisting
 
     # -- end debugging
 
 
-    # Calculate
+    # Get length of each repeat
+    repeat_df = repeat_df.with_columns(pl.col("repeat").str.len_chars().alias("repeat_len"))
+    #print(repeat_df.head())
+
     if logger.isEnabledFor(logging.INFO):
         bar = IncrementalBar('Calculating mutation rates', max=num_repeated_sequences)
     else:
@@ -107,7 +113,7 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
     def map_function(row):
         _find_short_seq(seq, row[0], df, seq_len, row[position_source], isCircular, bar)
         return ()
-    repeats.map_rows(map_function)
+    repeat_df.map_rows(map_function)
     bar.finish()
 
 

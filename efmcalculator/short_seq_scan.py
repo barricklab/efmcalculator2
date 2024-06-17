@@ -30,33 +30,24 @@ def _build_seq_attr(sub_seq, seq_len, start_positions, isCircular, count):
         distance = start_pos - prv_end_pos
 
         # fixes distance for
+        if distance == 1:
+            note = "SSR"
         if isCircular == True:
             if distance > seq_len / 2:
                 distance = (seq_len + prv_start_pos) - end_pos
-            if distance == 1:
-                note = "SSR"
-            if start_pos < seq_len:
-                # if repeat wraps around
-                if end_pos > seq_len:
-                    # fix end_pos
-                    end_pos = end_pos - seq_len
-                    # if overlapping
-                    if end_pos >= prv_start_pos:
-                        note = "skip for SSR"
-                        if count == 2:
-                            note = "skip"
-                        yield SeqAttr(sub_seq, distance, start_pos, end_pos, note)
-                    else:
-                        yield SeqAttr(sub_seq, distance, start_pos, end_pos, note)
-                else:
-                    yield SeqAttr(sub_seq, distance, start_pos, end_pos, note)
-        else:
-            if distance == 1:
-                note = "SSR"
-            yield SeqAttr(sub_seq, distance, start_pos, end_pos, note)
+            if start_pos < seq_len and end_pos > seq_len: # if repeat wraps around
+                # fix end_pos
+                end_pos = end_pos - seq_len
+        # if overlapping
+        if distance < 1:
+            note = "skip for SSR"
+            if count == 2:
+                note = "skip"
+        yield SeqAttr(sub_seq, distance, start_pos, end_pos, note)
         rem_start = start_pos + 1
         prv_end_pos = end_pos
         prv_start_pos = start_pos
+
 
 def _find_repeat_positions(seq, sub_seq, seq_len, isCircular, count):
     '''testing function for sequence scanning'''
