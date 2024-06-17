@@ -41,17 +41,23 @@ def predict_RMDs(seq, df, seq_len, isCircular, threads):
     print(results)
 
 
-def collect_subsequences(seq, window_max=16) -> pl.LazyFrame:
+def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
     '''Scans across a given input sequence and returns a list of subsequences'''
     if logger.isEnabledFor(logging.INFO):
         bar = IncrementalBar('Scanning for repeats', max=len(seq))
     else:
         bar = FakeBar()
+        
+    seq_len = len(seq)
+
+    if isCircular:
+        # adds first 20 bp to end
+        seq = seq + seq[0:20]
 
 
     def scan_genome():
         # Probably room for optimizations here
-        for i, _ in enumerate(seq):
+        for i, _ in enumerate(seq[:seq_len]):
             for j in range(MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN):
                 if len(seq[i : i + j]) > MIN_SHORT_SEQ_LEN:
                     sub_seq = seq[i : i + j]
@@ -70,9 +76,10 @@ def collect_subsequences(seq, window_max=16) -> pl.LazyFrame:
 
 def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
 
+
     # Curate target sequences
 
-    repeat_df = collect_subsequences(seq)
+    repeat_df = collect_subsequences(seq, isCircular)
 
     # Filter out sequences
     repeat_df = repeat_df.filter(pl.col('position').list.len()> 1)
@@ -123,7 +130,7 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
     
     # Assign mutation rates
     pairwise_df = _apply_mutation_rates(pairwise_df)
-    print(pairwise_df.head())
+    #print(pairwise_df.filter(pl.col('is_RMD') == False).head())
 
     if logger.isEnabledFor(logging.INFO):
         bar = IncrementalBar('Calculating mutation rates', max=num_repeated_sequences)
