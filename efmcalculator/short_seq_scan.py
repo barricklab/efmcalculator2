@@ -1,4 +1,9 @@
 import logging
+import polars as pl
+import tempfile
+import itertools
+from progress.spinner import Spinner
+from progress.bar import IncrementalBar
 
 class SeqAttr:
     def __init__(self, sub_seq, distance, start_pos, end_pos, note):
@@ -11,6 +16,41 @@ class SeqAttr:
 
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
+
+def pairwise_list_column(polars_df, column) -> pl.DataFrame:
+    """Recieve a polars dataframe with column of [List[type]]
+    Returns the dataframe back with the column as all combinations"""
+
+    # Shamelessly adapted from https://stackoverflow.com/questions/77354114/how-would-i-generate-combinations-of-items-within-polars-using-the-native-expres
+
+    nrows = polars_df.select(pl.len()).item()
+
+    if logger.isEnabledFor(logging.INFO):
+        bar = IncrementalBar('Generating candidate deletions', max=nrows)
+    else:
+        bar = FakeBar()
+
+    def map_function(list_o_things):
+        bar.next()
+        return [sorted((thing_1, thing_2))
+                for thing_1, thing_2 
+                in itertools.combinations(list_o_things, 2)]
+
+    pairwise = (polars_df
+    .lazy()
+    .with_columns(pl.col(column)
+    .map_elements(map_function,
+        return_dtype = pl.List(pl.List(pl.Int64)))
+    )
+    .collect()
+    )
+
+    bar.finish()
+
+    return pairwise
+
+    # There's probably a way to optimize this but the
+    # stackoverflow answer is wrong, doesn't work for >1 row
 
 def _build_seq_attr(sub_seq, seq_len, start_positions, isCircular, count):
     distance = 1
