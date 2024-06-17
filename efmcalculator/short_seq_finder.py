@@ -84,10 +84,10 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
         result = _find_repeat_positions(seq, row[0], seq_len, isCircular, len(row[1]))
         return (row[0], result)
 
-    repeat_df = repeat_df.map_rows(map_function)
-    repeat_df = repeat_df.rename({"column_0": 'repeat',
+    debug = repeat_df.map_rows(map_function)
+    debug = debug.rename({"column_0": 'repeat',
                     "column_1": 'position_corrected'})
-    debug = repeat_df.join(repeat_df, on='repeat')
+    debug = debug.join(debug, on='repeat')
     for row in debug.rows(named=True):
         try:
             assert row['position'] == row['position_corrected']
