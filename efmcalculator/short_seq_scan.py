@@ -19,7 +19,7 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 def pairwise_list_column(polars_df, column) -> pl.DataFrame:
     """Recieve a polars dataframe with column of [List[type]]
-    Returns the dataframe back with the column as all combinations"""
+    Returns the dataframe back with a pairwise list of positions"""
 
     # Shamelessly adapted from https://stackoverflow.com/questions/77354114/how-would-i-generate-combinations-of-items-within-polars-using-the-native-expres
 
@@ -40,17 +40,45 @@ def pairwise_list_column(polars_df, column) -> pl.DataFrame:
     .lazy()
     .with_columns(pl.col(column)
     .map_elements(map_function,
-        return_dtype = pl.List(pl.List(pl.Int64)))
+        return_dtype = pl.List(pl.List(pl.Int64))).alias(f'{column}_pairwise')
     )
     .collect()
     )
-
     bar.finish()
 
     return pairwise
 
     # There's probably a way to optimize this but the
     # stackoverflow answer is wrong, doesn't work for >1 row
+
+def _calculate_distances(polars_df, seq_len, circular) -> pl.DataFrame:
+
+    distance_df = polars_df.with_columns(
+        distance = pl.col('position_pairwise').list.diff().list.get(1) + pl.col('repeat_len')
+        )
+
+    if circular:
+        distance_df = distance_df.with_columns(
+            distance = pl.when(pl.col('distance') > seq_len / 2).then(
+                        seq_len - pl.col('distance')
+                        ).otherwise(pl.col('distance')),
+            wraparound = pl.when(pl.col('distance') > seq_len / 2).then(
+                        True
+                        ).otherwise(False)
+        )
+    
+    return distance_df
+
+def _categorize_efm(polars_df) -> pl.DataFrame:
+    return polars_df
+
+def _collapse_ssr(polars_df) -> pl.DataFrame:
+    return polars_df
+
+def _apply_mutation_rates(polars_df) -> pl.DataFrame:
+    return polars_df
+
+
 
 def _build_seq_attr(sub_seq, seq_len, start_positions, isCircular, count):
     distance = 1

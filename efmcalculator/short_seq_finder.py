@@ -1,6 +1,6 @@
 import logging
 import polars as pl
-from .short_seq_scan import _find_repeat_positions, _build_seq_attr
+from .short_seq_scan import _find_repeat_positions, _build_seq_attr, pairwise_list_column, _calculate_distances, _categorize_efm, _collapse_ssr, _apply_mutation_rates
 from .mut_rate_finder import get_mut_rate,get_recombo_rate
 from collections import namedtuple
 from progress.bar import IncrementalBar
@@ -86,8 +86,10 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
 
     debug = repeat_df.map_rows(map_function)
     debug = debug.rename({"column_0": 'repeat',
-                    "column_1": 'position_corrected'})
+                    "column_1": 'position'})
     debug = debug.join(debug, on='repeat')
+    debug = debug.rename({"position_right": 'position_corrected'})
+
     for row in debug.rows(named=True):
         try:
             assert row['position'] == row['position_corrected']
@@ -100,10 +102,28 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
 
     # -- end debugging
 
-
     # Get length of each repeat
     repeat_df = repeat_df.with_columns(pl.col("repeat").str.len_chars().alias("repeat_len"))
-    #print(repeat_df.head())
+
+    # Create pairwise list of positions
+    pairwise_df = pairwise_list_column(repeat_df, 'position')
+    pairwise_df = pairwise_df.drop('position')
+    pairwise_df = pairwise_df.drop('position_corrected')
+    pairwise_df = pairwise_df.explode('position_pairwise')
+
+    # Calculate Distances
+    pairwise_df = _calculate_distances(pairwise_df, seq_len, isCircular)
+    pairwise_df = pairwise_df.filter(pl.col('distance') > 0)
+
+    # Categorize positions
+    pairwise_df = _categorize_efm(pairwise_df)
+
+    # Categorize positions
+    pairwise_df = _collapse_ssr(pairwise_df)
+    
+    # Assign mutation rates
+    pairwise_df = _apply_mutation_rates(pairwise_df)
+    print(pairwise_df.head())
 
     if logger.isEnabledFor(logging.INFO):
         bar = IncrementalBar('Calculating mutation rates', max=num_repeated_sequences)
@@ -111,14 +131,15 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
         bar = FakeBar()
 
     def map_function(row):
-        _find_short_seq(seq, row[0], df, seq_len, row[position_source], isCircular, bar)
+        _find_short_seq(seq, row[0], df, seq_len, row[position_source], isCircular)
+        bar.next()
         return ()
     repeat_df.map_rows(map_function)
     bar.finish()
 
 
 
-def _find_short_seq(seq, sub_seq, df, seq_len, start_positions, isCircular, bar):
+def _find_short_seq(seq, sub_seq, df, seq_len, start_positions, isCircular):
     sub_seq = Bio.Seq.Seq(data=sub_seq)
     count = seq.count_overlap(sub_seq)
     visited_sequences = set()
@@ -154,7 +175,6 @@ def _find_short_seq(seq, sub_seq, df, seq_len, start_positions, isCircular, bar)
         elif (seq_attr.length >= 6 and seq_attr.length <= 15) and seq_attr.note == "SSR":
              loop_end = True
              _find_ssr(df,seq_attr,ssrStruct.first_find,loop_end,ssrStruct.ssr_count+1,ssrStruct.sav_seq_attr)
-    bar.next()
 
         
 
