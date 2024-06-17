@@ -5,13 +5,12 @@ import Bio.SeqIO as SeqIO
 import pandas as pd
 import pathlib
 
-from .short_seq_finder import predict_RMDs
+from .short_seq_finder import predict_RMDs, _find_rip
 from .SRS_filter import filter_redundant
 
 from Bio.SeqRecord import SeqRecord
 from typing import Union, List
 from importlib.metadata import version, PackageNotFoundError
-from progress.bar import IncrementalBar
 from rich.logging import RichHandler
 
 
@@ -126,6 +125,9 @@ def _main():
     df = efmcalculator(sequences=sequences, isCircular=args.isCirc)
     df = filter_redundant(df)
 
+    # Back into tidy data
+
+
     # Output
     df.to_csv(args.outpath, index=False)
 
@@ -166,7 +168,7 @@ def efmcalculator(
             # adds first 20 bp to end
             record = record + record[0:20]
         # Strips of new line special character
-        seq = record.seq.strip("\n")
+        seq = record.seq.strip("\n").upper()
         predict_RMDs(seq, df, seq_len, isCircular, threads)
 
     # Create dataframe of observed repeats, rather than of observed sequences that have duplicates
