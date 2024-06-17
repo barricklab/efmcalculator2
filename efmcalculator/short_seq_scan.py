@@ -70,14 +70,14 @@ def _build_seq_attr(sub_seq, seq_len, start_positions, isCircular, count):
         distance = start_pos - prv_end_pos
 
         # fixes distance for
-        if distance == 1:
-            note = "SSR"
         if isCircular == True:
             if distance > seq_len / 2:
                 distance = (seq_len + prv_start_pos) - end_pos
             if start_pos < seq_len and end_pos > seq_len: # if repeat wraps around
                 # fix end_pos
                 end_pos = end_pos - seq_len
+        if distance == 1:
+            note = "SSR"
         # if overlapping
         if distance < 1:
             note = "skip for SSR"
