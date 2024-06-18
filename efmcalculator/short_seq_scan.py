@@ -93,7 +93,8 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
         .group_by(['repeat', 'repeat_len'])
         .agg('position_pairwise')
         .with_columns(
-            positions = pl.col('position_pairwise').list.unique().list.sort(),
+            positions = pl.col('position_pairwise').list
+            .unique().list.sort(),
         )
         .with_columns(
             differences = pl.col('positions').list.diff()
@@ -101,6 +102,8 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
         .collect()
     )
     # Somehow couldnt figure out how to do this in pure polars
+
+    # Identify start positions. If distance !=0, its not a start
     collapsed_ssrs = collapsed_ssrs.to_pandas()
     collapsed_ssrs['differences'] = (collapsed_ssrs['differences'] - collapsed_ssrs['repeat_len'] ).fillna(0)
     collapsed_ssrs = pl.from_pandas(collapsed_ssrs)
@@ -113,31 +116,33 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
         )
         )
 
+    # Apply the truth table
     collapsed_ssrs = collapsed_ssrs.to_pandas()
     collapsed_ssrs['starts'] = (collapsed_ssrs['truth_table']) * (collapsed_ssrs['positions']+1)
 
 
+    # Fill out 
     collapsed_ssrs = pl.from_pandas(collapsed_ssrs)
-    pl.Config.set_fmt_table_cell_list_len(10)
-
     collapsed_ssrs = collapsed_ssrs.with_columns(
         starts = pl.col('starts').explode().replace(0, None).forward_fill().implode().over('repeat')
     )
 
-    pl.Config.set_fmt_table_cell_list_len(10)
-
+    # We had to apply an offeset with the truth table
+    # To prevent bp-0 start positions from nulling out. This undoes that.
     collapsed_ssrs = collapsed_ssrs.to_pandas()
     collapsed_ssrs['starts'] = collapsed_ssrs['starts'] -1
     collapsed_ssrs = pl.from_pandas(collapsed_ssrs).select(pl.col(["repeat",
                                                                    "repeat_len",
                                                                     "starts"]))
 
+    # Count repeats from each start position
     collapsed_ssrs = (
         collapsed_ssrs
         .explode('starts')
         .group_by('repeat', 'repeat_len', 'starts').count())
 
 
+    # Filter based on SSR definition
     collapsed_ssrs = (
         collapsed_ssrs.filter(
             (pl.col('repeat_len') >= 2).and_(pl.col('count') >=3)
@@ -146,7 +151,6 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
     )
 
 
-    collapsed_ssrs.write_csv('new.csv')
 
     # @TODO: Correct for circular
 

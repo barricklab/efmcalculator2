@@ -34,8 +34,6 @@ def predict_RMDs(seq, df, seq_len, isCircular, threads):
     tot_ssr_mut_rate = df["Mutation Rate"].where(df["Classifier"]=='SSR').sum()
     tot_rmd_mut_rate = df["Mutation Rate"].where(df["Classifier"]=='RMD').sum()
 
-    pl.from_pandas(df).filter(pl.col('Classifier') == "SSR").write_csv('old.csv')
-
     results = df["Classifier"].value_counts()
 
     result = _find_rip(tot_ssr_mut_rate , tot_rmd_mut_rate)
