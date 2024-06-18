@@ -4,7 +4,7 @@ setup(
     name="efmcalculator",
     version="2.1.0",
     packages=find_packages(),
-    install_requires=["pandas", "progress", "biopython", "statsmodels", "rich"],
+    install_requires=["pandas", "progress", "biopython", "statsmodels", "rich", "pyarrow"],
     entry_points={
         "console_scripts": [
             "efmcalculator=efmcalculator.efmcalculator:_main",
