@@ -25,8 +25,9 @@ class FakeBar():
     def finish():
         return
 
-def predict_RMDs(seq, df, seq_len, isCircular, threads):
-    _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads)
+'''
+def predict(seq, df, isCircular, threads):
+    _build_sub_seq_from_seq(seq, df, isCircular, threads)
     #df.sort_values(['Size'], ascending=[True]).to_csv(output, index=False)
     # get RIP
     # Assuming df is your DataFrame
@@ -39,9 +40,10 @@ def predict_RMDs(seq, df, seq_len, isCircular, threads):
     result = _find_rip(tot_ssr_mut_rate , tot_rmd_mut_rate)
     logger.info(f"RIP Score: {result['rip']} \n ------------------ \nRMDs: {result['rmd_sum']} \nSSRs: {result['ssr_sum']}, \nBase: {result['bps_sum']}")
     print(results)
+'''
 
 
-def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
+def collect_subsequences(seq, isCircular, window_max=16) -> (pl.LazyFrame):
     '''Scans across a given input sequence and returns a list of subsequences'''
     if logger.isEnabledFor(logging.INFO):
         bar = IncrementalBar('Scanning for repeats', max=len(seq))
@@ -74,8 +76,9 @@ def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
 
 
 
-def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
-
+def predict(seq, df, isCircular, threads) -> (pl.DataFrame, pl.DataFrame):
+    """Scans and predicts SSRs and RMDs. Returns dataframes representing each"""
+    seq_len = len(seq)
 
     # Curate target sequences
 
@@ -127,7 +130,14 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
     pairwise_df = _categorize_efm(pairwise_df)
 
     # Collapse SSRs down
-    pairwise_df = _collapse_ssr(pairwise_df)
+    ssr_df = _collapse_ssr(pairwise_df).select(pl.col(['repeat', 'repeat_len', 'start', 'count']))
+
+
+    rmd_df = pairwise_df.filter(pl.col('is_RMD') == True).select(pl.col(['repeat', 'repeat_len', 'position_pairwise', 'distance']))
+    rmd_df = rmd_df.rename({'position_pairwise': 'positions'})
+    
+
+    # ---------------------- LEGACY CODE TO BE REMOVED
     
     # Assign mutation rates
     pairwise_df = _apply_mutation_rates(pairwise_df)
@@ -144,6 +154,11 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
         return ()
     repeat_df.map_rows(map_function)
     bar.finish()
+
+    # ---------------------- LEGACY CODE TO BE REMOVED
+
+
+    return(ssr_df, rmd_df)
 
 
 

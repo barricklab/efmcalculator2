@@ -83,13 +83,15 @@ def _categorize_efm(polars_df) -> pl.DataFrame:
 
 
 def _collapse_ssr(polars_df) -> pl.DataFrame:
-
+    '''Takes in dataframe of SSRs, returns dataframe of SSRs collapsed down.'''
 
     collapsed_ssrs = (
         polars_df.filter(pl.col('is_RMD') == False)
         .select(['repeat', 'repeat_len', 'position_pairwise'])
         .lazy()
-        .explode('position_pairwise')  # Collect the positions from all potentially participating SSRs
+        
+    # Collect the positions from all potentially participating SSRs
+        .explode('position_pairwise') 
         .group_by(['repeat', 'repeat_len'])
         .agg('position_pairwise')
         .with_columns(
@@ -103,9 +105,9 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
     )
     # Somehow couldnt figure out how to do this in pure polars
 
-    # Identify start positions. If distance !=0, its not a start
+    # Identify start positions. If distance!=0, it a start of a repeat
     collapsed_ssrs = collapsed_ssrs.to_pandas()
-    collapsed_ssrs['differences'] = (collapsed_ssrs['differences'] - collapsed_ssrs['repeat_len'] ).fillna(0)
+    collapsed_ssrs['differences'] = (collapsed_ssrs['differences'] - collapsed_ssrs['repeat_len'] )
     collapsed_ssrs = pl.from_pandas(collapsed_ssrs)
 
     collapsed_ssrs = (
@@ -137,24 +139,14 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
 
     # Count repeats from each start position
     collapsed_ssrs = (
-        collapsed_ssrs
+        collapsed_ssrs.lazy()
         .explode('starts')
-        .group_by('repeat', 'repeat_len', 'starts').count())
-
-
-    # Filter based on SSR definition
-    collapsed_ssrs = (
-        collapsed_ssrs.filter(
-            (pl.col('repeat_len') >= 2).and_(pl.col('count') >=3)
-            .or_((pl.col('repeat_len') == 1).and_(pl.col('count') >=4))
-        )
-    )
-
+        .group_by('repeat', 'repeat_len', 'starts').count()).rename({'starts': 'start'}).collect()
 
 
     # @TODO: Correct for circular
 
-    return polars_df
+    return collapsed_ssrs
 
 def _apply_mutation_rates(polars_df) -> pl.DataFrame:
     return polars_df

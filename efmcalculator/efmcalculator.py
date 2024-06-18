@@ -5,8 +5,10 @@ import Bio.SeqIO as SeqIO
 import pandas as pd
 import pathlib
 
-from .short_seq_finder import predict_RMDs, _find_rip
+from .short_seq_finder import predict, _find_rip
 from .SRS_filter import filter_redundant
+from .filtering import filter_ssrs, filter_rmds
+from .mutation_rates import ssr_mut_rate_vector, rmd_mut_rate_vector
 
 from Bio.SeqRecord import SeqRecord
 from typing import Union, List
@@ -125,8 +127,7 @@ def _main():
     df = efmcalculator(sequences=sequences, isCircular=args.isCirc)
     df = filter_redundant(df)
 
-    # Back into tidy data
-
+    # Index every position in the dataframe up by 1 @TODO
 
     # Output
     df.to_csv(args.outpath, index=False)
@@ -163,10 +164,23 @@ def efmcalculator(
 
 
     for record in sequences:
-        seq_len = len(record.seq.strip("\n"))
-        # Strips of new line special character
+        logger.info("Running on {}".format(record.name))
+
+        # Perform predictions
         seq = record.seq.strip("\n").upper()
-        predict_RMDs(seq, df, seq_len, isCircular, threads)
+        ssr_df, rmd_df = predict(seq, df, isCircular, threads)
+
+        # Perform Filtering
+        ssr_df = filter_ssrs(ssr_df)
+        rmd_df = filter_rmds(rmd_df)
+
+        # Calculate Mutation Rates
+        
+        ssr_df = ssr_mut_rate_vector(ssr_df)
+        rmd_df = rmd_mut_rate_vector(rmd_df)
+
+
+    # -------------------------------- Legacy code to be removed
 
     # Create dataframe of observed repeats, rather than of observed sequences that have duplicates
 
@@ -188,6 +202,8 @@ def efmcalculator(
     consolidated_df = consolidated_df[RMD_df | SSR_df]
 
     return consolidated_df
+
+    # --------------------------------- End legacy code
 
 
 if __name__ == "__main__":
