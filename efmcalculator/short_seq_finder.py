@@ -34,6 +34,8 @@ def predict_RMDs(seq, df, seq_len, isCircular, threads):
     tot_ssr_mut_rate = df["Mutation Rate"].where(df["Classifier"]=='SSR').sum()
     tot_rmd_mut_rate = df["Mutation Rate"].where(df["Classifier"]=='RMD').sum()
 
+    pl.from_pandas(df).filter(pl.col('Classifier') == "SSR").write_csv('old.csv')
+
     results = df["Classifier"].value_counts()
 
     result = _find_rip(tot_ssr_mut_rate , tot_rmd_mut_rate)
@@ -101,10 +103,11 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
         try:
             assert row['position'] == row['position_corrected']
         except:
-            #print(row)
+            print(row)
             pass
 
     repeat_df = debug
+    #print(repeat_df)
     position_source = 2 # 1 for rhobust, 2 for preexisting
 
     # -- end debugging
@@ -120,17 +123,17 @@ def _build_sub_seq_from_seq(seq, df, seq_len, isCircular, threads):
 
     # Calculate Distances
     pairwise_df = _calculate_distances(pairwise_df, seq_len, isCircular)
-    pairwise_df = pairwise_df.filter(pl.col('distance') > 0)
+    pairwise_df = pairwise_df.filter(pl.col('distance') >= 0)
 
     # Categorize positions
     pairwise_df = _categorize_efm(pairwise_df)
 
-    # Categorize positions
+    # Collapse SSRs down
     pairwise_df = _collapse_ssr(pairwise_df)
     
     # Assign mutation rates
     pairwise_df = _apply_mutation_rates(pairwise_df)
-    #print(pairwise_df.filter(pl.col('is_RMD') == False).head())
+    #print(pairwise_df.filter(pl.col('is_RMD') == False))
 
     if logger.isEnabledFor(logging.INFO):
         bar = IncrementalBar('Calculating mutation rates', max=num_repeated_sequences)

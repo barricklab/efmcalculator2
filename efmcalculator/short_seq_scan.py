@@ -4,6 +4,7 @@ import tempfile
 import itertools
 from progress.spinner import Spinner
 from progress.bar import IncrementalBar
+import numpy as np
 
 class SeqAttr:
     def __init__(self, sub_seq, distance, start_pos, end_pos, note):
@@ -42,8 +43,9 @@ def pairwise_list_column(polars_df, column) -> pl.DataFrame:
     .map_elements(map_function,
         return_dtype = pl.List(pl.List(pl.Int64))).alias(f'{column}_pairwise')
     )
-    .collect()
     )
+
+    pairwise = pairwise.collect()
     bar.finish()
 
     return pairwise
@@ -53,14 +55,15 @@ def pairwise_list_column(polars_df, column) -> pl.DataFrame:
 
 def _calculate_distances(polars_df, seq_len, circular) -> pl.DataFrame:
 
+
     distance_df = polars_df.with_columns(
-        distance = pl.col('position_pairwise').list.diff().list.get(1) + pl.col('repeat_len')
+        distance = pl.col('position_pairwise').list.diff().list.get(1) - pl.col('repeat_len')
         )
 
     if circular:
         distance_df = distance_df.with_columns(
             distance = pl.when(pl.col('distance') > seq_len / 2).then(
-                        seq_len - pl.col('distance')
+                        seq_len - pl.col('distance') + pl.col('repeat_len')
                         ).otherwise(pl.col('distance')),
             wraparound = pl.when(pl.col('distance') > seq_len / 2).then(
                         True
@@ -70,9 +73,83 @@ def _calculate_distances(polars_df, seq_len, circular) -> pl.DataFrame:
     return distance_df
 
 def _categorize_efm(polars_df) -> pl.DataFrame:
-    return polars_df
+
+    categorized_df = polars_df.with_columns(
+        is_RMD = pl.when(pl.col('distance') > 0).then(True).
+        otherwise(False)
+    )
+
+    return categorized_df
+
 
 def _collapse_ssr(polars_df) -> pl.DataFrame:
+
+
+    collapsed_ssrs = (
+        polars_df.filter(pl.col('is_RMD') == False)
+        .select(['repeat', 'repeat_len', 'position_pairwise'])
+        .lazy()
+        .explode('position_pairwise')  # Collect the positions from all potentially participating SSRs
+        .group_by(['repeat', 'repeat_len'])
+        .agg('position_pairwise')
+        .with_columns(
+            positions = pl.col('position_pairwise').list.unique().list.sort(),
+        )
+        .with_columns(
+            differences = pl.col('positions').list.diff()
+        )
+        .collect()
+    )
+    # Somehow couldnt figure out how to do this in pure polars
+    collapsed_ssrs = collapsed_ssrs.to_pandas()
+    collapsed_ssrs['differences'] = (collapsed_ssrs['differences'] - collapsed_ssrs['repeat_len'] ).fillna(0)
+    collapsed_ssrs = pl.from_pandas(collapsed_ssrs)
+
+    collapsed_ssrs = (
+        collapsed_ssrs.with_columns(
+            truth_table = (pl.col('differences')
+                    .list.eval((pl.element() != 0)
+                    .or_(pl.element().is_null())))
+        )
+        )
+
+    collapsed_ssrs = collapsed_ssrs.to_pandas()
+    collapsed_ssrs['starts'] = (collapsed_ssrs['truth_table']) * (collapsed_ssrs['positions']+1)
+
+
+    collapsed_ssrs = pl.from_pandas(collapsed_ssrs)
+    pl.Config.set_fmt_table_cell_list_len(10)
+
+    collapsed_ssrs = collapsed_ssrs.with_columns(
+        starts = pl.col('starts').explode().replace(0, None).forward_fill().implode().over('repeat')
+    )
+
+    pl.Config.set_fmt_table_cell_list_len(10)
+
+    collapsed_ssrs = collapsed_ssrs.to_pandas()
+    collapsed_ssrs['starts'] = collapsed_ssrs['starts'] -1
+    collapsed_ssrs = pl.from_pandas(collapsed_ssrs).select(pl.col(["repeat",
+                                                                   "repeat_len",
+                                                                    "starts"]))
+
+    collapsed_ssrs = (
+        collapsed_ssrs
+        .explode('starts')
+        .group_by('repeat', 'repeat_len', 'starts').count())
+
+
+    collapsed_ssrs = (
+        collapsed_ssrs.filter(
+            (pl.col('repeat_len') >= 2).and_(pl.col('count') >=3)
+            .or_((pl.col('repeat_len') == 1).and_(pl.col('count') >=4))
+        )
+    )
+
+
+    collapsed_ssrs.write_csv('new.csv')
+
+    # @TODO: Correct for circular
+
     return polars_df
 
 def _apply_mutation_rates(polars_df) -> pl.DataFrame:
