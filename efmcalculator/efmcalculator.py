@@ -48,6 +48,15 @@ def _main():
         help="path to out csv file name",
     )
     parser.add_argument(
+        "-s",
+        "--strategy",
+        action="store",
+        dest="strategy",
+        required=False,
+        default="linear",
+        help="the strategy to use for predicting deletions. Must be one of 'pairwise' or 'linear' (default: 'linear')",
+    )
+    parser.add_argument(
         "-c",
         "--circular",
         dest="circular",
@@ -103,6 +112,13 @@ def _main():
 
     if args.verbose < 1:
         logger.error(f"Invalid value for thread flag '{args.threads}'")
+        parser.print_help()
+        exit(1)
+
+    if args.strategy not in ["pairwise", "linear"]:
+        logger.error(f"Invalid value for strategy flag '{args.strategy}'")
+        parser.print_help()
+        exit(1)
 
     logger.info("EFM Calculator {}".format(pkgversion))
 
@@ -119,12 +135,18 @@ def _main():
     elif inpath.suffix in [".gb", ".gbk", ".gbff"]:
         sequences = SeqIO.parse(args.inpath, "genbank")
     else:
-        raise ValueError("File {} is not a known file format. Must be in FASTA or GenBank.".format(args.inpath))
+        raise ValueError(
+            "File {} is not a known file format. Must be in FASTA or GenBank.".format(
+                args.inpath
+            )
+        )
 
     # Unpack sequences into list
     sequences = list(sequences)
 
-    df = efmcalculator(sequences=sequences, isCircular=args.isCirc)
+    df = efmcalculator(
+        sequences=sequences, strategy=args.strategy, isCircular=args.isCirc
+    )
     df = filter_redundant(df)
 
     # Index every position in the dataframe up by 1 @TODO
@@ -142,13 +164,15 @@ def _main():
 
 def efmcalculator(
     sequences: Union[SeqRecord, List[SeqRecord]],
+    strategy: str,
     isCircular: bool,
-    threads: int = 1
+    threads: int = 1,
 ) -> pd.DataFrame:
     """Runs EFM calculator on input SeqRecords. Returns a pandas DataFrame of repeats.
 
     Args:
         sequences (Union[SeqRecord, List[SeqRecord]]): Input SeqRecords
+        strategy (str): The strategy to use for predicting deletions. Must be one of "pairwise" or "linear".
         isCircular (bool): Treat input sequences as circular
         threads: Number of threads to use
 
@@ -156,35 +180,50 @@ def efmcalculator(
         pd.DataFrame: Pandas DataFrame of repeats
     """
 
-    data = {"Sequence": [], "Size": [], "Distance": [], "Start-Pos": [], "End-Pos": [], 'Classifier': [], 'Repeat Rate':[],'Mutation Rate':[]}
+    data = {
+        "Sequence": [],
+        "Size": [],
+        "Distance": [],
+        "Start-Pos": [],
+        "End-Pos": [],
+        "Classifier": [],
+        "Repeat Rate": [],
+        "Mutation Rate": [],
+    }
     df = pd.DataFrame(data)
 
     if isinstance(sequences, SeqRecord):
         sequences = [sequences]
-
 
     for record in sequences:
         logger.info("Running on {}".format(record.name))
 
         # Perform predictions
         seq = record.seq.strip("\n").upper()
-        ssr_df, rmd_df = predict(seq, df, isCircular, threads)
+        ssr_df, rmd_df = predict(seq, df, strategy, isCircular, threads)
 
         # Perform Filtering
         ssr_df = filter_ssrs(ssr_df)
         rmd_df = filter_rmds(rmd_df)
 
         # Calculate Mutation Rates
-        
+
         ssr_df = ssr_mut_rate_vector(ssr_df)
         rmd_df = rmd_mut_rate_vector(rmd_df)
-
 
     # -------------------------------- Legacy code to be removed
 
     # Create dataframe of observed repeats, rather than of observed sequences that have duplicates
 
-    df["position"] = list(zip(df["Start-Pos"], df["End-Pos"],df["Classifier"], df["Repeat Rate"], df["Mutation Rate"]))
+    df["position"] = list(
+        zip(
+            df["Start-Pos"],
+            df["End-Pos"],
+            df["Classifier"],
+            df["Repeat Rate"],
+            df["Mutation Rate"],
+        )
+    )
     results = df.groupby("Sequence").agg("position").agg(["unique"])
 
     consolidated_df = pd.DataFrame(results)
@@ -198,7 +237,9 @@ def efmcalculator(
 
     # Drop repeats with one occurance
     RMD_df = consolidated_df["occurrences"] > 1
-    SSR_df = consolidated_df["positions"].apply(lambda pos: any('SSR' in p for p in pos))
+    SSR_df = consolidated_df["positions"].apply(
+        lambda pos: any("SSR" in p for p in pos)
+    )
     consolidated_df = consolidated_df[RMD_df | SSR_df]
 
     return consolidated_df

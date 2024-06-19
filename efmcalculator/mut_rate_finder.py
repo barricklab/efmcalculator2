@@ -4,7 +4,7 @@
 ####################################################
 
 EFM_VERSION = "1.0.1"
-'''''
+"""''
 # Import subprocess for command line stuff
 import subprocess
 import os
@@ -20,7 +20,7 @@ import math
 
 # Import ElementTree for parsing BioBrick XML
 from xml.etree import ElementTree
-'''
+"""
 
 SUB_RATE = float(2.2 * 10 ** (-10))
 
@@ -226,54 +226,60 @@ def check_subunits(sequence):
         return False
 '''
 
-#using this for SSR mutation rate:
+# using this for SSR mutation rate:
+
 
 def get_mut_rate(repeat_count, unit_length, org):
-    '''
+    """
     Calculates mutation rate for simple sequence repeats
     :param repeat_count: Number of times the repeating unit occurs
     :param unit_length: Length of repeating unit
     :param org: Host organism
     :return: Mutation rate
-    '''
+    """
     mut_rate = float(0)
-    if org == 'ecoli' or org == 'reca':
+    if org == "ecoli" or org == "reca":
         if unit_length == 1:
             # Formula based on analysis of Lee et. al. data
             mut_rate = float(10 ** (0.72896 * repeat_count - 12.91471))
         elif unit_length > 1:
             mut_rate = float(10 ** (0.06282 * repeat_count - 4.74882))
-    elif org == 'yeast':
+    elif org == "yeast":
         if unit_length == 1:
             mut_rate = float(10 ** (0.3092 * repeat_count - 7.3220))
         elif unit_length > 1:
             mut_rate = float(10 ** (0.11141 * repeat_count - 7.65810))
     return mut_rate
 
-# need this for recombination rate 
+
+# need this for recombination rate
 def get_recombo_rate(length, distance, org):
-    '''
+    """
     Calculate the recombination rate based on the Oliviera, et. al. formula
     :param length: Length of homologous region
     :param location1: Location of first homologous region
     :param location2: Location of second homologous region
     :param org: Host organism
     :return: Recombination rate
-    '''
+    """
     spacer = abs(int(distance)) - int(length)
     # If the homologous sequences overlap we can't calculate a rate
     if spacer < 0:
         return 0
-    if org == 'ecoli' or org == 'yeast':
-        recombo_rate = float(((8.8 + spacer) ** (-29.0 / length)) * (length / (1 + 1465.6 * length)))
-    elif org == 'reca':
+    if org == "ecoli" or org == "yeast":
         recombo_rate = float(
-            ((200.4 + spacer) ** (-8.8 / length)) * (length / (1 + 2163.0 * length + 14438.6 * spacer)))
+            ((8.8 + spacer) ** (-29.0 / length)) * (length / (1 + 1465.6 * length))
+        )
+    elif org == "reca":
+        recombo_rate = float(
+            ((200.4 + spacer) ** (-8.8 / length))
+            * (length / (1 + 2163.0 * length + 14438.6 * spacer))
+        )
 
     return recombo_rate
 
 
-#RIP score finder
+# RIP score finder
 
 
 '''
