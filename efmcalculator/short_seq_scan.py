@@ -18,9 +18,11 @@ class SeqAttr:
 
 
 class FakeBar:
+    @staticmethod
     def next():
         return
 
+    @staticmethod
     def finish():
         return
 
@@ -42,15 +44,17 @@ def _pairwise_slips(polars_df, column) -> pl.DataFrame:
     else:
         bar = FakeBar()
 
-    def map_function(x):
-        idx = list(np.stack(np.triu_indices(len(x), k=1), axis=-1))
+    def map_function(list_o_things):
         bar.next()
-        return idx
+        return [
+            sorted((thing_1, thing_2))
+            for thing_1, thing_2 in itertools.combinations(list_o_things, 2)
+        ]
 
     pairwise = polars_df.lazy().with_columns(
         pl.col(column)
         .map_elements(map_function, return_dtype=pl.List(pl.List(pl.Int64)))
-        .alias("pairings")
+        .alias(f"pairings")
     )
 
     pairwise = pairwise.collect()
@@ -87,7 +91,7 @@ def _linear_slips(polars_df, column, is_circular=False) -> pl.DataFrame:
 
     if not is_circular:
         linear_df = linear_df.lazy().with_columns(
-            pairings=pl.col("pairings").list.head(pl.col(column).list.len() - 1)
+            pairings=pl.col("pairings").list.head(pl.col("pairings").list.len() - 1)
         )
 
     linear_df = (
@@ -102,7 +106,6 @@ def _linear_slips(polars_df, column, is_circular=False) -> pl.DataFrame:
         )
         .group_by("repeat")
         .agg(pl.col("pairings").unique())
-        .collect()
     )
 
     return linear_df

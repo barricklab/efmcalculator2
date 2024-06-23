@@ -3,9 +3,10 @@ import time
 import logging
 import Bio.SeqIO as SeqIO
 import pandas as pd
+import polars as pl
 import pathlib
 
-from .short_seq_finder import predict, _find_rip
+from .short_seq_finder import predict
 from .SRS_filter import filter_redundant
 from .filtering import filter_ssrs, filter_rmds
 from .mutation_rates import ssr_mut_rate_vector, rmd_mut_rate_vector
@@ -210,6 +211,11 @@ def efmcalculator(
 
         ssr_df = ssr_mut_rate_vector(ssr_df)
         rmd_df = rmd_mut_rate_vector(rmd_df)
+
+        print("ssr")
+        print(ssr_df)
+        print("rmd")
+        print(rmd_df)
 
     # -------------------------------- Legacy code to be removed
 
