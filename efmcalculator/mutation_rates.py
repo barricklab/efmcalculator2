@@ -100,3 +100,28 @@ def rmd_mut_rate_vector(rmd_df, org="ecoli"):
             )
         ).collect()
     return rmd_df
+
+
+def rip_score(ssr_sum, rmd_sum):
+    """
+    Calculates an RIP score for given sequence
+    :param repeats: List of dictionaries of repeats
+    :param seq_len: Length of input sequence
+    :return: Total predicted RIP score for whole sequence
+    """
+    # print(ssr_sum)
+    # print(rmd_sum)
+    base_rate = float(1000) * float(SUB_RATE)
+    # Add in the mutation rate of an individual nucleotide
+    r_sum = ssr_sum + rmd_sum + base_rate
+    # Set the maximum rate sum to 1 for now.
+    if r_sum > 1:
+        r_sum = float(1)
+    rel_rate = float(r_sum) / float(base_rate)
+
+    return {
+        "rip": rel_rate,
+        "ssr_sum": ssr_sum,
+        "rmd_sum": rmd_sum,
+        "bps_sum": base_rate,
+    }
