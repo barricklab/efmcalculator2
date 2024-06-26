@@ -83,13 +83,13 @@ def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
     return repeats
 
 
-def _scan_RMD(df) -> pl.DataFrame:
+def _scan_RMD(df: pl.Dataframe) -> pl.DataFrame:
     """Scans for RMDs"""
     knwon_long_repeats = df.filter(pl.col("repeat_len") == MAX_SHORT_SEQ_LEN)
 
     # @TODO KEVIN - RMD repeat logic here
 
-    return df
+    return df  # In the same format as df alongside the original data
 
 
 def predict(seq, df, strategy, isCircular, threads) -> (pl.DataFrame, pl.DataFrame):
@@ -153,12 +153,12 @@ def predict(seq, df, strategy, isCircular, threads) -> (pl.DataFrame, pl.DataFra
         pl.col("repeat").str.len_chars().alias("repeat_len")
     )
 
+    # Upgrade long SRSs to RMDs
+    repeat_df = _scan_RMD(repeat_df)
+
     # Calculate Distances
     repeat_df = _calculate_distances(repeat_df, seq_len, isCircular)
     repeat_df = repeat_df.filter(pl.col("distance") >= 0)
-
-    # Upgrade long SRSs to RMDs
-    repeat_df = _scan_RMD(repeat_df)
 
     # Categorize positions
     repeat_df = _categorize_efm(repeat_df)
