@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 MIN_SHORT_SEQ_LEN = 0
-MAX_SHORT_SEQ_LEN = 15
+MAX_SHORT_SEQ_LEN = 16
 UNKNOWN_REC_TYPE = "unknown"
 SUB_RATE = float(2.2 * 10 ** (-10))
 
@@ -81,6 +81,15 @@ def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
     bar.finish()
 
     return repeats
+
+
+def _scan_RMD(df) -> pl.DataFrame:
+    """Scans for RMDs"""
+    knwon_long_repeats = df.filter(pl.col("repeat_len") == MAX_SHORT_SEQ_LEN)
+
+    # @TODO KEVIN - RMD repeat logic here
+
+    return df
 
 
 def predict(seq, df, strategy, isCircular, threads) -> (pl.DataFrame, pl.DataFrame):
@@ -147,6 +156,9 @@ def predict(seq, df, strategy, isCircular, threads) -> (pl.DataFrame, pl.DataFra
     # Calculate Distances
     repeat_df = _calculate_distances(repeat_df, seq_len, isCircular)
     repeat_df = repeat_df.filter(pl.col("distance") >= 0)
+
+    # Upgrade long SRSs to RMDs
+    repeat_df = _scan_RMD(repeat_df)
 
     # Categorize positions
     repeat_df = _categorize_efm(repeat_df)
