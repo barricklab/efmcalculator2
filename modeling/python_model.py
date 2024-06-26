@@ -1,22 +1,27 @@
-from statsmodels.gam.api import GLMGam, CyclicCubicSplines
-import csv
-import polars
+import polars as pl
+from sklearn.model_selection import train_test_split
+from pygam import LinearGAM, s
 
-def main():
-    dataframe = polars.read_csv(source="input.csv")
-    data_of_interest = dataframe.select(["Mutation_Rate", "RBP_Length", "TBD_length"])
-    spline = CyclicCubicSplines(x=data_of_interest, df=[3,3, 3])
+#load csv file
+data_of_interest = pl.read_csv('input.csv')
 
-    gam = GLMGam.from_formula('Mutation_Rate ~ RBP_Length + TBD_length', data=data_of_interest,
-                                  smoother=spline)
+#separating df
+X = data_of_interest[['RBP_Length', 'TBD_length']]
+y = data_of_interest['Mutation_Rate']
+weights = data_of_interest['Weight']
 
-    res = gam.fit()
+#gam model fit with cr splines and regularization b/c small data
+gam_model = LinearGAM(s(0, n_splines=4, spline_order=3, lam=0.1) +  s(1, n_splines=4, spline_order=3, lam=0.1),  lam=0.1) 
+gam_model.fit(X, y, weights=weights)
 
-    predict_data = polars.dataframe({"RBP_Length": 0,
-                                     "TBD_length": 0})
-
-    print(res.summary())
+#data not included
+new_data = pl.DataFrame({'RBP_Length': [6], 'TBD_length': [50]})
 
 
-if __name__ == "__main__":
-    main()
+#prediction site
+predictions = gam_model.predict(new_data)
+predictions_abs = abs(predictions)
+
+print(gam_model.summary())
+print("Mutation Rate:", predictions_abs)
+
