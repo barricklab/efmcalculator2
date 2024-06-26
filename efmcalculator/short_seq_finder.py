@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 MIN_SHORT_SEQ_LEN = 0
-MAX_SHORT_SEQ_LEN = 16
+MAX_SHORT_SEQ_LEN = 15
 UNKNOWN_REC_TYPE = "unknown"
 SUB_RATE = float(2.2 * 10 ** (-10))
 
@@ -72,48 +72,7 @@ def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
             for j in range(MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN):
                 if len(seq[i : i + j]) > MIN_SHORT_SEQ_LEN:
                     sub_seq = seq[i : i + j]
-                    if seq.count_overlap(sub_seq) > 1: 
-                        yield {'repeat': str(sub_seq), 'position': i}
-                        repeats_left = seq.count_overlap(sub_seq)
-                    else:
-                        repeats_left = 0
-                        break
-            
-            # scan from smallest RMD to largest possible RMD, iterating by 50
-            step = 50
-            j = MAX_SHORT_SEQ_LEN
-            max_repeat_len = int(seq_len/2)
-
-            while j <= max_repeat_len:
-                # if repeats_left <= 1, then all repeats have been found already 
-                if repeats_left > 1:
-                    sub_seq = seq[i : i  + j]
-                    # seq.count_overlap < repeats left means largest repeat is between previous length and current length
-                    # if j == max_repeat_len, then the largest repeat must be between previous length and current length
-                    if (seq.count_overlap(sub_seq) < repeats_left) or (j == max_repeat_len):
-                        start = j - step
-                        # repeats smaller than MAX_SHORT_SEQ_LEN have already been found
-                        if start < MAX_SHORT_SEQ_LEN:
-                            start = MAX_SHORT_SEQ_LEN
-
-                        # start iterating by 1 from previous length to find largest repeat
-                        for k in range(start, j + 1):
-                            sub_seq = seq[i : i + k]
-                            if seq.count_overlap(sub_seq) > 1:
-                                yield {'repeat': str(sub_seq), 'position': i}
-                            # no more repeats
-                            else:
-                                break
-                        # find how many repeats are still left
-                        repeats_left = seq.count_overlap(sub_seq)
-                    # changes j so that the largest repeat possible (seq_len/2) is always included
-                    # if j == max_repeat_len, then this code has already ran and shouldn't be ran again
-                    if j + step >= max_repeat_len and j != max_repeat_len:
-                        j = max_repeat_len - step
-                else:
-                    break
-                j += step
-
+                    yield {"repeat": str(sub_seq), "position": i}
             bar.next()
 
     repeats = (
