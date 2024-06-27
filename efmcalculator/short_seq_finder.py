@@ -131,10 +131,10 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     ).collect()
 
     srs_df = repeat_df.filter(pl.col("category") == "SRS").select(
-        pl.col(["repeat", "repeat_len", "position_left", "distance"])
+        pl.col(["repeat", "repeat_len", "position_left", "position_right", "distance"])
     )
     rmd_df = repeat_df.filter(pl.col("category") == "RMD").select(
-        pl.col(["repeat", "repeat_len", "position_right", "distance"])
+        pl.col(["repeat", "repeat_len", "position_left", "position_right", "distance"])
     )
 
     return [ssr_df, srs_df, rmd_df]

@@ -13,13 +13,16 @@ from .SRS_filter import filter_redundant
 from .filtering import filter_ssrs, filter_rmds
 from .mutation_rates import ssr_mut_rate_vector, rmd_mut_rate_vector
 from .constants import VALID_STRATEGIES
+
 from .utilities import is_pathname_valid, is_path_creatable
+from .visualization.graph import make_plot
 
 from Bio.SeqRecord import SeqRecord
 from typing import Union, List, Set, Generator
 from importlib.metadata import version, PackageNotFoundError
 from rich.logging import RichHandler
 
+from bokeh.plotting import output_file, save
 
 FORMAT = "%(message)s"
 logging.basicConfig(
@@ -190,13 +193,19 @@ def _main():
         # Run data vis ---------
         if args.no_vis:
             continue
-        # @TODO CAMERON make_graph()
+        fig = make_plot(input_sequence, ssr=result[0], srs=result[1], rmd=result[2])
+        output_file(f"{folder}plot.html")
+        save(fig)
 
     # Logging
-    t_sec = round(time.time() - start_time)
+    t = time.time() - start_time
+    t_sec = round(t)
+    t_msec = round((t - t_sec) * 1000)
     t_min, t_sec = divmod(t_sec, 60)
     t_hour, t_min = divmod(t_min, 60)
-    logger.info(f"EFMCalculator completed in {t_hour:02d}:{t_min}:{t_sec}")
+    logger.info(
+        f"EFMCalculator completed in {t_hour:02d}h:{t_min:02d}m:{t_sec:02d}s:{t_msec:02d}ms"
+    )
 
 
 def predict_many(
@@ -244,6 +253,7 @@ def predict_many(
         # Calculate Mutation Rates
 
         ssr_df = ssr_mut_rate_vector(ssr_df)
+        srs_df = rmd_mut_rate_vector(srs_df)
         rmd_df = rmd_mut_rate_vector(rmd_df)
 
         yield [ssr_df, srs_df, rmd_df]
