@@ -16,7 +16,7 @@ from collections import Counter, defaultdict
 from rich import print
 import Bio
 import tempfile
-from typing import Set
+from typing import List
 from .constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE
 from .utilities import FakeBar
 
@@ -63,7 +63,7 @@ def _scan_RMD(df: pl.DataFrame) -> pl.DataFrame:
     return df  # In the same format as df alongside the original data
 
 
-def predict(seq: str, strategy: str, isCircular: bool) -> Set[pl.DataFrame]:
+def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     """Scans and predicts SSRs and RMDs. Returns dataframes representing each"""
     seq_len = len(seq)
 
@@ -107,23 +107,34 @@ def predict(seq: str, strategy: str, isCircular: bool) -> Set[pl.DataFrame]:
     repeat_df = repeat_df.filter(pl.col("distance") >= 0)
 
     # Categorize positions
-    repeat_df = _categorize_efm(repeat_df).collect()
-    print(repeat_df)
+    repeat_df = _categorize_efm(repeat_df)
 
     # Collapse SSRs down
     ssr_df = _collapse_ssr(repeat_df).select(
         pl.col(["repeat", "repeat_len", "start", "count"])
     )
 
-    srs_df = (
-        repeat_df.filter(pl.col("category") == "SRS")
-        .select(pl.col(["repeat", "repeat_len", "pairings", "distance"]))
-        .rename({"pairings": "positions"})
-    )
+    # Process and Split SRS and RMD
+    repeat_df = (
+        repeat_df.lazy()
+        .filter(pl.col("category") != "SSR")
+        .select(pl.col(["repeat", "repeat_len", "pairings", "distance", "category"]))
+        .with_columns(
+            pl.col("pairings").list.to_struct(
+                fields=[
+                    "position_left",
+                    "position_right",
+                ]
+            )
+        )
+        .unnest("pairings")
+    ).collect()
 
+    srs_df = repeat_df.filter(pl.col("category") == "SRS").select(
+        pl.col(["repeat", "repeat_len", "position_left", "distance"])
+    )
     rmd_df = repeat_df.filter(pl.col("category") == "RMD").select(
-        pl.col(["repeat", "repeat_len", "pairings", "distance"])
+        pl.col(["repeat", "repeat_len", "position_right", "distance"])
     )
-    rmd_df = rmd_df.rename({"pairings": "positions"})
 
-    return (ssr_df, srs_df, rmd_df)
+    return [ssr_df, srs_df, rmd_df]

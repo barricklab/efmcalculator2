@@ -82,7 +82,7 @@ def _main():
     parser.add_argument(
         "--no-vis",
         action="store_true",
-        dest="verbose",
+        dest="no_vis",
         required=False,
         help="Skip visualization",
     )
@@ -183,12 +183,12 @@ def _main():
 
         # Export results ------------
 
-        # result[0].write_csv(folder + "ssr.csv")
-        # result[1].write_csv(folder + "srs.csv")
-        # result[2].write_csv(folder + "rmd.csv")
+        result[0].write_csv(folder + "ssr.csv")
+        result[1].write_csv(folder + "srs.csv")
+        result[2].write_csv(folder + "rmd.csv")
 
         # Run data vis ---------
-        if args.get("no_vis"):
+        if args.no_vis:
             continue
         # @TODO CAMERON make_graph()
 
@@ -203,7 +203,7 @@ def predict_many(
     sequences: List[SeqRecord],
     strategy: str,
     isCircular: bool,
-) -> Generator[Set[pl.DataFrame], None, None]:
+) -> Generator[List[pl.DataFrame], None, None]:
     """Runs EFM calculator on input SeqRecords. Generates Dataframes (SSR, SRS, and RMD) in the same order as the input sequences.
 
     Args:

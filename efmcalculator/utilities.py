@@ -26,8 +26,6 @@ def timer_func(func):
 
 # https://stackoverflow.com/questions/9532499/check-whether-a-path-is-valid-in-python-without-creating-a-file-at-the-paths-ta
 
-
-# Sadly, Python fails to provide the following magic number for us.
 ERROR_INVALID_NAME = 123
 """
 Windows-specific error code indicating an invalid pathname.
