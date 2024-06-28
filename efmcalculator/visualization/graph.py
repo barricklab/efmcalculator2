@@ -32,12 +32,15 @@ import polars as pl
 from .ssr import draw_ssr
 from .rmd import draw_rmd
 from .srs import draw_srs
+from .eval_top import eval_top
 
 import logging
 
 
 def make_plot(seqrecord, **repeat_dataframes):
-    view_format = "mirrored"
+    ssr_df = repeat_dataframes.get("ssr", None)
+    srs_df = repeat_dataframes.get("srs", None)
+    rmd_df = repeat_dataframes.get("rmd", None)
 
     # Set up plot
 
@@ -54,18 +57,18 @@ def make_plot(seqrecord, **repeat_dataframes):
 
     xmax = len(seqrecord.seq)
 
+    ssr_df, srs_df, rmd_df = eval_top(ssr_df, srs_df, rmd_df)
+
     if seqrecord.annotations:
         fig = plot_features(seqrecord, fig)
 
-    ssr_df = repeat_dataframes.get("ssr", None)
     if isinstance(ssr_df, pl.DataFrame) and not ssr_df.is_empty():
         fig = draw_ssr(fig, ssr_df)
 
-    srs_df = repeat_dataframes.get("srs", None)
     if isinstance(srs_df, pl.DataFrame) and not srs_df.is_empty():
         fig = draw_srs(fig, srs_df)
 
-    rmd_df = repeat_dataframes.get("rmd", None)
     if isinstance(rmd_df, pl.DataFrame) and not rmd_df.is_empty():
         fig = draw_rmd(fig, rmd_df)
+
     return fig
