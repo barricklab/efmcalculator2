@@ -3,7 +3,7 @@ from sklearn.model_selection import train_test_split
 from pygam import LinearGAM, s
 
 #load csv file
-data_of_interest = pd.read_csv('new.csv')
+data_of_interest = pd.read_csv('test.csv')
 print(data_of_interest.columns)
 
 
@@ -13,7 +13,7 @@ y = data_of_interest['Mutation_Rate']
 weights = data_of_interest['weight']
 
 #gam model fit with cr splines and regularization b/c small data
-gam_model = LinearGAM(s(0, n_splines=4, spline_order=3) +  s(1, n_splines=4, spline_order=3)) 
+gam_model = LinearGAM(s(0, n_splines=3, spline_order=2) +  s(1, n_splines=3, spline_order=2)) 
 gam_model.fit(X, y, weights=weights
               )
 
@@ -23,8 +23,8 @@ new_data = pd.DataFrame({'RBP_Length': [6], 'TBD_length': [50]})
 
 #prediction site
 predictions = gam_model.predict(new_data)
-predictions_abs = abs(predictions)
+predictions = (predictions)
 
 print(gam_model.summary())
-print("Mutation Rate:", predictions_abs)
+print("Mutation Rate:", predictions)
 
