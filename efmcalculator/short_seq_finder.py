@@ -16,41 +16,12 @@ from collections import Counter, defaultdict
 from rich import print
 import Bio
 import tempfile
-
+from typing import List
+from .constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE
+from .utilities import FakeBar
 
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
-
-MIN_SHORT_SEQ_LEN = 0
-MAX_SHORT_SEQ_LEN = 16
-UNKNOWN_REC_TYPE = "unknown"
-SUB_RATE = float(2.2 * 10 ** (-10))
-
-
-class FakeBar:
-    def next():
-        return
-
-    def finish():
-        return
-
-
-"""
-def predict(seq, df, isCircular, threads):
-    _build_sub_seq_from_seq(seq, df, isCircular, threads)
-    #df.sort_values(['Size'], ascending=[True]).to_csv(output, index=False)
-    # get RIP
-    # Assuming df is your DataFrame
-
-    tot_ssr_mut_rate = df["Mutation Rate"].where(df["Classifier"]=='SSR').sum()
-    tot_rmd_mut_rate = df["Mutation Rate"].where(df["Classifier"]=='RMD').sum()
-
-    results = df["Classifier"].value_counts()
-
-    result = _find_rip(tot_ssr_mut_rate , tot_rmd_mut_rate)
-    logger.info(f"RIP Score: {result['rip']} \n ------------------ \nRMDs: {result['rmd_sum']} \nSSRs: {result['ssr_sum']}, \nBase: {result['bps_sum']}")
-    print(results)
-"""
 
 
 def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
@@ -83,7 +54,7 @@ def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
     return repeats
 
 
-def _scan_RMD(df: pl.DataFrame, seq) -> pl.DataFrame:
+def _scan_RMD(df: pl.Dataframe) -> pl.DataFrame:
     """Scans for RMDs"""
 
     known_long_repeats = df.filter(pl.col("repeat_len") == (MAX_SHORT_SEQ_LEN - 1))
@@ -144,7 +115,7 @@ def _scan_RMD(df: pl.DataFrame, seq) -> pl.DataFrame:
     return df  # In the same format as df alongside the original data
 
 
-def predict(seq, df, strategy, isCircular, threads) -> (pl.DataFrame, pl.DataFrame):
+def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     """Scans and predicts SSRs and RMDs. Returns dataframes representing each"""
     seq_len = len(seq)
 
@@ -161,31 +132,6 @@ def predict(seq, df, strategy, isCircular, threads) -> (pl.DataFrame, pl.DataFra
     # Filter out sequences
     repeat_df = repeat_df.filter(pl.col("position").list.len() > 1)
     num_repeated_sequences = repeat_df.select(pl.len()).item()
-
-    # --- Debugging
-    """
-    def map_function(row):
-        result = _find_repeat_positions(seq, row[0], seq_len, isCircular, len(row[1]))
-        return (row[0], result)
-
-    debug = repeat_df.map_rows(map_function)
-    debug = debug.rename({"column_0": 'repeat',
-                    "column_1": 'position'})
-    debug = debug.join(debug, on='repeat')
-    debug = debug.rename({"position_right": 'position_corrected'})
-
-    for row in debug.rows(named=True):
-        try:
-            assert row['position'] == row['position_corrected']
-        except:
-            print(row)
-            pass
-
-    repeat_df = debug
-    #print(repeat_df)
-    """
-    position_source = 1  # 1 for rhobust, 2 for preexisting
-
     # -- end debugging
 
     # Create list of positions
@@ -194,7 +140,7 @@ def predict(seq, df, strategy, isCircular, threads) -> (pl.DataFrame, pl.DataFra
     elif strategy == "linear":
         repeat_df = _linear_slips(repeat_df, "position", isCircular)
     else:
-        return
+        raise ValueError("Invalid strategy")
 
     repeat_df = repeat_df.drop("position")
     repeat_df = repeat_df.drop("position_corrected")
@@ -220,154 +166,27 @@ def predict(seq, df, strategy, isCircular, threads) -> (pl.DataFrame, pl.DataFra
         pl.col(["repeat", "repeat_len", "start", "count"])
     )
 
-    rmd_df = repeat_df.filter(pl.col("is_RMD") == True).select(
-        pl.col(["repeat", "repeat_len", "pairings", "distance"])
-    )
-    rmd_df = rmd_df.rename({"pairings": "positions"})
-
-    # ---------------------- LEGACY CODE TO BE REMOVED
-
-    # print(pairwise_df.filter(pl.col('is_RMD') == False))
-
-    if logger.isEnabledFor(logging.INFO):
-        bar = IncrementalBar("Calculating mutation rates", max=num_repeated_sequences)
-    else:
-        bar = FakeBar()
-
-    def map_function(row):
-        _find_short_seq(seq, row[0], df, seq_len, row[position_source], isCircular)
-        bar.next()
-        return ()
-
-    # repeat_df.map_rows(map_function)
-    bar.finish()
-
-    # ---------------------- LEGACY CODE TO BE REMOVED
-
-    return (ssr_df, rmd_df)
-
-
-def _find_short_seq(seq, sub_seq, df, seq_len, start_positions, isCircular):
-    sub_seq = Bio.Seq.Seq(data=sub_seq)
-    count = seq.count_overlap(sub_seq)
-    visited_sequences = set()
-    if count > 1 and str(sub_seq) not in visited_sequences:
-        df["Sequence"] = df["Sequence"].astype(str)
-
-        ssrStruct = namedtuple(
-            "ssrStruct", ["first_find", "loop_end", "ssr_count", "sav_seq_attr"]
-        )
-        ssrStruct.first_find = True
-        ssrStruct.loop_end = False
-        ssrStruct.ssr_count = 0
-        ssrStruct.sav_seq_attr = []
-        mu_rate = 0
-
-        for seq_attr in _build_seq_attr(
-            sub_seq, seq_len, start_positions, isCircular, count
-        ):
-            if seq_attr.length <= 5:
-                ssrStruct = _find_ssr(
-                    df,
-                    seq_attr,
-                    ssrStruct.first_find,
-                    ssrStruct.loop_end,
-                    ssrStruct.ssr_count,
-                    ssrStruct.sav_seq_attr,
-                )
-
-            elif (
-                seq_attr.length >= 6 and seq_attr.length <= 15
-            ) and seq_attr.note != "skip":
-                if seq_attr.note == "SSR":
-                    ssrStruct = _find_ssr(
-                        df,
-                        seq_attr,
-                        ssrStruct.first_find,
-                        ssrStruct.loop_end,
-                        ssrStruct.ssr_count,
-                        ssrStruct.sav_seq_attr,
-                    )
-                else:
-                    _write_to_df(df, seq_attr, "SRS", str(count), mu_rate)
-
-            elif seq_attr.length >= 16 and seq_attr.note != "skip":
-                _write_to_df(
-                    df,
-                    seq_attr,
-                    "RMD",
-                    str(count),
-                    get_recombo_rate(seq_attr.length, seq_attr.distance, "ecoli"),
-                )
-
-        if seq_attr.length <= 5:
-            loop_end = True
-            _find_ssr(
-                df,
-                seq_attr,
-                ssrStruct.first_find,
-                loop_end,
-                ssrStruct.ssr_count,
-                ssrStruct.sav_seq_attr,
+    # Process and Split SRS and RMD
+    repeat_df = (
+        repeat_df.lazy()
+        .filter(pl.col("category") != "SSR")
+        .select(pl.col(["repeat", "repeat_len", "pairings", "distance", "category"]))
+        .with_columns(
+            pl.col("pairings").list.to_struct(
+                fields=[
+                    "position_left",
+                    "position_right",
+                ]
             )
-
-        elif (
-            seq_attr.length >= 6 and seq_attr.length <= 15
-        ) and seq_attr.note == "SSR":
-            loop_end = True
-            _find_ssr(
-                df,
-                seq_attr,
-                ssrStruct.first_find,
-                loop_end,
-                ssrStruct.ssr_count + 1,
-                ssrStruct.sav_seq_attr,
-            )
-
-
-def _find_ssr(df, seq_attr, first_find, loop_end, ssr_count, sav_seq_attr):
-    if seq_attr.note != ("skip for SSR" or "skip"):
-        if first_find == True:
-            sav_seq_attr = seq_attr
-            first_find = False
-        if loop_end == False and seq_attr.distance == 1:
-            ssr_count += 1
-            first_find = False
-        else:
-            if (seq_attr.length >= 2 and ssr_count >= 3) or (
-                seq_attr.length == 1 and ssr_count >= 4
-            ):
-                mut_rate = get_mut_rate(ssr_count, sav_seq_attr.length, "ecoli")
-                _write_to_df(df, sav_seq_attr, "SSR", str(ssr_count), mut_rate)
-            if sav_seq_attr.sub_seq == seq_attr.sub_seq:
-                sav_seq_attr = seq_attr
-                ssr_count = 1
-
-    ssrStruct = namedtuple(
-        "ssrStruct", ["first_find", "loop_end", "ssr_count", "sav_seq_attr"]
-    )
-    return ssrStruct(first_find, loop_end, ssr_count, sav_seq_attr)
-
-
-def _write_to_df(df, seq_attr, rep_type, rep_rate, mu_rate):
-    logger.debug(
-        "Sequence = {}  : Size = {}  : Distance = {}  : Start-Pos = {} : End-Pos = {}: rep_type = {}: rep_rate  = {} : mu_rate".format(
-            seq_attr.sub_seq,
-            seq_attr.length,
-            seq_attr.distance,
-            seq_attr.start_pos,
-            seq_attr.end_pos,
-            rep_type,
-            rep_rate,
         )
+        .unnest("pairings")
+    ).collect()
+
+    srs_df = repeat_df.filter(pl.col("category") == "SRS").select(
+        pl.col(["repeat", "repeat_len", "position_left", "position_right", "distance"])
     )
-    df.loc[seq_attr.sub_seq + "~" + str(seq_attr.start_pos)] = [
-        seq_attr.sub_seq,
-        seq_attr.length,
-        seq_attr.distance,
-        seq_attr.start_pos,
-        seq_attr.end_pos,
-        rep_type,
-        rep_rate,
-        mu_rate,
-    ]
+    rmd_df = repeat_df.filter(pl.col("category") == "RMD").select(
+        pl.col(["repeat", "repeat_len", "position_left", "position_right", "distance"])
+    )
+
+    return [ssr_df, srs_df, rmd_df]

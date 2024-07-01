@@ -5,6 +5,7 @@ import itertools
 from progress.spinner import Spinner
 from progress.bar import IncrementalBar
 import numpy as np
+from .constants import MIN_SHORT_SEQ_LEN
 
 
 class SeqAttr:
@@ -63,15 +64,14 @@ def _pairwise_slips(polars_df, column) -> pl.DataFrame:
     return pairwise
 
 
-def _linear_slips(polars_df, column, is_circular=False) -> pl.DataFrame:
+def _linear_slips(polars_df, column, is_circular=False) -> pl.LazyFrame:
     """Recieve a polars dataframe with column of [List[type]]
     Returns the dataframe back with a linear list of pairings"""
 
     nrows = polars_df.select(pl.len()).item()
 
     linear_df = (
-        polars_df.lazy()
-        .with_columns(instances=pl.col(column).list.len())
+        polars_df.with_columns(instances=pl.col(column).list.len())
         .with_columns(
             duplicate_column=pl.col(column)
             .list.tail(pl.col(column).list.len() - 1)
@@ -86,17 +86,15 @@ def _linear_slips(polars_df, column, is_circular=False) -> pl.DataFrame:
         )
         .groupby("repeat")
         .agg(pl.col("pairings"))
-        .collect()
     )
 
     if not is_circular:
-        linear_df = linear_df.lazy().with_columns(
+        linear_df = linear_df.with_columns(
             pairings=pl.col("pairings").list.head(pl.col("pairings").list.len() - 1)
         )
 
     linear_df = (
-        linear_df.lazy()
-        .explode("pairings")
+        linear_df.explode("pairings")
         .unnest("pairings")
         .select(
             pl.col("repeat"),
@@ -111,7 +109,7 @@ def _linear_slips(polars_df, column, is_circular=False) -> pl.DataFrame:
     return linear_df
 
 
-def _calculate_distances(polars_df, seq_len, circular) -> pl.DataFrame:
+def _calculate_distances(polars_df, seq_len, circular) -> pl.LazyFrame:
     distance_df = polars_df.with_columns(
         distance=pl.col("pairings").list.diff().list.get(1) - pl.col("repeat_len")
     )
@@ -131,9 +129,15 @@ def _calculate_distances(polars_df, seq_len, circular) -> pl.DataFrame:
 
 def _categorize_efm(polars_df) -> pl.DataFrame:
     categorized_df = polars_df.with_columns(
-        is_RMD=pl.when(pl.col("distance") > 0).then(True).otherwise(False)
+        category=pl.when(pl.col("distance") > 0)
+        .then(
+            pl.when(pl.col("repeat_len") > MIN_SHORT_SEQ_LEN)
+            .then(pl.lit("SRS"))
+            .otherwise(pl.lit("RMD"))
+        )
+        .otherwise(pl.lit("SSR"))
+        .cast(pl.Categorical)
     )
-
     return categorized_df
 
 
@@ -141,7 +145,7 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
     """Takes in dataframe of SSRs, returns dataframe of SSRs collapsed down."""
 
     collapsed_ssrs = (
-        polars_df.filter(pl.col("is_RMD") == False)
+        polars_df.filter(pl.col("category") == "SSR")
         .select(["repeat", "repeat_len", "pairings"])
         .lazy()
         # Collect the positions from all potentially participating SSRs
