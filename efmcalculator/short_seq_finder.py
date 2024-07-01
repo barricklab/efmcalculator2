@@ -82,9 +82,11 @@ def _scan_RMD(df: pl.DataFrame, seq) -> pl.DataFrame:
             # if sequences not equal, then largest repeat has been passed
 
             if (seq[pos1: pos1 + length] != seq[pos2: pos2 + length]) or (largest):
-                # iterate 1 by 1
-                for j in range(prvlength, length):
-                    if seq[pos1 + j] == seq[pos2 + j]:
+                # iterate 1 by 1. 
+                # Uses length+1 because in range stops before last index
+                for j in range(prvlength, length+1):
+                    # uses j-1 because substrings end before last index
+                    if seq[pos1 + (j-1)] == seq[pos2 + (j-1)]:
                         sub_seq = seq[pos1: pos1 + j]
                         yield {'repeat': str(sub_seq), 'pairings': [pos1, pos2], 'repeat_len': j}
                     else:
