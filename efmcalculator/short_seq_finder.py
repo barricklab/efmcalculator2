@@ -54,7 +54,7 @@ def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
     return repeats
 
 
-def _scan_RMD(df: pl.Dataframe) -> pl.DataFrame:
+def _scan_RMD(df: pl.DataFrame, seq) -> pl.DataFrame:
     """Scans for RMDs"""
 
     known_long_repeats = df.filter(pl.col("repeat_len") == (MAX_SHORT_SEQ_LEN - 1))
@@ -62,7 +62,6 @@ def _scan_RMD(df: pl.Dataframe) -> pl.DataFrame:
     RMD_df = pl.DataFrame()
 
     def check_larger_repeats(positions):
-        print(seq)
         completed = False
         step = 50
         length = MAX_SHORT_SEQ_LEN
