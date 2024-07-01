@@ -83,11 +83,63 @@ def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
     return repeats
 
 
-def _scan_RMD(df: pl.Dataframe) -> pl.DataFrame:
+def _scan_RMD(df: pl.DataFrame, seq) -> pl.DataFrame:
     """Scans for RMDs"""
-    knwon_long_repeats = df.filter(pl.col("repeat_len") == MAX_SHORT_SEQ_LEN)
 
-    # @TODO KEVIN - RMD repeat logic here
+    known_long_repeats = df.filter(pl.col("repeat_len") == (MAX_SHORT_SEQ_LEN - 1))
+    print(known_long_repeats.to_pandas().to_string)
+    RMD_df = pl.DataFrame()
+
+    def check_larger_repeats(positions):
+        print(seq)
+        completed = False
+        step = 50
+        length = MAX_SHORT_SEQ_LEN
+        pos1 = positions[0]
+        pos2 = positions[1]
+
+        while not completed:
+            prvlength = length
+            # already know they are 15 bp repeats
+            if prvlength < 16:
+                prvlength = 16
+            length += step
+
+            # pos2 is always after pos1
+            if pos2 + length > len(seq):
+                length = len(seq) - pos2
+                largest = True
+            # if sequences not equal, then largest repeat has been passed
+
+            if (seq[pos1: pos1 + length] != seq[pos2: pos2 + length]) or (largest):
+                # iterate 1 by 1
+                for j in range(prvlength, length):
+                    if seq[pos1 + j] == seq[pos2 + j]:
+                        sub_seq = seq[pos1: pos1 + j]
+                        yield {'repeat': str(sub_seq), 'pairings': [pos1, pos2], 'repeat_len': j}
+                    else:
+                        break
+                completed = True
+
+    def store_RMD(positions):
+        nonlocal RMD_df
+        repeats = pl.DataFrame(check_larger_repeats(positions))
+
+        # if larger repeats were found, then repeats will have 3 columns ("repeat", "pairings", "repeat_len")
+        if repeats.width == 3:
+            RMD_df = pl.concat([RMD_df, repeats])
+    
+    # Apply the function to the DataFrame
+    known_long_repeats.with_columns(
+         pl.col("pairings")
+        .apply(lambda pairings: store_RMD(pairings))
+        )
+    RMD_df = RMD_df.with_columns(
+        pl.col("repeat_len")
+        .cast(pl.UInt32)
+    )
+        
+    df = pl.concat([df, RMD_df])
 
     return df  # In the same format as df alongside the original data
 
@@ -154,7 +206,7 @@ def predict(seq, df, strategy, isCircular, threads) -> (pl.DataFrame, pl.DataFra
     )
 
     # Upgrade long SRSs to RMDs
-    repeat_df = _scan_RMD(repeat_df)
+    repeat_df = _scan_RMD(repeat_df, seq)
 
     # Calculate Distances
     repeat_df = _calculate_distances(repeat_df, seq_len, isCircular)
