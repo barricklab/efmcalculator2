@@ -6,6 +6,7 @@ from progress.spinner import Spinner
 from progress.bar import IncrementalBar
 import numpy as np
 from .constants import MIN_SHORT_SEQ_LEN
+from.constants import MAX_SHORT_SEQ_LEN
 
 
 class SeqAttr:
@@ -132,8 +133,11 @@ def _categorize_efm(polars_df) -> pl.DataFrame:
         category=pl.when(pl.col("distance") > 0)
         .then(
             pl.when(pl.col("repeat_len") > MIN_SHORT_SEQ_LEN)
+            .then(
+            pl.when(pl.col("repeat_len") < MAX_SHORT_SEQ_LEN)
             .then(pl.lit("SRS"))
             .otherwise(pl.lit("RMD"))
+            )
         )
         .otherwise(pl.lit("SSR"))
         .cast(pl.Categorical)
