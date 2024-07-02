@@ -58,7 +58,6 @@ def _scan_RMD(df: pl.DataFrame, seq) -> pl.DataFrame:
     """Scans for RMDs"""
 
     known_long_repeats = df.filter(pl.col("repeat_len") == (MAX_SHORT_SEQ_LEN - 1))
-    print(known_long_repeats.to_pandas().to_string)
     RMD_df = pl.DataFrame()
 
     def check_larger_repeats(positions):
@@ -67,6 +66,7 @@ def _scan_RMD(df: pl.DataFrame, seq) -> pl.DataFrame:
         length = MAX_SHORT_SEQ_LEN
         pos1 = positions[0]
         pos2 = positions[1]
+        largest = False
 
         while not completed:
             prvlength = length
@@ -100,11 +100,12 @@ def _scan_RMD(df: pl.DataFrame, seq) -> pl.DataFrame:
         # if larger repeats were found, then repeats will have 3 columns ("repeat", "pairings", "repeat_len")
         if repeats.width == 3:
             RMD_df = pl.concat([RMD_df, repeats])
+        return None
     
     # Apply the function to the DataFrame
     known_long_repeats.with_columns(
          pl.col("pairings")
-        .apply(lambda pairings: store_RMD(pairings))
+        .map_elements(lambda pairings: store_RMD(pairings), return_dtype=pl.Object)
         )
     RMD_df = RMD_df.with_columns(
         pl.col("repeat_len")
