@@ -30,8 +30,8 @@ def ssr_mut_rate_vector(ssr_df, org="ecoli"):
             ssr_df.lazy().with_columns(
                 mutation_rate=(
                     pl.when(pl.col("repeat_len") == 1)
-                    .then(10 ** (0.72896 * pl.col("repeat_len") - 12.91471))
-                    .otherwise(10 ** (0.06282 * pl.col("repeat_len") - 4.74882))
+                    .then(10 ** (0.72896 * pl.col("count") - 12.91471))
+                    .otherwise(10 ** (0.06282 * pl.col("count") - 4.74882))
                 )
             )
         ).collect()
@@ -41,8 +41,8 @@ def ssr_mut_rate_vector(ssr_df, org="ecoli"):
             ssr_df.lazy().with_columns(
                 mutation_rate=(
                     pl.when(pl.col("repeat_len") == 1)
-                    .then(10 ** (0.3092 * pl.col("repeat_len") - 7.3220))
-                    .otherwise(10 ** (0.11141 * pl.col("repeat_len") - 7.65810))
+                    .then(10 ** (0.3092 * pl.col("count") - 7.3220))
+                    .otherwise(10 ** (0.11141 * pl.col("count") - 7.65810))
                 )
             )
         ).collect()
