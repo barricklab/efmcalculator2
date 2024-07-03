@@ -30,6 +30,7 @@ from Bio import SeqFeature
 from typing import List
 import polars as pl
 from rich import print
+from .table import generate_bokeh_table
 
 import logging
 
@@ -37,6 +38,8 @@ import logging
 def draw_ssr(fig, ssr_df):
     ssr_y_pos = 500
     ssr_shape = ((0, 0), (1, 0), (1, 350), (0, 350), (0, 0))
+
+    table = generate_bokeh_table(ssr_df, "SSR")
 
     columns = ssr_df.columns
     ssr_source = {
@@ -83,4 +86,4 @@ def draw_ssr(fig, ssr_df):
 
     fig.add_tools(ssr_glyphs_hover)
 
-    return fig
+    return fig, table

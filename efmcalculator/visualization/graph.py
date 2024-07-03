@@ -62,13 +62,17 @@ def make_plot(seqrecord, **repeat_dataframes):
     if seqrecord.annotations:
         fig = plot_features(seqrecord, fig)
 
+    tables = {}
     if isinstance(ssr_df, pl.DataFrame) and not ssr_df.is_empty():
-        fig = draw_ssr(fig, ssr_df)
+        fig, table = draw_ssr(fig, ssr_df)
+        tables["SSR"] = table
 
     if isinstance(srs_df, pl.DataFrame) and not srs_df.is_empty():
-        fig = draw_srs(fig, srs_df)
+        fig, table = draw_srs(fig, srs_df)
+        tables["SRS"] = table
 
     if isinstance(rmd_df, pl.DataFrame) and not rmd_df.is_empty():
-        fig = draw_rmd(fig, rmd_df)
+        fig, table = draw_rmd(fig, rmd_df)
+        tables["RMD"] = table
 
-    return fig
+    return fig, tables

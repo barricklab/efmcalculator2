@@ -16,6 +16,7 @@ from .constants import VALID_STRATEGIES
 
 from .utilities import is_pathname_valid, is_path_creatable
 from .visualization.graph import make_plot
+from .visualization.make_webpage import make_webpage
 
 from Bio.SeqRecord import SeqRecord
 from typing import Union, List, Set, Generator
@@ -193,9 +194,10 @@ def _main():
         # Run data vis ---------
         if args.no_vis:
             continue
-        fig = make_plot(input_sequence, ssr=result[0], srs=result[1], rmd=result[2])
-        output_file(f"{folder}plot.html")
-        save(fig)
+        fig, tables = make_plot(
+            input_sequence, ssr=result[0], srs=result[1], rmd=result[2]
+        )
+        make_webpage(fig, tables, filename=f"{folder}plot.html")
 
     # Logging
     t = time.time() - start_time

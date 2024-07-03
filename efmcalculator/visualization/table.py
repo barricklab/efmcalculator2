@@ -3,14 +3,14 @@ from bokeh.models.widgets import Div
 from bokeh.layouts import column
 
 
-def generate_bokeh_table(datalist, name) -> DataTable:
-    # Generate a bokeh table from a list of named tuples
-    column_names = datalist[0]._fields
-    table_name = datalist[0].__class__.__name__
+def generate_bokeh_table(df, name) -> DataTable:
+    # Generate a bokeh table from a polars dataframe
+    column_names = df.columns
+    table_name = name
     data = {column_name: [] for column_name in column_names}
-    for datarow in datalist:
+    for datarow in df.iter_rows(named=True):
         for column_name in column_names:
-            data[column_name].append(getattr(datarow, column_name))
+            data[column_name].append(datarow[column_name])
     source = ColumnDataSource(data)
     columns = [
         TableColumn(field=column_name, title=column_name)
