@@ -58,7 +58,11 @@ def _scan_RMD(df: pl.DataFrame, seq) -> pl.DataFrame:
     """Scans for RMDs"""
 
     known_long_repeats = df.filter(pl.col("repeat_len") == (MAX_SHORT_SEQ_LEN - 1))
-    RMD_df = pl.DataFrame()
+    RMD_df = pl.DataFrame({
+        "repeat": pl.Series("repeat", [], pl.Utf8),
+        "pairings": pl.Series("pairings", [], pl.List(pl.Int64)),
+        "repeat_len": pl.Series("repeat_len", [], pl.Int64)
+    })
 
     def check_larger_repeats(positions):
         completed = False
@@ -70,10 +74,10 @@ def _scan_RMD(df: pl.DataFrame, seq) -> pl.DataFrame:
 
         while not completed:
             prvlength = length
+            length += step
             # already know they are 15 bp repeats
             if prvlength < 16:
                 prvlength = 16
-            length += step
 
             # pos2 is always after pos1
             if pos2 + length > len(seq):
@@ -88,7 +92,7 @@ def _scan_RMD(df: pl.DataFrame, seq) -> pl.DataFrame:
                     # uses j-1 because substrings end before last index
                     if seq[pos1 + (j-1)] == seq[pos2 + (j-1)]:
                         sub_seq = seq[pos1: pos1 + j]
-                        yield {'repeat': str(sub_seq), 'pairings': [pos1, pos2], 'repeat_len': j}
+                        yield {"repeat": str(sub_seq), "pairings": [pos1, pos2], "repeat_len": j}
                     else:
                         break
                 completed = True
@@ -105,7 +109,7 @@ def _scan_RMD(df: pl.DataFrame, seq) -> pl.DataFrame:
     # Apply the function to the DataFrame
     known_long_repeats.with_columns(
          pl.col("pairings")
-        .map_elements(lambda pairings: store_RMD(pairings), return_dtype=pl.Object)
+        .map_elements(lambda pairings: store_RMD(pairings), return_dtype=pl.Null)
         )
     RMD_df = RMD_df.with_columns(
         pl.col("repeat_len")
