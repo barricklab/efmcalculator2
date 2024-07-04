@@ -23,14 +23,14 @@ def filter_ssrs(ssr_dataframe):
     ssr_dataframe = (
     ssr_dataframe.sort(pl.col("start"))
     .with_columns(
-        pl.col("repeat").shift(1).str.tail(1).alias("last_tail"),
-        pl.col("repeat").str.head(1).alias("head"),
         pl.col("start").shift(1).alias("last_start"),
+        pl.col("count").shift(1).alias("last_count")
         )
+    # gets rid only if starts 1 bp after last SSR, and has lower count
     .filter(
         (pl.col("last_start").is_null()) |
         (pl.col("start") != pl.col("last_start") + 1) |
-        (pl.col("last_tail") != pl.col("head"))
+        (pl.col("count") >= pl.col("last_count"))
         )
     .select(["repeat", "repeat_len", "start", "count"])
     )
