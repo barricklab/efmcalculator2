@@ -37,5 +37,5 @@ import logging
 
 def draw_srs(fig, rmd_df):
     srs_y_pos = 1000
-    srs_shape = ((0, 0), (1, 0), (1, 350), (0, 350), (0, 0))
+    srs_shape = [[0, 0], [1, 0], [1, 350], [0, 350], [0, 0]]
     return _draw_rmd_logic(fig, rmd_df, srs_shape, "SRS")

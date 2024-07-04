@@ -46,7 +46,7 @@ def make_plot(seqrecord, **repeat_dataframes):
 
     fig = figure(
         width=1500,
-        height=750,
+        height=250,
     )
 
     fig.xaxis.axis_label = "Position"

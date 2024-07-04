@@ -1,9 +1,10 @@
-from bokeh.models import ColumnDataSource, DataTable, TableColumn
+from bokeh.models import ColumnDataSource, DataTable, TableColumn, CustomJS
 from bokeh.models.widgets import Div
 from bokeh.layouts import column
+from bokeh.models.widgets.tables import CheckboxEditor
 
 
-def generate_bokeh_table(df, name) -> DataTable:
+def generate_bokeh_table(df, name, callback=None) -> DataTable:
     # Generate a bokeh table from a polars dataframe
     column_names = df.columns
     table_name = name
@@ -18,7 +19,15 @@ def generate_bokeh_table(df, name) -> DataTable:
     ]
     name_div = Div(text=f"<h1>{name}</h1>")
     table = DataTable(
-        source=source, columns=columns, name=table_name, width=1500, editable=True
+        source=source,
+        columns=columns,
+        name=table_name,
+        width=1500,
+        editable=True,
+        selectable="checkbox",
     )
     table = column(name_div, table)
+    if callback:
+        callback = callback(source)
+        source.selected.js_on_change("indices", callback)
     return table

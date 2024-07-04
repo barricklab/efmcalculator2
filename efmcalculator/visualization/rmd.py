@@ -37,12 +37,11 @@ import logging
 
 def draw_rmd(fig, rmd_df):
     rmd_y_pos = 1200
-    rmd_shape = ((0, 0), (1, 0), (1, 350), (0, 350), (0, 0))
+    rmd_shape = [[0, 0], [1, 0], [1, 350], [0, 350], [0, 0]]
     return _draw_rmd_logic(fig, rmd_df, rmd_shape, "RMD")
 
 
 def _draw_rmd_logic(fig, df, shape, type):
-    rmd_y_pos = 1500
     columns = df.columns
     ssr_source = {
         "x": [],
@@ -52,26 +51,9 @@ def _draw_rmd_logic(fig, df, shape, type):
         "position": [],
         "mutation_rate": [],
     }
+    empty_rmd_source = copy.deepcopy(ssr_source)
 
-    def map_function(row_results):
-        ssr_size = row_results[columns.index("repeat_len")]
-        start_position = row_results[columns.index("position_left")]
-        drawn_ssr = [x[0] * ssr_size + start_position for x in shape]
-        ssr_ys = [x[1] + rmd_y_pos for x in shape]
-        ssr_source["x"].append(drawn_ssr)
-        ssr_source["y"].append(ssr_ys)
-        ssr_source["color"].append("black")
-        ssr_source["name"].append(type)
-        ssr_source["position"].append(start_position)
-        ssr_source["mutation_rate"].append(row_results[columns.index("mutation_rate")])
-
-        return 1
-
-    df.map_rows(
-        map_function,
-    )
-
-    ssr_glyphs = fig.patches(
+    rmd_glyphs = fig.patches(
         "x",
         "y",
         color="color",
@@ -81,9 +63,58 @@ def _draw_rmd_logic(fig, df, shape, type):
         line_width=1,
     )
 
-    ssr_glyphs_hover = HoverTool(renderers=[ssr_glyphs], tooltips=[("Name", "@name")])
+    ssr_glyphs_hover = HoverTool(renderers=[rmd_glyphs], tooltips=[("Name", "@name")])
 
     fig.add_tools(ssr_glyphs_hover)
-    table = generate_bokeh_table(df, type)
+
+    def callback(source_table):
+        rmd_y_pos = 1200
+        rmd_shape = shape
+
+        javascript = f"""
+        var cdata = source_table.data
+        var rmd_array = source_table.selected.indices
+        var new_glyphs = structuredClone(empty_glyph_source)
+
+        var rmd_shape = {rmd_shape}
+
+
+        for (let i = 0; i < rmd_array.length; i++) {{
+
+            var len = cdata["repeat_len"][rmd_array[i]]
+            var pos_left = cdata["position_left"][rmd_array[i]]
+            var mutation_rate = cdata["mutation_rate"][rmd_array[i]]
+
+
+            new_glyphs['x'].push(rmd_shape.map(x => x[0] * len + pos_left))
+            new_glyphs['y'].push(rmd_shape.map(x => x[1] + {rmd_y_pos}))
+            new_glyphs['position'].push(pos_left)
+            new_glyphs['mutation_rate'].push(mutation_rate)
+            new_glyphs['color'].push('black')
+            new_glyphs['name'].push('RMD')}}
+
+
+        glyphs.data_source.data['x'] = new_glyphs['x']
+        glyphs.data_source.data['y'] = new_glyphs['y']
+        glyphs.data_source.data['position'] = new_glyphs['position']
+        glyphs.data_source.data['mutation_rate'] = new_glyphs['mutation_rate']
+        glyphs.data_source.data['color'] = new_glyphs['color']
+        glyphs.data_source.data['name'] = new_glyphs['name']
+
+        glyphs.data_source.change.emit()
+        """
+
+        js_callback = CustomJS(
+            args=dict(
+                source_table=source_table,
+                glyphs=rmd_glyphs,
+                empty_glyph_source=empty_rmd_source,
+            ),
+            code=javascript,
+        )
+
+        return js_callback
+
+    table = generate_bokeh_table(df, type, callback=callback)
 
     return fig, table

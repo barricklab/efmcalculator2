@@ -36,11 +36,6 @@ import logging
 
 
 def draw_ssr(fig, ssr_df):
-    ssr_y_pos = 500
-    ssr_shape = ((0, 0), (1, 0), (1, 350), (0, 350), (0, 0))
-
-    table = generate_bokeh_table(ssr_df, "SSR")
-
     columns = ssr_df.columns
     ssr_source = {
         "x": [],
@@ -50,6 +45,7 @@ def draw_ssr(fig, ssr_df):
         "position": [],
         "mutation_rate": [],
     }
+    empty_ssr_source = copy.deepcopy(ssr_source)
 
     def map_function(row_results):
         ssr_size = (
@@ -68,10 +64,6 @@ def draw_ssr(fig, ssr_df):
 
         return 1
 
-    ssr_df.map_rows(
-        map_function,
-    )
-
     ssr_glyphs = fig.patches(
         "x",
         "y",
@@ -83,7 +75,56 @@ def draw_ssr(fig, ssr_df):
     )
 
     ssr_glyphs_hover = HoverTool(renderers=[ssr_glyphs], tooltips=[("Name", "@name")])
-
     fig.add_tools(ssr_glyphs_hover)
+
+    def callback(source_table):
+        ssr_y_pos = 1000
+        ssr_shape = [[0, 0], [1, 0], [1, 350], [0, 350], [0, 0]]
+
+        javascript = f"""
+        var cdata = source_table.data
+        var ssr_array = source_table.selected.indices
+        var new_glyphs = structuredClone(empty_glyph_source)
+
+        var ssr_shape = {ssr_shape}
+
+
+        for (let i = 0; i < ssr_array.length; i++) {{
+
+            var len = cdata["repeat_len"][ssr_array[i]]
+            var count = cdata["count"][ssr_array[i]]
+            var start = cdata["start"][ssr_array[i]]
+            var mutation_rate = cdata["mutation_rate"][ssr_array[i]]
+
+
+            new_glyphs['x'].push(ssr_shape.map(x => x[0] * len * count + start))
+            new_glyphs['y'].push(ssr_shape.map(x => x[1] + {ssr_y_pos}))
+            new_glyphs['position'].push(start)
+            new_glyphs['mutation_rate'].push(mutation_rate)
+            new_glyphs['color'].push('black')
+            new_glyphs['name'].push('SSR')}}
+
+        glyphs.data_source.data['x'] = new_glyphs['x']
+        glyphs.data_source.data['y'] = new_glyphs['y']
+        glyphs.data_source.data['position'] = new_glyphs['position']
+        glyphs.data_source.data['mutation_rate'] = new_glyphs['mutation_rate']
+        glyphs.data_source.data['color'] = new_glyphs['color']
+        glyphs.data_source.data['name'] = new_glyphs['name']
+
+        glyphs.data_source.change.emit()
+        """
+
+        js_callback = CustomJS(
+            args=dict(
+                source_table=source_table,
+                glyphs=ssr_glyphs,
+                empty_glyph_source=empty_ssr_source,
+            ),
+            code=javascript,
+        )
+
+        return js_callback
+
+    table = generate_bokeh_table(ssr_df, "SSR", callback=callback)
 
     return fig, table
