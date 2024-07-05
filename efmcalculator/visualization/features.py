@@ -132,14 +132,14 @@ def plot_features(seqrecord, fig):
         source=genbank_dictionary,
         alpha=0.5,
         line_color="black",
-        line_width=1,
+        line_width=2,
     )
     genbank_glyphs_hover = HoverTool(
         renderers=[genbank_glyphs], tooltips=[("Name", "@name")]
     )
     fig.add_tools(genbank_glyphs_hover)
 
-    # Draw a line below the annotations
+    # Draw a line above and below the annotations
 
     lowest_annotation_y -= 500
     fig.line(
@@ -148,7 +148,14 @@ def plot_features(seqrecord, fig):
         line_width=2,
         color="black",
     )
-    annotation_depth = lowest_annotation_y
+
+    fig.line(
+        [0, xmax],
+        [1000, 1000],
+        line_width=2,
+        color="black",
+    )
+
     return fig
 
 
