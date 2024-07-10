@@ -16,7 +16,7 @@ from .constants import VALID_STRATEGIES
 
 from .utilities import is_pathname_valid, is_path_creatable
 from .visualization.graph import make_plot
-from .visualization.make_webpage import make_webpage
+from .visualization.make_webpage import make_webpage, export_html
 
 from Bio.SeqRecord import SeqRecord
 from typing import Union, List, Set, Generator
@@ -197,7 +197,8 @@ def _main():
         fig, tables = make_plot(
             input_sequence, ssr=result[0], srs=result[1], rmd=result[2]
         )
-        make_webpage(fig, tables, filename=f"{folder}plot.html")
+        layout = make_webpage(fig, tables)
+        export_html(layout, f"{folder}plot.html")
 
     # Logging
     t = time.time() - start_time
@@ -247,18 +248,23 @@ def predict_many(
         # Perform predictions
         seq = record.seq.strip("\n").upper().replace("U", "T")
         ssr_df, srs_df, rmd_df = predict(seq, strategy, isCircular)
-
-        # Perform Filtering
-        ssr_df = filter_ssrs(ssr_df)
-        rmd_df = filter_rmds(rmd_df)
-
-        # Calculate Mutation Rates
-
-        ssr_df = ssr_mut_rate_vector(ssr_df)
-        srs_df = rmd_mut_rate_vector(srs_df)
-        rmd_df = rmd_mut_rate_vector(rmd_df)
+        ssr_df, srs_df, rmd_df = post_process(ssr_df, srs_df, rmd_df)
 
         yield [ssr_df, srs_df, rmd_df]
+
+
+def post_process(ssr_df, srs_df, rmd_df):
+    # Perform Filtering
+    ssr_df = filter_ssrs(ssr_df)
+    rmd_df = filter_rmds(rmd_df)
+
+    # Calculate Mutation Rates
+
+    ssr_df = ssr_mut_rate_vector(ssr_df)
+    srs_df = rmd_mut_rate_vector(srs_df)
+    rmd_df = rmd_mut_rate_vector(rmd_df)
+
+    return ssr_df, srs_df, rmd_df
 
 
 if __name__ == "__main__":

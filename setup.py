@@ -6,16 +6,19 @@ setup(
     packages=find_packages(),
     install_requires=[
         "pandas",
+        "polars",
         "progress",
         "biopython",
         "statsmodels",
         "rich",
         "pyarrow",
         "bokeh",
+        "streamlit",
     ],
     entry_points={
         "console_scripts": [
             "efmcalculator=efmcalculator.efmcalculator:_main",
+            "efmcalculator-webapp=efmcalculator.webapp.bootstrap_streamlit:bootstrap_streamlit",
         ],
     },
     author="placeholder",
