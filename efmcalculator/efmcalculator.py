@@ -201,7 +201,7 @@ def _main():
 
     # Logging
     t = time.time() - start_time
-    t_sec = round(t)
+    t_sec = int(t)
     t_msec = round((t - t_sec) * 1000)
     t_min, t_sec = divmod(t_sec, 60)
     t_hour, t_min = divmod(t_min, 60)

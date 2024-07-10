@@ -20,6 +20,7 @@ from bokeh.models import (
     CustomJS,
     Div,
 )
+from bokeh.model import DataModel
 from bokeh.embed import components
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.core.validation import silence
@@ -37,17 +38,22 @@ from .eval_top import eval_top
 import logging
 
 
+class StaggerDatabase(DataModel):
+    ssr = []
+    srs = []
+    rmd = []
+
+
 def make_plot(seqrecord, **repeat_dataframes):
     ssr_df = repeat_dataframes.get("ssr", None)
     srs_df = repeat_dataframes.get("srs", None)
     rmd_df = repeat_dataframes.get("rmd", None)
 
+    curdoc().stagger_database = StaggerDatabase()
+
     # Set up plot
 
-    fig = figure(
-        width=1500,
-        height=250,
-    )
+    fig = figure(width=1500, height=250)
 
     fig.xaxis.axis_label = "Position"
     fig.yaxis.visible = False

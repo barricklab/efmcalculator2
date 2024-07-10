@@ -119,6 +119,13 @@ def export_html(script, div, filename):
     asset_location = os.path.join(os.path.dirname(__file__), "assets")
     with open(template_path, "r", encoding="utf-8") as f:
         template = f.read()
+
+    if os.path.exists(os.path.join(os.path.dirname(filename), "assets")):
+        shutil.rmtree(os.path.join(os.path.dirname(filename), "assets"))
+    shutil.copytree(
+        os.path.join(os.path.dirname(__file__), "assets"),
+        os.path.join(os.path.dirname(filename), "assets"),
+    )
     template = template.replace("{{bokehscript}}", script)
     template = template.replace("{{bokehdiv}}", div)
     template = template.replace("{{bokehversion}}", bokeh_version)
