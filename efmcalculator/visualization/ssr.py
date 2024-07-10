@@ -43,6 +43,7 @@ def draw_ssr(fig, ssr_df):
         "color": [],
         "name": [],
         "position": [],
+        "sequence": [],
         "mutation_rate": [],
         "line_width": [],
         "line_color": [],
@@ -80,7 +81,13 @@ def draw_ssr(fig, ssr_df):
 
     # ssr_glyphs_hover = HoverTool(renderers=[ssr_glyphs], tooltips=[("Name", "@name")])
     ssr_outlines_hover = HoverTool(
-        renderers=[ssr_outlines], tooltips=[("Name", "@name")]
+        renderers=[ssr_outlines],
+        tooltips=[
+            ("Type", "@name"),
+            ("Sequence", "@sequence"),
+            ("Position", "@position"),
+            ("Mutation Rate", "@mutation_rate"),
+        ],
     )
     # fig.add_tools(ssr_glyphs_hover)
     fig.add_tools(ssr_outlines_hover)
@@ -164,6 +171,8 @@ def draw_ssr(fig, ssr_df):
             ssr_x_outline[5] = ssr_x_outline[5]
             ssr_y_outline[6] = ssr_y_outline[6]-{outline_girth_y}
 
+            var sequence = cdata["repeat"][ssr_array[i]].repeat(cdata["count"][ssr_array[i]])
+
             new_glyphs['x'].push(ssr_x)
             new_glyphs['y'].push(ssr_y)
             new_glyphs['position'].push(start)
@@ -171,6 +180,7 @@ def draw_ssr(fig, ssr_df):
             new_glyphs['color'].push('black')
             new_glyphs['line_color'].push('black')
             new_glyphs['name'].push('SSR')
+            new_glyphs['sequence'].push(sequence)
             new_glyphs['line_width'].push(1)
 
             new_outlines['x'].push(ssr_x_outline)
@@ -180,6 +190,7 @@ def draw_ssr(fig, ssr_df):
             new_outlines['color'].push('none')
             new_outlines['line_color'].push('red')
             new_outlines['name'].push('SSR')
+            new_outlines['sequence'].push(sequence)
             new_outlines['line_width'].push(3)}}
 
         //Push glyphs to dataframe
@@ -190,6 +201,7 @@ def draw_ssr(fig, ssr_df):
         glyphs.data_source.data['color'] = new_glyphs['color']
         glyphs.data_source.data['line_color'] = new_glyphs['line_color']
         glyphs.data_source.data['name'] = new_glyphs['name']
+        glyphs.data_source.data['sequence'] = new_glyphs['sequence']
         glyphs.data_source.data['line_width'] = new_glyphs['line_width']
 
 
@@ -200,6 +212,7 @@ def draw_ssr(fig, ssr_df):
         outlines.data_source.data['color'] = new_outlines['color']
         outlines.data_source.data['line_color'] = new_outlines['line_color']
         outlines.data_source.data['name'] = new_outlines['name']
+        outlines.data_source.data['sequence'] = new_outlines['sequence']
         outlines.data_source.data['line_width'] = new_outlines['line_width']
 
         glyphs.data_source.change.emit()

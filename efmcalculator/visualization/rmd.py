@@ -48,9 +48,12 @@ def _draw_rmd_logic(fig, df, color, type):
         "color": [],
         "line_color": [],
         "name": [],
-        "position": [],
+        "position_left": [],
+        "position_right": [],
         "mutation_rate": [],
         "line_width": [],
+        "sequence": [],
+        "distance": [],
     }
     empty_rmd_source = copy.deepcopy(ssr_source)
 
@@ -101,7 +104,15 @@ def _draw_rmd_logic(fig, df, color, type):
     )
 
     rmd_glyphs_hover = HoverTool(
-        renderers=[rmd_glyphs_outline], tooltips=[("Name", "@name")]
+        renderers=[rmd_glyphs_outline],
+        tooltips=[
+            ("Type", "@name"),
+            ("Sequence", "@sequence"),
+            ("Position (left)", "@position_left"),
+            ("Position (right)", "@position_right"),
+            ("Distance", "@distance"),
+            ("Mutation Rate", "@mutation_rate"),
+        ],
     )
 
     fig.add_tools(rmd_glyphs_hover)
@@ -113,7 +124,6 @@ def _draw_rmd_logic(fig, df, color, type):
         outline_girth_y = 250
 
         javascript = f"""
-        console.log(stagger_database)
         var cdata = source_table.data
         var rmd_array = source_table.selected.indices
         var new_glyphs_left = structuredClone(empty_glyph_source)
@@ -137,6 +147,8 @@ def _draw_rmd_logic(fig, df, color, type):
             var start = pos_left-{outline_girth_x}
             var end = pos_right+len+{outline_girth_x}
 
+            var sequence = cdata["repeat"][rmd_array[i]]
+            var distance = cdata["distance"][rmd_array[i]]
 
             //Find draw layer
             var layer = -1
@@ -147,7 +159,6 @@ def _draw_rmd_logic(fig, df, color, type):
                 for (const property in mutation_types) {{
                     var prop = mutation_types[property]
                     for (var j in stagger_database[prop]) {{
-                        console.log(stagger_database[prop][j])
                         if (stagger_database[prop][j][0] != layer_checker){{
                             continue
                         }}
@@ -178,24 +189,27 @@ def _draw_rmd_logic(fig, df, color, type):
 
             new_glyphs_left['x'].push(x_left)
             new_glyphs_left['y'].push(y)
-            new_glyphs_left['position'].push(pos_left)
+            new_glyphs_left['position_left'].push(pos_left)
+            new_glyphs_left['position_right'].push(pos_right)
             new_glyphs_left['mutation_rate'].push(mutation_rate)
             new_glyphs_left['color'].push('black')
-            new_glyphs_left['name'].push('RMD')
+            new_glyphs_left['name'].push('{type.upper()}')
             new_glyphs_left['line_color'].push('black')
             new_glyphs_left['line_width'].push(1)
+            new_glyphs_left['sequence'].push(sequence)
+            new_glyphs_left['distance'].push(distance)
 
             new_glyphs_right['x'].push(x_right)
             new_glyphs_right['y'].push(y)
-            new_glyphs_right['position'].push(pos_right)
+            new_glyphs_right['position_left'].push(pos_left)
+            new_glyphs_right['position_right'].push(pos_right)
             new_glyphs_right['mutation_rate'].push(mutation_rate)
             new_glyphs_right['color'].push('black')
-            new_glyphs_right['name'].push('RMD')
+            new_glyphs_right['name'].push('{type.upper()}')
             new_glyphs_right['line_color'].push('black')
             new_glyphs_right['line_width'].push(1)
-
-            var distance = cdata["distance"][rmd_array[i]]
-            console.log(distance)
+            new_glyphs_right['sequence'].push(sequence)
+            new_glyphs_right['distance'].push(distance)
 
             if (distance <= {outline_girth_x}*2) {{
                 var outline_rmd_shape_squared = structuredClone(rmd_shape)
@@ -215,12 +229,15 @@ def _draw_rmd_logic(fig, df, color, type):
 
                 new_outlines['x'].push(x_outline)
                 new_outlines['y'].push(y_outline)
-                new_outlines['position'].push(pos_left)
+                new_outlines['position_left'].push(pos_left)
+                new_outlines['position_right'].push(pos_right)
                 new_outlines['mutation_rate'].push(mutation_rate)
                 new_outlines['color'].push('none')
                 new_outlines['line_color'].push('{color}')
-                new_outlines['name'].push('RMD')
+                new_outlines['name'].push('{type.upper()}')
                 new_outlines['line_width'].push(3)}}
+                new_outlines['sequence'].push(sequence)
+                new_outlines['distance'].push(distance)
 
             if (distance > {outline_girth_x}*2) {{
                     var outline_shape_left = [[0, 0], [1, 0], [1, 500], [1, 1000], [0, 1000], [0, 0]]
@@ -246,12 +263,15 @@ def _draw_rmd_logic(fig, df, color, type):
 
                     new_outlines['x'].push(outline_left_x)
                     new_outlines['y'].push(outline_left_y)
-                    new_outlines['position'].push(pos_left)
+                    new_outlines['position_left'].push(pos_left)
+                    new_outlines['position_right'].push(pos_right)
                     new_outlines['mutation_rate'].push(mutation_rate)
                     new_outlines['color'].push('none')
                     new_outlines['line_color'].push('{color}')
-                    new_outlines['name'].push('RMD')
+                    new_outlines['name'].push('{type.upper()}')
                     new_outlines['line_width'].push(3)
+                    new_outlines['sequence'].push(sequence)
+                    new_outlines['distance'].push(distance)
 
                     var outline_right_x = outline_shape_right.map(x => x[0] * len + pos_right)
                     var outline_right_y = outline_shape_right.map(x => x[1] + rmd_y_pos)
@@ -272,12 +292,15 @@ def _draw_rmd_logic(fig, df, color, type):
 
                     new_outlines['x'].push(outline_right_x)
                     new_outlines['y'].push(outline_right_y)
-                    new_outlines['position'].push(pos_right)
+                    new_outlines['position_left'].push(pos_left)
+                    new_outlines['position_right'].push(pos_right)
                     new_outlines['mutation_rate'].push(mutation_rate)
                     new_outlines['color'].push('none')
                     new_outlines['line_color'].push('{color}')
-                    new_outlines['name'].push('RMD')
+                    new_outlines['name'].push('{type.upper()}')
                     new_outlines['line_width'].push(3)
+                    new_outlines['sequence'].push(sequence)
+                    new_outlines['distance'].push(distance)
 
                     var line = [[1, 500], [1,500]]
                     line[0][0] = line[0][0] * len + pos_left + {outline_girth_x}
@@ -299,30 +322,39 @@ def _draw_rmd_logic(fig, df, color, type):
 
         glyphs_left.data_source.data['x'] = new_glyphs_left['x']
         glyphs_left.data_source.data['y'] = new_glyphs_left['y']
-        glyphs_left.data_source.data['position'] = new_glyphs_left['position']
+        glyphs_left.data_source.data['position_left'] = new_glyphs_left['position_left']
+        glyphs_left.data_source.data['position_right'] = new_glyphs_left['position_right']
         glyphs_left.data_source.data['mutation_rate'] = new_glyphs_left['mutation_rate']
         glyphs_left.data_source.data['color'] = new_glyphs_left['color']
         glyphs_left.data_source.data['name'] = new_glyphs_left['name']
         glyphs_left.data_source.data['line_color'] = new_glyphs_left['line_color']
         glyphs_left.data_source.data['line_width'] = new_glyphs_left['line_width']
+        glyphs_left.data_source.data['sequence'] = new_glyphs_left['sequence']
+        glyphs_left.data_source.data['distance'] = new_glyphs_left['distance']
 
         glyphs_right.data_source.data['x'] = new_glyphs_right['x']
         glyphs_right.data_source.data['y'] = new_glyphs_right['y']
-        glyphs_right.data_source.data['position'] = new_glyphs_right['position']
+        glyphs_right.data_source.data['position_left'] = new_glyphs_right['position_left']
+        glyphs_right.data_source.data['position_right'] = new_glyphs_right['position_right']
         glyphs_right.data_source.data['mutation_rate'] = new_glyphs_right['mutation_rate']
         glyphs_right.data_source.data['color'] = new_glyphs_right['color']
         glyphs_right.data_source.data['line_color'] = new_glyphs_right['line_color']
         glyphs_right.data_source.data['name'] = new_glyphs_right['name']
         glyphs_right.data_source.data['line_width'] = new_glyphs_right['line_width']
+        glyphs_right.data_source.data['sequence'] = new_glyphs_right['sequence']
+        glyphs_right.data_source.data['distance'] = new_glyphs_right['distance']
 
         outlines.data_source.data['x'] = new_outlines['x']
         outlines.data_source.data['y'] = new_outlines['y']
-        outlines.data_source.data['position'] = new_outlines['position']
+        outlines.data_source.data['position_left'] = new_outlines['position_left']
+        outlines.data_source.data['position_right'] = new_outlines['position_right']
         outlines.data_source.data['mutation_rate'] = new_outlines['mutation_rate']
         outlines.data_source.data['color'] = new_outlines['color']
         outlines.data_source.data['line_color'] = new_outlines['line_color']
         outlines.data_source.data['name'] = new_outlines['name']
         outlines.data_source.data['line_width'] = new_outlines['line_width']
+        outlines.data_source.data['sequence'] = new_outlines['sequence']
+        outlines.data_source.data['distance'] = new_outlines['distance']
 
 
         rmd_lines.data_source.data['x'] = new_rmd_line['x']

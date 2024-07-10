@@ -18,7 +18,9 @@ def generate_bokeh_table(df, name, callback=None) -> DataTable:
     source = ColumnDataSource(data)
     columns = []
     for column_name in column_names:
-        if column_name == "mutation_rate":
+        if column_name in ["index", "show"]:
+            continue
+        elif column_name == "mutation_rate":
             formatted_column = TableColumn(
                 field=column_name,
                 title=column_name,
