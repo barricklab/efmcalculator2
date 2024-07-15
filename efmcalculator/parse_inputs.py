@@ -24,7 +24,6 @@ def parse_file(filepath: pathlib.Path):
         raise ValueError(
             f"File {filepath.suffix} is not a known file format. Must be one of {FASTA_EXTS +GBK_EXTS}."
         )
-    print(f"sequences: {sequences}")
     return list(sequences)
 
 
