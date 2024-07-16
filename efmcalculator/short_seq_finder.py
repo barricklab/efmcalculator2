@@ -93,6 +93,7 @@ def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
             # largest possible repeat is seq_len/2 bp
             if length >= int(seq_len / 2):
                 largest = True
+                length = int(seq_len / 2)
             # prevent out of bound error
             if len(seq) - pos2 < length:
                 length = len(seq) - pos2
@@ -110,8 +111,6 @@ def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
                             "pairings": [pos1, pos2],
                             "repeat_len": j,
                         }
-                        if largest:
-                            break
                     else:
                         break
                 completed = True
