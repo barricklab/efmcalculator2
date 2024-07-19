@@ -58,11 +58,13 @@ def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
     """Scans for RMDs"""
 
     known_long_repeats = df.filter(pl.col("repeat_len") == (MAX_SHORT_SEQ_LEN - 1))
-    RMD_df = pl.DataFrame({
-        "repeat": pl.Series("repeat", [], pl.Utf8),
-        "pairings": pl.Series("pairings", [], pl.List(pl.Int64)),
-        "repeat_len": pl.Series("repeat_len", [], pl.Int64)
-    })
+    RMD_df = pl.DataFrame(
+        {
+            "repeat": pl.Series("repeat", [], pl.Utf8),
+            "pairings": pl.Series("pairings", [], pl.List(pl.Int64)),
+            "repeat_len": pl.Series("repeat_len", [], pl.Int64),
+        }
+    )
 
     def check_larger_repeats(positions, seq):
         completed = False
@@ -84,23 +86,31 @@ def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
             if pos2 + length > seq_len:
                 if isCircular:
                     wrap += step
-                    seq = seq + seq[wrap-step: wrap]
+                    seq = seq + seq[wrap - step : wrap]
                 else:
                     length = seq_len - pos2
                     largest = True
             # largest possible repeat is seq_len/2 bp
-            if length >= int(seq_len/2):
+            if length >= int(seq_len / 2):
                 largest = True
+                length = int(seq_len / 2)
+            # prevent out of bound error
+            if len(seq) - pos2 < length:
+                length = len(seq) - pos2
 
             # if sequences not equal, then largest repeat has been passed
-            if (seq[pos1: pos1 + length] != seq[pos2: pos2 + length]) or (largest):
-                # iterate 1 by 1. 
+            if (seq[pos1 : pos1 + length] != seq[pos2 : pos2 + length]) or (largest):
+                # iterate 1 by 1.
                 # Uses length+1 because in range stops before last index
-                for j in range(prvlength, length+1):
+                for j in range(prvlength, length + 1):
                     # uses j-1 because substrings end before last index
-                    if seq[pos1 + (j-1)] == seq[pos2 + (j-1)]:
-                        sub_seq = seq[pos1: pos1 + j]
-                        yield {"repeat": str(sub_seq), "pairings": [pos1, pos2], "repeat_len": j}
+                    if seq[pos1 + (j - 1)] == seq[pos2 + (j - 1)]:
+                        sub_seq = seq[pos1 : pos1 + j]
+                        yield {
+                            "repeat": str(sub_seq),
+                            "pairings": [pos1, pos2],
+                            "repeat_len": j,
+                        }
                     else:
                         break
                 completed = True
@@ -113,17 +123,15 @@ def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
         if repeats.width == 3:
             RMD_df = pl.concat([RMD_df, repeats])
         return None
-    
+
     # Apply the function to the DataFrame
     known_long_repeats.with_columns(
-         pl.col("pairings")
-        .map_elements(lambda pairings: store_RMD(pairings, seq), return_dtype=pl.List(pl.Null))
+        pl.col("pairings").map_elements(
+            lambda pairings: store_RMD(pairings, seq), return_dtype=pl.List(pl.Null)
         )
-    RMD_df = RMD_df.with_columns(
-        pl.col("repeat_len")
-        .cast(pl.UInt32)
     )
-        
+    RMD_df = RMD_df.with_columns(pl.col("repeat_len").cast(pl.UInt32))
+
     df = pl.concat([df, RMD_df])
 
     return df  # In the same format as df alongside the original data
@@ -181,20 +189,37 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     )
 
     # Process and Split SRS and RMD
-    repeat_df = (
-        repeat_df.lazy()
-        .filter(pl.col("category") != "SSR")
-        .select(pl.col(["repeat", "repeat_len", "pairings", "distance", "category"]))
-        .with_columns(
-            pl.col("pairings").list.to_struct(
-                fields=[
-                    "position_left",
-                    "position_right",
-                ]
+
+    repeat_df = repeat_df.lazy().filter(pl.col("category") != "SSR").collect()
+    if len(repeat_df) > 0:
+        repeat_df = (
+            repeat_df.lazy()
+            .select(
+                pl.col(["repeat", "repeat_len", "pairings", "distance", "category"])
             )
-        )
-        .unnest("pairings")
-    ).collect()
+            .collect()
+            .rechunk()  # Weird issue with invalid pairing state
+            .lazy()
+            .with_columns(
+                pl.col("pairings").list.to_struct(
+                    fields=[
+                        "position_left",
+                        "position_right",
+                    ]
+                )
+            )
+            .unnest("pairings")
+        ).collect()
+    else:
+        schema = {
+            "repeat": pl.Utf8,
+            "repeat_len": pl.UInt32,
+            "position_left": pl.UInt32,
+            "position_right": pl.UInt32,
+            "distance": pl.UInt32,
+            "category": pl.Categorical,
+        }
+        repeat_df = pl.DataFrame(schema=schema)
 
     srs_df = repeat_df.filter(pl.col("category") == "SRS").select(
         pl.col(["repeat", "repeat_len", "position_left", "position_right", "distance"])

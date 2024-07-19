@@ -43,6 +43,7 @@ def draw_ssr(fig, ssr_df):
         "color": [],
         "name": [],
         "position": [],
+        "sequence": [],
         "mutation_rate": [],
         "line_width": [],
         "line_color": [],
@@ -80,15 +81,21 @@ def draw_ssr(fig, ssr_df):
 
     # ssr_glyphs_hover = HoverTool(renderers=[ssr_glyphs], tooltips=[("Name", "@name")])
     ssr_outlines_hover = HoverTool(
-        renderers=[ssr_outlines], tooltips=[("Name", "@name")]
+        renderers=[ssr_outlines],
+        tooltips=[
+            ("Type", "@name"),
+            ("Sequence", "@sequence"),
+            ("Position", "@position"),
+            ("Mutation Rate", "@mutation_rate"),
+        ],
     )
     # fig.add_tools(ssr_glyphs_hover)
     fig.add_tools(ssr_outlines_hover)
 
     def callback(source_table):
-        ssr_y_pos = 1500
         outline_girth_x = 50
         outline_girth_y = 250
+        # [layer_checker, start, (len*count)+start+({outline_girth_x}*2)]
 
         javascript = f"""
         var cdata = source_table.data
@@ -98,20 +105,55 @@ def draw_ssr(fig, ssr_df):
         var ssr_shape = [[0, 0], [1, 0], [1, 1000], [0, 1000], [0, 0]]
         var outline_ssr_shape = [[0, 0], [1, 0], [1, 500], [1, 1000], [0, 1000], [0, 500], [0, 0]]
 
-
+        stagger_database.ssr = []
+        var mutation_types = ['ssr', 'srs', 'rmd']
 
         for (let i = 0; i < ssr_array.length; i++) {{
-
+            //Extract information from dataframe
             var len = cdata["repeat_len"][ssr_array[i]]
             var count = cdata["count"][ssr_array[i]]
             var start = cdata["start"][ssr_array[i]]
             var mutation_rate = cdata["mutation_rate"][ssr_array[i]]
+            var end = (len*count)+start+{outline_girth_x}
 
+            //Find draw layer
+            var layer = -1
+            var layer_checker = 1
+            var recheck = true
+            while (recheck){{
+                recheck = false
+                for (const property in mutation_types) {{
+                    var prop = mutation_types[property]
+                    for (var j in stagger_database[prop]) {{
+                        if (stagger_database[prop][j][0] != layer_checker){{
+                            continue
+                        }}
 
+                        if (( stagger_database[prop][j][1]  <=  start-{outline_girth_x} && start-{outline_girth_x} <=  stagger_database[prop][j][2] )
+                            || //If start is inside a glyph OR
+                            ( stagger_database[prop][j][1]  <=  end && end   <=  stagger_database[prop][j][2] )
+                            || // If end is inside a glyph OR
+                            (start-{outline_girth_x} <=  stagger_database[prop][j][1] && stagger_database[prop][j][2]  <=  end)){{
+                            // If start and end wrap another glyph, then this is an overlapping glyph
+                            layer_checker++
+                            recheck = true
+                            break
+                            }}
+                    if (recheck){{
+                        break
+                        }}
+                    }}
+                }}
+            }}
+            layer = layer_checker
+            stagger_database['ssr'].push([layer, start-{outline_girth_x}, end])
+            var ssr_y_pos = 1500*layer
+
+            //Draw glyphs
             var ssr_x = ssr_shape.map(x => x[0] * len * count + start)
-            var ssr_y = ssr_shape.map(x => x[1] + {ssr_y_pos})
+            var ssr_y = ssr_shape.map(x => x[1] + ssr_y_pos)
             var ssr_x_outline = outline_ssr_shape.map(x => x[0] * len * count + start)
-            var ssr_y_outline = outline_ssr_shape.map(x => x[1] + {ssr_y_pos})
+            var ssr_y_outline = outline_ssr_shape.map(x => x[1] + ssr_y_pos)
 
             ssr_x_outline[0] = ssr_x_outline[0]-{outline_girth_x}/2
             ssr_x_outline[1] = ssr_x_outline[1]+{outline_girth_x}/2
@@ -129,7 +171,7 @@ def draw_ssr(fig, ssr_df):
             ssr_x_outline[5] = ssr_x_outline[5]
             ssr_y_outline[6] = ssr_y_outline[6]-{outline_girth_y}
 
-            console.log(ssr_x_outline)
+            var sequence = cdata["repeat"][ssr_array[i]].repeat(cdata["count"][ssr_array[i]])
 
             new_glyphs['x'].push(ssr_x)
             new_glyphs['y'].push(ssr_y)
@@ -138,6 +180,7 @@ def draw_ssr(fig, ssr_df):
             new_glyphs['color'].push('black')
             new_glyphs['line_color'].push('black')
             new_glyphs['name'].push('SSR')
+            new_glyphs['sequence'].push(sequence)
             new_glyphs['line_width'].push(1)
 
             new_outlines['x'].push(ssr_x_outline)
@@ -147,8 +190,10 @@ def draw_ssr(fig, ssr_df):
             new_outlines['color'].push('none')
             new_outlines['line_color'].push('red')
             new_outlines['name'].push('SSR')
+            new_outlines['sequence'].push(sequence)
             new_outlines['line_width'].push(3)}}
 
+        //Push glyphs to dataframe
         glyphs.data_source.data['x'] = new_glyphs['x']
         glyphs.data_source.data['y'] = new_glyphs['y']
         glyphs.data_source.data['position'] = new_glyphs['position']
@@ -156,6 +201,7 @@ def draw_ssr(fig, ssr_df):
         glyphs.data_source.data['color'] = new_glyphs['color']
         glyphs.data_source.data['line_color'] = new_glyphs['line_color']
         glyphs.data_source.data['name'] = new_glyphs['name']
+        glyphs.data_source.data['sequence'] = new_glyphs['sequence']
         glyphs.data_source.data['line_width'] = new_glyphs['line_width']
 
 
@@ -166,6 +212,7 @@ def draw_ssr(fig, ssr_df):
         outlines.data_source.data['color'] = new_outlines['color']
         outlines.data_source.data['line_color'] = new_outlines['line_color']
         outlines.data_source.data['name'] = new_outlines['name']
+        outlines.data_source.data['sequence'] = new_outlines['sequence']
         outlines.data_source.data['line_width'] = new_outlines['line_width']
 
         glyphs.data_source.change.emit()
@@ -178,9 +225,12 @@ def draw_ssr(fig, ssr_df):
                 glyphs=ssr_glyphs,
                 outlines=ssr_outlines,
                 empty_glyph_source=empty_ssr_source,
+                stagger_database=curdoc().stagger_database,
             ),
             code=javascript,
         )
+
+        curdoc().js_on_event(DocumentReady, js_callback)
 
         return js_callback
 

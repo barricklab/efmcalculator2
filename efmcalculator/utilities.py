@@ -3,10 +3,12 @@ import errno, os, sys
 
 
 class FakeBar:
-    def next():
+    @staticmethod
+    def next(*args, **kwargs):
         return
 
-    def finish():
+    @staticmethod
+    def finish(*args, **kwargs):
         return
 
 

@@ -2,6 +2,9 @@ VALID_STRATEGIES = ["pairwise", "linear"]
 MIN_SHORT_SEQ_LEN = 0
 MAX_SHORT_SEQ_LEN = 16
 UNKNOWN_REC_TYPE = "unknown"
+FASTA_EXTS = [".fa", ".fasta"]
+GBK_EXTS = [".gb", ".gbk", ".gbff"]
+VALID_EXTS = FASTA_EXTS + GBK_EXTS
 SUB_RATE = float(2.2 * 10 ** (-10))
 
 COLORS = {

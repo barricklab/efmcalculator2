@@ -40,7 +40,7 @@ FONT = "Arial"
 FONTSIZE = "12pt"
 
 
-def make_webpage(fig, tables, filename):
+def make_webpage(fig, tables):
     # Build a DIV above the plot that contains the name of the plot and the total burden
     if False:
         name_div = Div(
@@ -107,11 +107,11 @@ def make_webpage(fig, tables, filename):
                 layout, *tables, styles={"margin": "0 auto", "align-items": "center"}
             )
 
+    return layout
+
+
+def export_html(layout, filename):
     script, fig = components(layout)
-    export_html(script, fig, filename)
-
-
-def export_html(script, div, filename):
     bokeh_version = bokeh.__version__
     template_path = os.path.join(
         os.path.dirname(__file__), "assets", "html_template.html"
@@ -119,6 +119,13 @@ def export_html(script, div, filename):
     asset_location = os.path.join(os.path.dirname(__file__), "assets")
     with open(template_path, "r", encoding="utf-8") as f:
         template = f.read()
+
+    if os.path.exists(os.path.join(os.path.dirname(filename), "assets")):
+        shutil.rmtree(os.path.join(os.path.dirname(filename), "assets"))
+    shutil.copytree(
+        os.path.join(os.path.dirname(__file__), "assets"),
+        os.path.join(os.path.dirname(filename), "assets"),
+    )
     template = template.replace("{{bokehscript}}", script)
     template = template.replace("{{bokehdiv}}", div)
     template = template.replace("{{bokehversion}}", bokeh_version)
