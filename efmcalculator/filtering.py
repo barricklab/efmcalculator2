@@ -40,6 +40,20 @@ def filter_ssrs(ssr_dataframe):
 
 def filter_rmds(rmd_dataframe):
     # Delete redundant SRS repeats @TODO
+    rmd_dataframe = (
+        rmd_dataframe
+        .group_by(pl.col("repeat"))
+        .agg(
+            pl.col("repeat_len").first(),
+            pl.col("position_left"), 
+            pl.col("position_right"),
+            pl.col("distance")
+            )
+        # removes smaller RMDs that have the exact same positions as larger RMDs
+        .sort("repeat_len", descending = True)
+        .group_by(pl.col("position_left"))
+        .head(1)
+    )
 
     return rmd_dataframe
 
