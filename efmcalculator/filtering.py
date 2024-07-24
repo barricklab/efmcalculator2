@@ -53,6 +53,32 @@ def filter_rmds(rmd_dataframe):
         .sort("repeat_len", descending = True)
         .group_by(pl.col("position_left"))
         .head(1)
+
+        #removes shorter versions of the same repeat that start at different positions
+        .with_columns(
+            pl.col("position_left").list.len().alias("count")
+        )
+        .explode(pl.col(["position_left", "position_right", "distance"]))
+        .sort(["count", "position_left"], descending=[True, False])
+        .group_by(pl.col("repeat"), maintain_order=True)
+        .agg(
+            pl.col("position_left"),
+            pl.col("position_right"),
+            pl.first("repeat_len"),
+            pl.col("distance"),
+            pl.first("count")
+        )
+        .with_columns(
+            pl.col("position_left").shift(1).alias("last_position_left"),
+            pl.col("position_left").list.eval(pl.element() -1).alias("adjusted_start")
+        )
+        .filter(
+            (pl.col("last_position_left").is_null()) |
+            (pl.col("last_position_left") != pl.col("adjusted_start"))
+            # (pl.col("repeat_len") + 1 != pl.col("last_len")))
+        )
+        .select(["repeat", "repeat_len", "position_left", "position_right", "distance"])
+        .explode(["position_left", "position_right", "distance"])
     )
 
     return rmd_dataframe
