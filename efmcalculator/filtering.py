@@ -38,16 +38,24 @@ def filter_ssrs(ssr_dataframe):
     return ssr_dataframe
 
 
-def filter_rmds(rmd_dataframe):
+def filter_direct_repeats(rmd_dataframe, srs_dataframe):
     # Delete redundant SRS repeats @TODO
-    rmd_dataframe = (
-        rmd_dataframe
+
+    # label RMDs and SRSs and combine into 1 df 
+    rmd_dataframe = rmd_dataframe.with_columns(pl.lit("RMD").alias("type"))
+    srs_dataframe = srs_dataframe.with_columns(pl.lit("SRS").alias("type"))
+    combined_dataframe = pl.concat([rmd_dataframe, srs_dataframe])
+
+    #filter combined dataframe
+    combined_dataframe = (
+        combined_dataframe
         .group_by(pl.col("repeat"))
         .agg(
-            pl.col("repeat_len").first(),
+            pl.first("repeat_len"),
             pl.col("position_left"), 
             pl.col("position_right"),
-            pl.col("distance")
+            pl.col("distance"), 
+            pl.first("type")
             )
         # removes smaller RMDs that have the exact same positions as larger RMDs
         .sort("repeat_len", descending = True)
@@ -66,7 +74,8 @@ def filter_rmds(rmd_dataframe):
             pl.col("position_right"),
             pl.first("repeat_len"),
             pl.col("distance"),
-            pl.first("count")
+            pl.first("count"), 
+            pl.col("type")
         )
         .with_columns(
             pl.col("position_left").shift(1).alias("last_position_left"),
@@ -77,11 +86,16 @@ def filter_rmds(rmd_dataframe):
             (pl.col("last_position_left") != pl.col("adjusted_start"))
             # (pl.col("repeat_len") + 1 != pl.col("last_len")))
         )
-        .select(["repeat", "repeat_len", "position_left", "position_right", "distance"])
-        .explode(["position_left", "position_right", "distance"])
+        .select(["repeat", "repeat_len", "position_left", "position_right", "distance", "type"])
+        .explode(["position_left", "position_right", "distance", "type"])
     )
 
-    return rmd_dataframe
+
+    # split back into rmd_dataframe and srs_dataframe
+    rmd_dataframe = combined_dataframe.filter(pl.col("type") == "RMD").drop("type")
+    srs_dataframe = combined_dataframe.filter(pl.col("type") == "SRS") .drop("type")
+
+    return rmd_dataframe, srs_dataframe
 
 
 # No longer necessary filters (already covered by pairwise approach)

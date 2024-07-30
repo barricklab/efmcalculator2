@@ -10,7 +10,7 @@ from Bio.Seq import Seq
 
 from .short_seq_finder import predict
 from .SRS_filter import filter_redundant
-from .filtering import filter_ssrs, filter_rmds
+from .filtering import filter_ssrs, filter_direct_repeats
 from .mutation_rates import ssr_mut_rate_vector, rmd_mut_rate_vector
 from .constants import VALID_STRATEGIES, FASTA_EXTS, GBK_EXTS
 from .parse_inputs import parse_file, validate_sequences, BadSequenceError
@@ -258,7 +258,7 @@ def predict_many(
 def post_process(ssr_df, srs_df, rmd_df):
     # Perform Filtering
     ssr_df = filter_ssrs(ssr_df)
-    rmd_df = filter_rmds(rmd_df)
+    rmd_df, srs_df = filter_direct_repeats(rmd_df, srs_df)
 
     # Calculate Mutation Rates
 
