@@ -6,7 +6,8 @@ MAX_SSR_SPACER = 5000 # Dont search for SRSs this far appart
 UNKNOWN_REC_TYPE = "unknown"
 FASTA_EXTS = [".fa", ".fasta"]
 GBK_EXTS = [".gb", ".gbk", ".gbff"]
-VALID_EXTS = FASTA_EXTS + GBK_EXTS
+CSV_EXTS = [".csv"]
+VALID_EXTS = FASTA_EXTS + GBK_EXTS + CSV_EXTS
 SUB_RATE = float(2.2 * 10 ** (-10))
 
 COLORS = {
