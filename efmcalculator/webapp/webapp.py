@@ -65,16 +65,19 @@ def run_webapp():
         unsafe_allow_html=True
     )
 
-    upload_option = "Upload files (FASTA, GenBank, or CSV)"
-    enter_option = "Copy/Paste Plain Text"
-    example_option = "Example"
+    col1,col2,col3 = st.columns(3)
 
-    option = st.radio(
-        "Choose method of submitting sequence:",
-        [upload_option, enter_option, example_option],
-    )
+    with col1:
+        upload_option = "Upload files (FASTA, GenBank, or CSV)"
+        enter_option = "Copy/Paste Plain Text"
+        example_option = "Example"
 
-    inSeq = None
+        option = st.radio(
+            "Choose method of submitting sequence:",
+            [upload_option, enter_option, example_option],
+        )
+
+        inSeq = None
 
     with TemporaryDirectory() as tempdir:
         if option == upload_option:
@@ -107,14 +110,19 @@ def run_webapp():
                 inSeq = [SeqRecord(Seq(field), id="sequence")]
 
         elif option == example_option:
-            gbs = []
-            examples_path = "examples/"
-            for infile_loc in glob.glob(os.path.join(examples_path, "*.gb")) + glob.glob(os.path.join(examples_path, "*.fasta")):
-                gbs.append(infile_loc.split("/")[-1])
-            exampleFile = st.radio("Choose example file:", gbs)
-            filepath = Path(examples_path + f"{exampleFile}")
-            if filepath:
-                inSeq = parse_file(filepath)
+            with col1:
+                gbs = []
+                examples_path = "examples/"
+                for infile_loc in glob.glob(os.path.join(examples_path, "*.gb")) + glob.glob(os.path.join(examples_path, "*.fasta")):
+                    gbs.append(infile_loc.split("/")[-1])
+                exampleFile = st.radio("Choose example file:", gbs)
+                filepath = Path(examples_path + f"{exampleFile}")
+                if filepath:
+                    inSeq = parse_file(filepath)
+
+        with col3:
+            st.write("The EFM Calculator predicts mutational hotspots as a result of DNA polymerase slippage. It classifies these hotspots into three categories, Short Sequence Repeats, Short Repeated Sequences, and Repeat Mediated Deletions. For more information, please see the paper. If you have found this tool helpful, please remember to cite it as well.")
+            st.write("Jack, B. R., Leonard, S. P., Mishler, D. M., Renda, B. A., Leon, D., Suárez, G. A., & Barrick, J. E. (2015). Predicting the Genetic Stability of Engineered DNA Sequences with the EFM Calculator. ACS Synthetic Biology, 4(8), 939–943. https://doi.org/10.1021/acssynbio.5b00068")
 
 
         if inSeq:
@@ -151,11 +159,3 @@ def run_webapp():
                 # layout = make_webpage(fig, tables)
                 layout = add_tables(fig, tables)
                 shown_result = components.html(file_html(layout, "cdn"), height=650)
-
-
-
-        footer_html = """<div style='text-align: center;'>
-        <p>If you've found this tool useful, please cite the following publication: Jack, B. R., Leonard, S. P., Mishler, D. M., Renda, B. A., Leon, D., Suárez, G. A., & Barrick, J. E. (2015). Predicting the Genetic Stability of Engineered DNA Sequences with the EFM Calculator. ACS Synthetic Biology, 4(8), 939–943. https://doi.org/10.1021/acssynbio.5b00068</p>
-        </p>
-        </div>"""
-        st.markdown(footer_html, unsafe_allow_html=True)
