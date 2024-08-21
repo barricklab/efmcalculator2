@@ -1,6 +1,7 @@
 import pathlib
 import logging
-from Bio import SeqIO
+import csv
+from Bio import SeqIO, SeqRecord, Seq
 
 from .constants import FASTA_EXTS, GBK_EXTS
 
@@ -12,7 +13,7 @@ class BadSequenceError(ValueError):
     pass
 
 
-def parse_file(filepath: pathlib.Path):
+def parse_file(filepath: pathlib.Path) -> list:
     path_as_string = str(filepath)
     if not filepath.exists():
         raise OSError("File {} does not exist.".format(path_as_string))
@@ -20,9 +21,11 @@ def parse_file(filepath: pathlib.Path):
         sequences = SeqIO.parse(path_as_string, "fasta")
     elif filepath.suffix in GBK_EXTS:
         sequences = SeqIO.parse(path_as_string, "genbank")
+    elif filepath.suffix in GBK_EXTS:
+        sequences = parse_csv(path_as_string)
     else:
         raise ValueError(
-            f"File {filepath.suffix} is not a known file format. Must be one of {FASTA_EXTS +GBK_EXTS}."
+            f"File {filepath.suffix} is not a known file format. Must be one of {FASTA_EXTS + GBK_EXTS + ["csv"]}."
         )
     return list(sequences)
 
@@ -40,3 +43,26 @@ def validate_sequences(sequences, max_len=None):
             raise BadSequenceError(
                 f"Input sequence contains invalid characters. Only IUPAC bases are allowed."
             )
+
+def parse_csv(path_as_string):
+    with open(path_as_string, "r") as csvfile:
+        csvreader = csv.reader(csvfile)
+        headers = csvreader.__next__()
+        if not headers:
+            raise BadSequenceError("CSV file is empty or malformed")
+        names = headers.index("name")
+        seqs = headers.index("seq")
+        if not seqs:
+            raise BadSequenceError(
+                f"CSV file has no 'csv' column"
+            )
+        sequences = []
+        for i, entry in enumerate(sequences):
+            if names:
+                name = f"{i+1}_" + entry[names]
+            else:
+                name = f"{i+1}_sequence"
+            sequence = entry[seqs]
+            formatted_entry = SeqRecord(Seq(sequence),name=name)
+            sequences.append(formatted_entry)
+    return sequences
