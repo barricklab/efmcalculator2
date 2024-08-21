@@ -40,7 +40,7 @@ FONT = "Arial"
 FONTSIZE = "12pt"
 
 
-def make_webpage(fig, tables):
+def add_header(layout):
     # Build a DIV above the plot that contains the name of the plot and the total burden
     if False:
         name_div = Div(
@@ -52,11 +52,6 @@ def make_webpage(fig, tables):
         text=f'<h2 style="font-family: {FONT}; font-size: {FONTSIZE}">RIP Score</h2>'
     )
 
-    # Specify we want the svg backend
-    fig.output_backend = "svg"
-
-    layout = fig
-
     # layout = column(layout, widgets, styles={'margin': '0 auto', 'align-items': 'center'})
     layout = column(
         name_div,
@@ -64,54 +59,74 @@ def make_webpage(fig, tables):
         layout,
         styles={"margin": "0 auto", "align-items": "center"},
     )
+
+    return layout
+
+
+def add_tables(layout, tables):
+    if not layout:
+        layout = Div()
+    if len(tables) > 1:
+        # Make buttons that show the appropriat tables
+        buttons = []
+        button_label = Div(text="Tables:")
+        for table_name, table_value in tables.items():
+            button = bokeh.models.widgets.Button(label=table_name)
+            button.js_on_click(
+                CustomJS(
+                    args=dict(tables=tables, label=table_name),
+                    code="""
+            tables[label].visible = true;
+            for (var key in tables) {
+                if (key != label){
+                    tables[key].visible = false;
+                }
+            }
+            """,
+                )
+            )
+            buttons.append(button)
+            table_value.visible = False
+        buttons = row(
+            button_label,
+            *buttons,
+            styles={"margin": "0 auto", "align-items": "center"},
+        )
+        layout = column(
+            layout, buttons, styles={"margin": "0 auto", "align-items": "center"}
+        )
+        layout = column(
+            layout,
+            *tables.values(),
+            styles={"margin": "0 auto", "align-items": "center"},
+        )
+    else:
+        layout = column(
+            layout,
+            *tables.values(),
+            styles={"margin": "0 auto", "align-items": "center"},
+        )
+    return layout
+
+
+def add_footer(layout):
+    return layout
+
+
+def make_standalone_page(fig, tables):
+    layout = fig
     layout.sizing_mode = "scale_width"
 
-    # Add the tables
+    layout = add_header(layout)
     if tables:
-        if len(tables) > 1:
-            # Make buttons that show the appropriat tables
-            buttons = []
-            button_label = Div(text="Tables:")
-            for table_name, table_value in tables.items():
-                button = bokeh.models.widgets.Button(label=table_name)
-                button.js_on_click(
-                    CustomJS(
-                        args=dict(tables=tables, label=table_name),
-                        code="""
-                tables[label].visible = true;
-                for (var key in tables) {
-                    if (key != label){
-                        tables[key].visible = false;
-                    }
-                }
-                """,
-                    )
-                )
-                buttons.append(button)
-                table_value.visible = False
-            buttons = row(
-                button_label,
-                *buttons,
-                styles={"margin": "0 auto", "align-items": "center"},
-            )
-            layout = column(
-                layout, buttons, styles={"margin": "0 auto", "align-items": "center"}
-            )
-            layout = column(
-                layout,
-                *tables.values(),
-                styles={"margin": "0 auto", "align-items": "center"},
-            )
-        else:
-            layout = column(
-                layout, *tables, styles={"margin": "0 auto", "align-items": "center"}
-            )
+        layout = add_tables(layout, tables)
+    layout = add_footer(layout)
 
     return layout
 
 
 def export_html(layout, filename):
-    script, fig = components(layout)
+    script, div = components(layout)
     bokeh_version = bokeh.__version__
     template_path = os.path.join(
         os.path.dirname(__file__), "assets", "html_template.html"

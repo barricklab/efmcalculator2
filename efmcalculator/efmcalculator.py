@@ -15,7 +15,7 @@ from .mutation_rates import ssr_mut_rate_vector, rmd_mut_rate_vector
 from .constants import VALID_STRATEGIES, FASTA_EXTS, GBK_EXTS
 from .parse_inputs import parse_file, validate_sequences, BadSequenceError
 
-from .utilities import is_pathname_valid, is_path_creatable
+from .utilities import is_pathname_valid, is_path_creatable, sanitize_filename
 from .visualization.graph import make_plot
 from .visualization.make_webpage import make_standalone_page, export_html
 
@@ -40,14 +40,14 @@ def _main():
 
     # Parse args
 
-    parser = argparse.ArgumentParser(description="Find Short Sequences from Fasta File")
+    parser = argparse.ArgumentParser(description="Find Mutation Hotspots from Input Sequences")
     parser.add_argument(
         "-i",
         "--input",
         action="store",
         dest="inpath",
         required=True,
-        help="the path to fasta/genbank file",
+        help="the path to fasta/genbank/csv file",
     )
     parser.add_argument(
         "-o",
@@ -63,8 +63,8 @@ def _main():
         action="store",
         dest="strategy",
         required=False,
-        default="linear",
-        help="the strategy to use for predicting deletions. Must be one of 'pairwise' or 'linear' (default: 'linear')",
+        default="pairwise",
+        help="the strategy to use for predicting deletions. Must be one of 'pairwise' or 'linear' (default: 'pairwise')",
     )
     parser.add_argument(
         "-c",
@@ -170,11 +170,7 @@ def _main():
 
         if len(sequences) > 1:
             # https://stackoverflow.com/questions/7406102/create-sane-safe-filename-from-any-unsafe-string
-            sanitized_record_name = "".join(
-                c
-                for c in input_sequence.name
-                if c.isalpha() or c.isdigit() or c == " " or c == "_"
-            ).rstrip()
+            sanitized_record_name = sanitize_filename(input_sequence.name)
             folder = args.outpath + "/" + sanitized_record_name + "/"
         else:
             folder = args.outpath + "/"

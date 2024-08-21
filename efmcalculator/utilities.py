@@ -141,3 +141,10 @@ def is_path_exists_or_creatable(pathname: str) -> bool:
     # other exceptions are unrelated fatal issues and should not be caught here.
     except OSError:
         return False
+
+def sanitize_filename(unsanitized_string: str) -> str:
+    return "".join(
+                    c
+                    for c in unsanitized_string
+                    if c.isalpha() or c.isdigit() or c == " " or c == "_" or c == "/" or c == "\\"
+                ).rstrip()
