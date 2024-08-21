@@ -5,8 +5,7 @@ import itertools
 from progress.spinner import Spinner
 from progress.bar import IncrementalBar
 import numpy as np
-from .constants import MIN_SHORT_SEQ_LEN
-from.constants import MAX_SHORT_SEQ_LEN
+from .constants import MAX_SHORT_SEQ_LEN, MIN_SSR_LEN, MIN_SHORT_SEQ_LEN
 
 
 class SeqAttr:
@@ -33,34 +32,40 @@ logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
-def _pairwise_slips(polars_df, column) -> pl.DataFrame:
+def _pairwise_slips(polars_df, column, is_circular) -> pl.DataFrame:
     """Recieve a polars dataframe with column of [List[type]]
     Returns the dataframe back with a pairwise list of positions"""
 
     # Shamelessly adapted from https://stackoverflow.com/questions/77354114/how-would-i-generate-combinations-of-items-within-polars-using-the-native-expres
 
-    nrows = polars_df.select(pl.len()).item()
-
-    if logger.isEnabledFor(logging.INFO):
-        bar = IncrementalBar("Generating candidate deletions", max=nrows)
-    else:
-        bar = FakeBar()
 
     def map_function(list_o_things):
-        bar.next()
         return [
             sorted((thing_1, thing_2))
             for thing_1, thing_2 in itertools.combinations(list_o_things, 2)
         ]
 
-    pairwise = polars_df.lazy().with_columns(
+    # Use linear pairing to find SSRs below the minimum SRS length (much faster)
+    polars_df = polars_df.with_columns(
+        pl.col('repeat').str.lengths().alias('length')
+    )
+
+    linear_subset = polars_df.filter(pl.col('length') < MIN_SSR_LEN)
+    pairwise = polars_df.filter(pl.col('length') >= MIN_SSR_LEN)
+
+    linear_subset = _linear_slips(linear_subset, column, is_circular=is_circular)
+
+    # Run pairwise for SRS's above minimum length
+    pairwise = pairwise.lazy().with_columns(
         pl.col(column)
         .map_elements(map_function, return_dtype=pl.List(pl.List(pl.Int64)))
         .alias(f"pairings")
     )
 
-    pairwise = pairwise.collect()
-    bar.finish()
+    linear_subset = linear_subset
+    pairwise = pairwise.collect().select(pl.col('repeat'), pl.col('pairings'))
+
+    pairwise = pl.concat([linear_subset, pairwise])
 
     return pairwise
 

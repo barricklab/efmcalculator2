@@ -158,7 +158,7 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
 
     # Create list of positions
     if strategy == "pairwise":
-        repeat_df = _pairwise_slips(repeat_df, "position")
+        repeat_df = _pairwise_slips(repeat_df, "position", isCircular)
     elif strategy == "linear":
         repeat_df = _linear_slips(repeat_df, "position", isCircular)
     else:
