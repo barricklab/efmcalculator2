@@ -68,13 +68,20 @@ def assemble(layout, summary, tables):
     if not layout:
         layout = Div()
 
-    summary_layout = Div(text="Test")
+
+    summary_layout = column(Div(text=f"Rip Score: {summary["rip"]}", width=750),
+                            Div(text=f"SSR: {summary["ssr_sum"]}", width=750),
+                            Div(text=f"SRS: {summary["srs_sum"]}", width=750),
+                            Div(text=f"RMD: {summary["rmd_sum"]}", width=750),
+                            Div(text=f"Basal: {summary["bps_sum"]}", width=750),)
 
     if len(tables) > 1:
         # Make buttons that show the appropriat tables
         buttons = []
         button_label = Div(text="Tables:")
-        for table_name, table_value in tables.items():
+        for i, table_data in enumerate(tables.items()):
+            table_name = table_data[0]
+            table_value = table_data[1]
             button = bokeh.models.widgets.Button(label=table_name)
             button.js_on_click(
                 CustomJS(
@@ -90,7 +97,10 @@ def assemble(layout, summary, tables):
                 )
             )
             buttons.append(button)
-            table_value.visible = False
+            if i == 0:
+                table_value.visible = True
+            else:
+                table_value.visible = False
 
         buttons = row(
             button_label,
@@ -99,10 +109,10 @@ def assemble(layout, summary, tables):
         )
 
         table_layout = column(
-                    buttons, *tables.values(), styles={"margin": "0 auto", "align-items": "center"}
+                    buttons, *tables.values(), styles={"margin": "0 auto", }
                 )
 
-        data_layout = row(summary_layout, table_layout, styles={"margin": "0 auto", "align-items": "center"})
+        data_layout = row(summary_layout, table_layout, styles={"margin": "0 auto", })
 
         layout = column(
             layout,

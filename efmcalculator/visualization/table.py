@@ -32,17 +32,19 @@ def generate_bokeh_table(df, name, callback=None) -> DataTable:
 
     source.selected.indices = selected
 
-    name_div = Div(text=f"<h1>{name}</h1>")
     table = DataTable(
         source=source,
         columns=columns,
         name=table_name,
-        width=1500,
+        width=750,
         editable=True,
         selectable="checkbox",
     )
-    table = column(name_div, table)
     if callback:
         callback = callback(source)
         source.selected.js_on_change("indices", callback)
+    return table
+
+def generate_empty_table(name):
+    table = Div(text = f"No {name} hotspots predicted", width=750)
     return table

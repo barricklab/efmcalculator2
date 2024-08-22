@@ -21,6 +21,7 @@ import streamlit.components.v1 as components
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from streamlit_extras.stylable_container import stylable_container
+from streamlit_extras.add_vertical_space import add_vertical_space
 from ..efmcalculator import bulk_output, predict_many
 from ..mutation_rates import rip_score
 
@@ -238,3 +239,4 @@ def run_webapp():
                 summary = rip_score(result[0], result[1], result[2], len(seq_record.seq))
                 layout = assemble(fig, summary, tables)
                 shown_result = components.html(file_html(layout, "cdn"), height=650)
+    add_vertical_space(4)

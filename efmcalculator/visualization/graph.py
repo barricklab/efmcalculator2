@@ -34,6 +34,7 @@ from .ssr import draw_ssr
 from .rmd import draw_rmd
 from .srs import draw_srs
 from .eval_top import eval_top
+from .table import generate_empty_table
 from bokeh.models import Range1d
 
 import logging
@@ -75,14 +76,20 @@ def make_plot(seqrecord, **repeat_dataframes):
     if isinstance(ssr_df, pl.DataFrame) and not ssr_df.is_empty():
         fig, table = draw_ssr(fig, ssr_df)
         tables["SSR"] = table
+    else:
+        tables["SSR"] = generate_empty_table("SSR")
 
     if isinstance(srs_df, pl.DataFrame) and not srs_df.is_empty():
         fig, table = draw_srs(fig, srs_df)
         tables["SRS"] = table
+    else:
+        tables["SRS"] = generate_empty_table("SRS")
 
     if isinstance(rmd_df, pl.DataFrame) and not rmd_df.is_empty():
         fig, table = draw_rmd(fig, rmd_df)
         tables["RMD"] = table
+    else:
+        tables["RMD"] = generate_empty_table("RMD")
 
     fig.line(
         [0, xmax],
