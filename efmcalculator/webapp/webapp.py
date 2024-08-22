@@ -11,7 +11,7 @@ import zipfile
 import os
 from ..short_seq_finder import predict
 from ..visualization.graph import make_plot
-from ..visualization.make_webpage import add_tables
+from ..visualization.make_webpage import assemble
 from ..constants import VALID_EXTS
 from ..parse_inputs import parse_file, validate_sequences, BadSequenceError
 
@@ -22,6 +22,7 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 from streamlit_extras.stylable_container import stylable_container
 from ..efmcalculator import bulk_output, predict_many
+from ..mutation_rates import rip_score
 
 ASSET_LOCATION = os.path.join(os.path.dirname(__file__), "../visualization/assets")
 MAX_SIZE = 50000
@@ -226,7 +227,7 @@ def run_webapp():
                     )
 
             seq_record = sequence_dict[selected_sequence]
-            sequence = seq_record.seq.strip("\n\n").upper().replace("U", "T")
+            sequence = str(seq_record.seq.strip("\n\n").upper().replace("U", "T"))
 
             with st.spinner("Calculating..."):
                 ssr, srs, rmd = predict(sequence, strategy="pairwise", isCircular=False)
@@ -234,6 +235,6 @@ def run_webapp():
                 result = [ssr, srs, rmd]
 
                 fig, tables = make_plot(seq_record, ssr=result[0], srs=result[1], rmd=result[2])
-                # layout = make_webpage(fig, tables)
-                layout = add_tables(fig, tables)
+                summary = rip_score(result[0], result[1], result[2], len(seq_record.seq))
+                layout = assemble(fig, summary, tables)
                 shown_result = components.html(file_html(layout, "cdn"), height=650)

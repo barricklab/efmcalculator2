@@ -113,7 +113,6 @@ def plot_features(seqrecord, fig):
 
         # Define the color
         color = get_feature_color(genbank_annotation)
-        print(color)
 
         # Add the annotation to the dictionary
 

@@ -34,6 +34,7 @@ from .ssr import draw_ssr
 from .rmd import draw_rmd
 from .srs import draw_srs
 from .eval_top import eval_top
+from bokeh.models import Range1d
 
 import logging
 
@@ -63,6 +64,8 @@ def make_plot(seqrecord, **repeat_dataframes):
 
     xmax = len(seqrecord.seq)
 
+    fig.x_range = Range1d(0-len(seqrecord.seq)*.05, len(seqrecord.seq)*1.05)
+
     ssr_df, srs_df, rmd_df = eval_top(ssr_df, srs_df, rmd_df)
 
     if seqrecord.annotations:
@@ -80,5 +83,12 @@ def make_plot(seqrecord, **repeat_dataframes):
     if isinstance(rmd_df, pl.DataFrame) and not rmd_df.is_empty():
         fig, table = draw_rmd(fig, rmd_df)
         tables["RMD"] = table
+
+    fig.line(
+        [0, xmax],
+        [1000, 1000],
+        line_width=2,
+        color="black",
+    )
 
     return fig, tables

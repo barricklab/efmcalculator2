@@ -14,6 +14,7 @@ setup(
         "pyarrow",
         "bokeh",
         "streamlit",
+        "streamlit-extras"
     ],
     entry_points={
         "console_scripts": [

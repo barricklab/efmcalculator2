@@ -33,6 +33,7 @@ from .ssr import draw_ssr
 from .rmd import draw_rmd
 from .srs import draw_srs
 from .eval_top import eval_top
+from ..mutation_rates import rip_score
 
 import logging
 
@@ -63,9 +64,12 @@ def add_header(layout):
     return layout
 
 
-def add_tables(layout, tables):
+def assemble(layout, summary, tables):
     if not layout:
         layout = Div()
+
+    summary_layout = Div(text="Test")
+
     if len(tables) > 1:
         # Make buttons that show the appropriat tables
         buttons = []
@@ -87,25 +91,25 @@ def add_tables(layout, tables):
             )
             buttons.append(button)
             table_value.visible = False
+
         buttons = row(
             button_label,
             *buttons,
             styles={"margin": "0 auto", "align-items": "center"},
         )
-        layout = column(
-            layout, buttons, styles={"margin": "0 auto", "align-items": "center"}
-        )
-        layout = column(
-            layout,
-            *tables.values(),
-            styles={"margin": "0 auto", "align-items": "center"},
-        )
-    else:
+
+        table_layout = column(
+                    buttons, *tables.values(), styles={"margin": "0 auto", "align-items": "center"}
+                )
+
+        data_layout = row(summary_layout, table_layout, styles={"margin": "0 auto", "align-items": "center"})
+
         layout = column(
             layout,
-            *tables.values(),
+            data_layout,
             styles={"margin": "0 auto", "align-items": "center"},
         )
+
     return layout
 
 
@@ -113,13 +117,13 @@ def add_footer(layout):
     return layout
 
 
-def make_standalone_page(fig, tables):
+def make_standalone_page(fig, tables, summary):
     layout = fig
     layout.sizing_mode = 'stretch_width'
 
     layout = add_header(layout)
     if tables:
-        layout = add_tables(layout, tables)
+        layout = assemble(layout, summary, tables)
     layout = add_footer(layout)
 
     return layout

@@ -11,7 +11,7 @@ from Bio.Seq import Seq
 from .short_seq_finder import predict
 from .SRS_filter import filter_redundant
 from .filtering import filter_ssrs, filter_direct_repeats
-from .mutation_rates import ssr_mut_rate_vector, rmd_mut_rate_vector
+from .mutation_rates import ssr_mut_rate_vector, rmd_mut_rate_vector, rip_score
 from .constants import VALID_STRATEGIES, FASTA_EXTS, GBK_EXTS
 from .parse_inputs import parse_file, validate_sequences, BadSequenceError
 
@@ -23,6 +23,8 @@ from Bio.SeqRecord import SeqRecord
 from typing import Union, List, Set, Generator
 from importlib.metadata import version, PackageNotFoundError
 from rich.logging import RichHandler
+from streamlit_extras.concurrency_limiter import concurrency_limiter
+import streamlit as st
 
 from bokeh.plotting import output_file, save
 
@@ -161,9 +163,17 @@ def _main():
             sequences[i].name = f"{i+1}_{seq.name}"
 
     # Run predictions -----------
-    results_list = predict_many(
+    results_generator = predict_many(
                 sequences=sequences, strategy=args.strategy, isCircular=args.isCirc
             )
+
+    results_list = []
+
+    for result, sequence in zip(results_generator, sequences):
+
+        logger.info(rip_score(result[0], result[1], result[2], len(sequence.seq)))
+        result.append(results_list)
+
     bulk_output(results_list, sequences, args.outpath, args.no_vis)
 
     # Logging
@@ -207,10 +217,12 @@ def bulk_output(results_list, sequences, outpath, skip_vis = False):
         fig, tables = make_plot(
             input_sequence, ssr=result[0], srs=result[1], rmd=result[2]
         )
-        layout = make_standalone_page(fig, tables)
+        summary = rip_score(result[0], result[1], result[2], len(input_sequence.seq))
+        layout = make_standalone_page(fig, tables, summary)
         export_html(layout, f"{folder}plot.html")
 
 
+@concurrency_limiter(max_concurrency=1)
 def predict_many(
     sequences: List[SeqRecord],
     strategy: str,
@@ -246,7 +258,7 @@ def predict_many(
         logger.info("Running on {}".format(record.name))
 
         # Perform predictions
-        seq = record.seq.strip("\n").upper().replace("U", "T")
+        seq = str(record.seq.strip("\n").upper().replace("U", "T"))
         ssr_df, srs_df, rmd_df = predict(seq, strategy, isCircular)
         ssr_df, srs_df, rmd_df = post_process(ssr_df, srs_df, rmd_df)
 

@@ -19,6 +19,7 @@ import tempfile
 from typing import List
 from .constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE
 from .utilities import FakeBar
+import streamlit as st
 
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -136,7 +137,7 @@ def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
 
     return df  # In the same format as df alongside the original data
 
-
+@st.cache_data(ttl="1h")
 def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     """Scans and predicts SSRs and RMDs. Returns dataframes representing each"""
     seq_len = len(seq)
