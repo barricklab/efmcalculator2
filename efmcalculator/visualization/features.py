@@ -113,6 +113,7 @@ def plot_features(seqrecord, fig):
 
         # Define the color
         color = get_feature_color(genbank_annotation)
+        print(color)
 
         # Add the annotation to the dictionary
 
@@ -139,19 +140,12 @@ def plot_features(seqrecord, fig):
     )
     fig.add_tools(genbank_glyphs_hover)
 
-    # Draw a line above and below the annotations
+    # Draw a line below the annotations
 
     lowest_annotation_y -= 500
     fig.line(
         [0, xmax],
         [lowest_annotation_y, lowest_annotation_y],
-        line_width=2,
-        color="black",
-    )
-
-    fig.line(
-        [0, xmax],
-        [1000, 1000],
         line_width=2,
         color="black",
     )
@@ -179,6 +173,7 @@ def get_feature_color(feature: SeqFeature) -> str:
         color = COLORS["primer_bind"]
     else:
         color = COLORS["misc"]
+    return color
 
 
 def assign_feature_levels(features: List[SeqFeature]) -> List[SeqFeature]:
