@@ -161,19 +161,31 @@ def _main():
             sequences[i].name = f"{i+1}_{seq.name}"
 
     # Run predictions -----------
-    for i, result in enumerate(
-        predict_many(
-            sequences=sequences, strategy=args.strategy, isCircular=args.isCirc
-        )
-    ):
+    results_list = predict_many(
+                sequences=sequences, strategy=args.strategy, isCircular=args.isCirc
+            )
+    bulk_output(results_list, sequences, args.outpath, args.no_vis)
+
+    # Logging
+    t = time.time() - start_time
+    t_sec = int(t)
+    t_msec = round((t - t_sec) * 1000)
+    t_min, t_sec = divmod(t_sec, 60)
+    t_hour, t_min = divmod(t_min, 60)
+    logger.info(
+        f"EFMCalculator completed in {t_hour:02d}h:{t_min:02d}m:{t_sec:02d}s:{t_msec:02d}ms"
+    )
+
+def bulk_output(results_list, sequences, outpath, skip_vis = False):
+    for i, result in enumerate(results_list):
         input_sequence = sequences[i]
 
         if len(sequences) > 1:
             # https://stackoverflow.com/questions/7406102/create-sane-safe-filename-from-any-unsafe-string
             sanitized_record_name = sanitize_filename(input_sequence.name)
-            folder = args.outpath + "/" + sanitized_record_name + "/"
+            folder = outpath + "/" + sanitized_record_name + "/"
         else:
-            folder = args.outpath + "/"
+            folder = outpath + "/"
 
         # Create output folder if it doesn't exist ---------
         try:
@@ -190,23 +202,13 @@ def _main():
         result[2].write_csv(folder + "rmd.csv")
 
         # Run data vis ---------
-        if args.no_vis:
+        if skip_vis:
             continue
         fig, tables = make_plot(
             input_sequence, ssr=result[0], srs=result[1], rmd=result[2]
         )
         layout = make_standalone_page(fig, tables)
         export_html(layout, f"{folder}plot.html")
-
-    # Logging
-    t = time.time() - start_time
-    t_sec = int(t)
-    t_msec = round((t - t_sec) * 1000)
-    t_min, t_sec = divmod(t_sec, 60)
-    t_hour, t_min = divmod(t_min, 60)
-    logger.info(
-        f"EFMCalculator completed in {t_hour:02d}h:{t_min:02d}m:{t_sec:02d}s:{t_msec:02d}ms"
-    )
 
 
 def predict_many(

@@ -146,5 +146,5 @@ def sanitize_filename(unsanitized_string: str) -> str:
     return "".join(
                     c
                     for c in unsanitized_string
-                    if c.isalpha() or c.isdigit() or c == " " or c == "_" or c == "/" or c == "\\"
+                    if c.isalpha() or c.isdigit() or c == " " or c == "_" or c == "/" or c == "\\" or c == "."
                 ).rstrip()

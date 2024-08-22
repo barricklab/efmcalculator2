@@ -115,7 +115,7 @@ def add_footer(layout):
 
 def make_standalone_page(fig, tables):
     layout = fig
-    layout.sizing_mode = "scale_width"
+    layout.sizing_mode = 'stretch_width'
 
     layout = add_header(layout)
     if tables:
