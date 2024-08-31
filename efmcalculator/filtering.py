@@ -38,17 +38,21 @@ def filter_ssrs(ssr_dataframe):
     return ssr_dataframe
 
 
-def filter_direct_repeats(rmd_dataframe, srs_dataframe):
+def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len):
     # Delete redundant SRS repeats @TODO
 
     # label RMDs and SRSs and combine into 1 df 
     rmd_dataframe = rmd_dataframe.with_columns(pl.lit("RMD").alias("type"))
     srs_dataframe = srs_dataframe.with_columns(pl.lit("SRS").alias("type"))
-    combined_dataframe = pl.concat([rmd_dataframe, srs_dataframe])
+    combined_dataframe = pl.concat([srs_dataframe, rmd_dataframe])
 
     #filter combined dataframe
     combined_dataframe = (
         combined_dataframe
+        .filter(
+            pl.col("repeat_len") > 5
+        )
+        .sort(["repeat_len", "position_left"], descending=[True, False])
         .group_by(pl.col("repeat"))
         .agg(
             pl.first("repeat_len"),
@@ -57,17 +61,30 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe):
             pl.col("distance"), 
             pl.first("type")
             )
+        .with_columns(
+            pl.concat_list(["position_left", "position_right"]).alias("positions")
+        )
         # removes smaller RMDs that have the exact same positions as larger RMDs
-        .sort("repeat_len", descending = True)
-        .group_by(pl.col("position_left"))
+        .sort(["repeat_len"], descending=True)
+        .with_columns(
+            pl.col("positions").list.eval(pl.element().unique()).alias("positions")
+        )
+        .group_by(pl.col("positions"))
+        .agg(pl.col("repeat"),
+             pl.first("repeat_len"),
+             pl.first("position_left"),
+             pl.first("position_right"),
+             pl.first("distance"), 
+             pl.first("type")
+             )
         .head(1)
 
         #removes shorter versions of the same repeat that start at different positions
         .with_columns(
-            pl.col("position_left").list.len().alias("count")
+            pl.col("positions").list.len().alias("count")
         )
         .explode(pl.col(["position_left", "position_right", "distance"]))
-        .sort(["count", "position_left"], descending=[True, False])
+        .sort(["count", "position_left", "repeat_len"], descending=[True, False, True])
         .group_by(pl.col("repeat"), maintain_order=True)
         .agg(
             pl.col("position_left"),
@@ -75,25 +92,47 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe):
             pl.first("repeat_len"),
             pl.col("distance"),
             pl.first("count"), 
-            pl.col("type")
+            pl.col("type"),
+            pl.col("position_left").shift(1).alias("last_position_left"),
+            (pl.col("position_right") - seq_len).alias("negative_start")
         )
+
         .with_columns(
             pl.col("position_left").shift(1).alias("last_position_left"),
-            pl.col("position_left").list.eval(pl.element() -1).alias("adjusted_start")
+            pl.col("position_left").list.eval(pl.element() -1).alias("adjusted_start"), 
+            pl.col("repeat_len").shift(1).alias("last_len")
         )
+    # delete if (last_pos == adjusted start or last_neg == adjusted start) AND last_len - len == 1
         .filter(
             (pl.col("last_position_left").is_null()) |
-            (pl.col("last_position_left") != pl.col("adjusted_start"))
-            # (pl.col("repeat_len") + 1 != pl.col("last_len")))
+            (pl.col("adjusted_start") != pl.col("last_position_left")) |
+            (pl.col("repeat_len") + 1 != pl.col("last_len"))        
         )
-        .select(["repeat", "repeat_len", "position_left", "position_right", "distance", "type"])
-        .explode(["position_left", "position_right", "distance", "type"])
     )
 
 
+    # want to remove the repeat in this df
+    filter2 = (
+        combined_dataframe
+        .filter(
+            (pl.col("adjusted_start").list.contains(-1)) |
+            (pl.col("negative_start").list.contains(-1))
+        )
+        .sort("repeat_len", descending=True)
+        .slice(1)
+    )
+
+    filtered_df = combined_dataframe.join(filter2, on=["repeat", "position_left", "position_right"], how="anti")
+
+    filtered_df = (
+    filtered_df
+        .select(["repeat", "repeat_len", "position_left", "position_right", "distance", "type", "adjusted_start", "last_position_left", "last_len", "count"])
+        .explode(["position_left", "position_right", "distance", "type"])
+    )
     # split back into rmd_dataframe and srs_dataframe
-    rmd_dataframe = combined_dataframe.filter(pl.col("type") == "RMD").drop("type")
-    srs_dataframe = combined_dataframe.filter(pl.col("type") == "SRS") .drop("type")
+    rmd_dataframe = filtered_df.filter(pl.col("type") == "RMD").drop("type")
+    srs_dataframe = filtered_df.filter(pl.col("type") == "SRS").drop("type")
+
 
     return rmd_dataframe, srs_dataframe
 
