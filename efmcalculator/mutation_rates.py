@@ -1,5 +1,6 @@
 import polars as pl
 from .constants import SUB_RATE
+pl.read_csv("./efmcalculator/data/gam_df.csv")
 
 
 
@@ -105,7 +106,7 @@ def rmd_mut_rate_vector(rmd_df, org="ecoli"):
     return rmd_df
 
 
-def srs_mut_rate_vector(length, distance, gam_df, org= "ecoli"):
+def srs_mut_rate_vector(length, distance, org= "ecoli"):
     """
     Calculate the recombination rate based on a GAM model.
 
@@ -120,7 +121,7 @@ def srs_mut_rate_vector(length, distance, gam_df, org= "ecoli"):
     
     try:
         # Search for the prediction in the DataFrame
-        result = gam_df.filter((pl.col("RBP_Length") == length) & (pl.col("TBD_length") == distance))
+        result = pl.filter((pl.col("RBP_Length") == length) & (pl.col("TBD_length") == distance))
         
         if result.is_empty():
             raise ValueError("No matching record found for the given length and distance.")
