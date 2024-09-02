@@ -1,5 +1,8 @@
 import polars as pl
 from .constants import SUB_RATE
+pl.read_csv("./efmcalculator/data/gam_df.csv")
+
+
 
 
 def ssr_mut_rate(repeat_count, unit_length, org):
@@ -103,7 +106,34 @@ def rmd_mut_rate_vector(rmd_df, org="ecoli"):
     return rmd_df
 
 
-def rip_score(ssr_df, srs_df, rmd_df, sequence_length):
+def srs_mut_rate_vector(length, distance, org= "ecoli"):
+    """
+    Calculate the recombination rate based on a GAM model.
+
+    :param length: Length of the homologous region (RBP_length).
+    :param distance: Bases between the end of the first repeat and the beginning of the second (TBD_length).
+    :param SRS_df: DataFrame containing the GAM model predictions with columns 'RBP_Length', 'TBD_length', and 'prediction'.
+    :return: The predicted mutation rate or 0 if the input is invalid.
+    """
+    # Check if the homologous sequences overlap
+    if distance < 0:
+        return 0
+    
+    try:
+        # Search for the prediction in the DataFrame
+        result = pl.filter((pl.col("RBP_Length") == length) & (pl.col("TBD_length") == distance))
+        
+        if result.is_empty():
+            raise ValueError("No matching record found for the given length and distance.")
+        
+        # Return the prediction value
+        return result.select("mutation_rate").item()
+
+    except Exception as e:
+        raise ValueError(f"An error occurred while calculating the mutation rate: {e}")
+
+
+def rip_score(ssr_df, srs_df, rmd_df, gam_df, sequence_length):
     if isinstance(ssr_df, pl.DataFrame) and not ssr_df.is_empty():
         ssr_sum = ssr_df.select(pl.sum("mutation_rate")).item()
     else:
@@ -116,10 +146,14 @@ def rip_score(ssr_df, srs_df, rmd_df, sequence_length):
         rmd_sum = rmd_df.select(pl.sum("mutation_rate")).item()
     else:
         rmd_sum = 0
+    if isinstance(srs_df, pl.DataFrame) and not srs_df.is_empty():
+        srs_sum = srs_df.select(pl.sum("mutation_rate")).item()
+    else:
+        srs_sum = 0
 
     base_rate = float(sequence_length) * float(SUB_RATE)
     # Add in the mutation rate of an individual nucleotide
-    r_sum = float(ssr_sum + srs_sum + rmd_sum + base_rate)
+    r_sum = float(ssr_sum + srs_sum + rmd_sum + srs_sum + base_rate)
 
     # Set the maximum rate sum to 1 for now.
     if r_sum > 1:
@@ -132,4 +166,5 @@ def rip_score(ssr_df, srs_df, rmd_df, sequence_length):
         "srs_sum": srs_sum,
         "rmd_sum": rmd_sum,
         "bps_sum": base_rate,
+        
     }
