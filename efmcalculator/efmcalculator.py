@@ -260,15 +260,15 @@ def predict_many(
         # Perform predictions
         seq = str(record.seq.strip("\n").upper().replace("U", "T"))
         ssr_df, srs_df, rmd_df = predict(seq, strategy, isCircular)
-        ssr_df, srs_df, rmd_df = post_process(ssr_df, srs_df, rmd_df)
+        ssr_df, srs_df, rmd_df = post_process(ssr_df, srs_df, rmd_df, len(record))
 
         yield [ssr_df, srs_df, rmd_df]
 
 
-def post_process(ssr_df, srs_df, rmd_df):
+def post_process(ssr_df, srs_df, rmd_df, seq_len):
     # Perform Filtering
     ssr_df = filter_ssrs(ssr_df)
-    rmd_df, srs_df = filter_direct_repeats(rmd_df, srs_df)
+    rmd_df, srs_df = filter_direct_repeats(rmd_df, srs_df, seq_len)
 
     # Calculate Mutation Rates
 

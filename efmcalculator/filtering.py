@@ -77,6 +77,8 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len):
              pl.first("distance"), 
              pl.first("type")
              )
+        .explode(pl.col("repeat"))
+        .group_by(pl.col("position_left"))
         .head(1)
 
         #removes shorter versions of the same repeat that start at different positions
@@ -112,7 +114,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len):
 
 
     # want to remove the repeat in this df
-    filter2 = (
+    filter_out = (
         combined_dataframe
         .filter(
             (pl.col("adjusted_start").list.contains(-1)) |
@@ -122,11 +124,11 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len):
         .slice(1)
     )
 
-    filtered_df = combined_dataframe.join(filter2, on=["repeat", "position_left", "position_right"], how="anti")
+    filtered_df = combined_dataframe.join(filter_out, on=["repeat", "position_left", "position_right"], how="anti")
 
     filtered_df = (
     filtered_df
-        .select(["repeat", "repeat_len", "position_left", "position_right", "distance", "type", "adjusted_start", "last_position_left", "last_len", "count"])
+        .select(["repeat", "repeat_len", "position_left", "position_right", "distance", "type"])
         .explode(["position_left", "position_right", "distance", "type"])
     )
     # split back into rmd_dataframe and srs_dataframe
