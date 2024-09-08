@@ -34,7 +34,16 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 def _pairwise_slips(polars_df, column, is_circular) -> pl.DataFrame:
     """Recieve a polars dataframe with column of [List[type]]
-    Returns the dataframe back with a pairwise list of positions"""
+    Returns the dataframe back with a pairwise list of positions"
+    
+    input:
+        polars_df (dataframe): polars dataframe containing all repeats with lengths less than 16 base pairs
+        column (str): name of column of [List[type]] in dataframe that contains the positions of each repeat
+        is_circular (boolean): whether the scanned sequence is circular or not
+
+    returns:
+        polars dataframe containing all repeats with length less than 16 base pairs with a pairwise list of positions
+    """
 
     # Shamelessly adapted from https://stackoverflow.com/questions/77354114/how-would-i-generate-combinations-of-items-within-polars-using-the-native-expres
 
@@ -47,7 +56,7 @@ def _pairwise_slips(polars_df, column, is_circular) -> pl.DataFrame:
 
     # Use linear pairing to find SSRs below the minimum SRS length (much faster)
     polars_df = polars_df.with_columns(
-        pl.col('repeat').str.lengths().alias('length')
+        pl.col('repeat').str.len_chars().alias('length')
     )
 
     linear_subset = polars_df.filter(pl.col('length') < MIN_SSR_LEN)
@@ -72,7 +81,16 @@ def _pairwise_slips(polars_df, column, is_circular) -> pl.DataFrame:
 
 def _linear_slips(polars_df, column, is_circular=False) -> pl.LazyFrame:
     """Recieve a polars dataframe with column of [List[type]]
-    Returns the dataframe back with a linear list of pairings"""
+    Returns the dataframe back with a linear list of pairings
+    
+    input:
+        polars_df (dataframe): polars dataframe containing all repeats with lengths less than 16 base pairs
+        column (str): name of column of [List[type]] in dataframe that contains the positions of each repeat
+        is_circular (boolean): whether the scanned sequence is circular or not
+
+    returns:
+        polars dataframe containing all repeats with length less than 16 base pairs with a linear list of pairings
+    """
 
     nrows = polars_df.select(pl.len()).item()
 
@@ -90,7 +108,7 @@ def _linear_slips(polars_df, column, is_circular=False) -> pl.LazyFrame:
                 pl.struct([column, "duplicate_column"]).alias("pairings"),
             ]
         )
-        .groupby("repeat")
+        .group_by("repeat")
         .agg(pl.col("pairings"))
     )
 
@@ -116,6 +134,15 @@ def _linear_slips(polars_df, column, is_circular=False) -> pl.LazyFrame:
 
 
 def _calculate_distances(polars_df, seq_len, circular) -> pl.LazyFrame:
+    """
+    input: 
+        polars_df: polars dataframe containing all repeats found in the scanned sequence
+        seq_len (int): length of the scanned sequence
+        circular: whether the scanned sequence is circular or not
+
+    returns:
+        inputted polars dataframe with a column of distances between each repeat
+    """
     distance_df = polars_df.with_columns(
         distance=pl.col("pairings").list.diff().list.get(1) - pl.col("repeat_len")
     )
@@ -134,6 +161,13 @@ def _calculate_distances(polars_df, seq_len, circular) -> pl.LazyFrame:
 
 
 def _categorize_efm(polars_df) -> pl.DataFrame:
+    """
+    input:
+        polars_df: polars dataframe containing all repeats found in the scanned sequence
+
+    returns:
+        inputted polars dataframe with a column for repeat type, either SSR, SRS, or RMD
+    """
     categorized_df = polars_df.with_columns(
         category=pl.when(pl.col("distance") > 0)
         .then(
@@ -151,7 +185,14 @@ def _categorize_efm(polars_df) -> pl.DataFrame:
 
 
 def _collapse_ssr(polars_df) -> pl.DataFrame:
-    """Takes in dataframe of SSRs, returns dataframe of SSRs collapsed down."""
+    """Takes in dataframe of SSRs, returns dataframe of SSRs collapsed down.
+    
+    input:
+        polars_df: polars datafrmae containing all repeats found, with a column for repeat type
+    
+    returns:
+        polars dataframe containing only the SSRs found
+    """
 
     collapsed_ssrs = (
         polars_df.filter(pl.col("category") == "SSR")
