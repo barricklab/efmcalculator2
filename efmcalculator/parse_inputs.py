@@ -23,10 +23,10 @@ def parse_file(filepath: pathlib.Path) -> list:
         sequences = SeqIO.parse(path_as_string, "genbank")
     elif filepath.suffix in GBK_EXTS:
         sequences = parse_csv(path_as_string)
-    else:
-        raise ValueError(
-            f"File {filepath} is not a known file format. Must be one of {FASTA_EXTS + GBK_EXTS + [".csv"]}."
-        )
+    #else:
+    #    raise ValueError(
+    #        f"File {filepath} is not a known file format. Must be one of {FASTA_EXTS + GBK_EXTS + [".csv"]}."
+    #    )
     return list(sequences)
 
 

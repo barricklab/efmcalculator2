@@ -1,6 +1,6 @@
 import polars as pl
 from .constants import SUB_RATE
-pl.read_csv("./efmcalculator/data/gam_df.csv")
+# pl.read_csv("./efmcalculator/data/gam_df.csv")
 
 
 
@@ -133,7 +133,7 @@ def srs_mut_rate_vector(length, distance, org= "ecoli"):
         raise ValueError(f"An error occurred while calculating the mutation rate: {e}")
 
 
-def rip_score(ssr_df, srs_df, rmd_df, gam_df, sequence_length):
+def rip_score(ssr_df, srs_df, rmd_df, sequence_length):
     if isinstance(ssr_df, pl.DataFrame) and not ssr_df.is_empty():
         ssr_sum = ssr_df.select(pl.sum("mutation_rate")).item()
     else:

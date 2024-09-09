@@ -199,8 +199,8 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     else:
         raise ValueError("Invalid strategy")
 
-    repeat_df = repeat_df.drop("position")
-    repeat_df = repeat_df.drop("position_corrected")
+    #repeat_df = repeat_df.drop("position")
+    #repeat_df = repeat_df.drop("position_corrected")
     repeat_df = repeat_df.explode("pairings")
 
     # Get length of each repeat

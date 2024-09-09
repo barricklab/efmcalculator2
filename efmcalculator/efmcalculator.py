@@ -174,6 +174,13 @@ def _main():
         logger.info(rip_score(result[0], result[1], result[2], len(sequence.seq)))
         result.append(results_list)
 
+    result[0].write_csv("test_scan3_ssr_unfiltered.csv")
+    result[1].write_csv("test_scan3_srs_unfiltered.csv")
+    result[2].write_csv("test_scan3_rmd_unfiltered.csv")
+    #print(result[0])
+    #result[1] = result[1].sort("repeat_len", descending=True)
+    #print(result[1])
+    #print(result[2])
     bulk_output(results_list, sequences, args.outpath, args.no_vis)
 
     # Logging

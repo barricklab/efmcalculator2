@@ -69,11 +69,11 @@ def assemble(layout, summary, tables):
         layout = Div()
 
 
-    summary_layout = column(Div(text=f"Rip Score: {summary["rip"]}", width=750),
-                            Div(text=f"SSR: {summary["ssr_sum"]}", width=750),
-                            Div(text=f"SRS: {summary["srs_sum"]}", width=750),
-                            Div(text=f"RMD: {summary["rmd_sum"]}", width=750),
-                            Div(text=f"Basal: {summary["bps_sum"]}", width=750),)
+    #summary_layout = column(Div(text=f"Rip Score: {summary["rip"]}", width=750),
+    #                        Div(text=f"SSR: {summary["ssr_sum"]}", width=750),
+    #                        Div(text=f"SRS: {summary["srs_sum"]}", width=750),
+    #                        Div(text=f"RMD: {summary["rmd_sum"]}", width=750),
+    #                        Div(text=f"Basal: {summary["bps_sum"]}", width=750),)
 
     if len(tables) > 1:
         # Make buttons that show the appropriat tables
