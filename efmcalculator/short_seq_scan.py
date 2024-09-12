@@ -135,6 +135,8 @@ def _linear_slips(polars_df, column, is_circular=False) -> pl.LazyFrame:
 
 def _calculate_distances(polars_df, seq_len, circular) -> pl.LazyFrame:
     """
+    calculates the distance between occurrences of each repeat
+
     input: 
         polars_df: polars dataframe containing all repeats found in the scanned sequence
         seq_len (int): length of the scanned sequence
@@ -162,6 +164,8 @@ def _calculate_distances(polars_df, seq_len, circular) -> pl.LazyFrame:
 
 def _categorize_efm(polars_df) -> pl.DataFrame:
     """
+    categorizes every repeat as SSR, SRS, or RMD
+
     input:
         polars_df: polars dataframe containing all repeats found in the scanned sequence
 
