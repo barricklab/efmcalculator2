@@ -38,8 +38,8 @@ def filter_ssrs(ssr_dataframe):
     return ssr_dataframe
 
 
-def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len):
-    # Delete redundant SRS repeats @TODO
+def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe):
+    # Delete redundant SRS repeats
 
     # label RMDs and SRSs and combine into 1 df 
     rmd_dataframe = rmd_dataframe.with_columns(pl.lit("RMD").alias("type"))
@@ -113,7 +113,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len):
     )
 
 
-    # want to remove the repeat in this df
+    # want to remove the repeats in this df
     filter_out = (
         combined_dataframe
         .filter(
@@ -131,6 +131,41 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len):
         .select(["repeat", "repeat_len", "position_left", "position_right", "distance", "type"])
         .explode(["position_left", "position_right", "distance", "type"])
     )
+
+    # filter out SRS nested fully inside SSRs
+    ssr_ranges = (
+        ssr_dataframe
+        .select(
+            pl.col("start"),
+            (pl.col("start")+(pl.col("count")*pl.col("repeat_len")) - 1).alias("end")
+        )
+    )
+
+    # srs_dataframe with a separate row for each repeat and each SSR range
+    ssr_srs_cross = filtered_df.join(ssr_ranges, how="cross")
+
+    filtered_df = (
+        ssr_srs_cross
+        .with_columns(
+            ((pl.col("position_left") >= pl.col("start")) & ((pl.col("position_right") + pl.col("repeat_len")) <= pl.col("end"))).alias("overlap")
+        )
+        .group_by(
+            pl.col("position_left"), 
+            pl.col("position_right"),
+            pl.col("repeat")
+        )
+        .agg(
+            pl.col("overlap"),
+            pl.first("distance"),
+            pl.first("type"),
+            pl.first("repeat_len")
+        )
+        .filter(
+            ~pl.col("overlap").list.any()
+        )
+        .select("repeat", "repeat_len", "position_left", "position_right", "distance", "type")
+    )
+
     # split back into rmd_dataframe and srs_dataframe
     rmd_dataframe = filtered_df.filter(pl.col("type") == "RMD").drop("type")
     srs_dataframe = filtered_df.filter(pl.col("type") == "SRS").drop("type")

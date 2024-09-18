@@ -268,7 +268,7 @@ def predict_many(
 def post_process(ssr_df, srs_df, rmd_df, seq_len):
     # Perform Filtering
     ssr_df = filter_ssrs(ssr_df)
-    rmd_df, srs_df = filter_direct_repeats(rmd_df, srs_df, seq_len)
+    rmd_df, srs_df = filter_direct_repeats(rmd_df, srs_df, seq_len, ssr_df)
 
     # Calculate Mutation Rates
 
