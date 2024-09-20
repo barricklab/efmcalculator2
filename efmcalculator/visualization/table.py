@@ -36,7 +36,7 @@ def generate_bokeh_table(df, name, callback=None) -> DataTable:
         source=source,
         columns=columns,
         name=table_name,
-        width=750,
+        width=500,
         editable=True,
         selectable="checkbox",
     )
