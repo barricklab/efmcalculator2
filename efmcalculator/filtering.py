@@ -95,8 +95,8 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             pl.col("distance"),
             pl.first("count"), 
             pl.col("type"),
-            pl.col("position_left").shift(1).alias("last_position_left"),
-            (pl.col("position_right") - seq_len).alias("negative_start")
+            pl.col("position_left").shift(1).list.unique().alias("last_position_left"),
+            (pl.col("position_right") - seq_len).list.unique().alias("negative_start")
         )
 
         .with_columns(
