@@ -28,11 +28,11 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
     """Scans across a given input sequence and returns a list of subsequences
 
-    Args: 
+    input: 
         seq (string): the sequence to be scanned
         isCircular (boolean): Whether the sequence is circular or not
     
-    Returns:
+    returns:
         polars dataframe containing every repeat smaller than 16 base pairs in the input sequence
 
     """
@@ -68,13 +68,13 @@ def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
 def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
     """Scans for RMDs
     
-    Args:
+    input:
         df (dataframe): dataframe containing all repeats smaller than 16 base pairs
         seq (string): the sequence to be scanned
         seq_len (int): the length of the sequence
         isCircular (boolean): whether the sequence is circular or not
     
-    Return: 
+    returns: 
         polars dataframe containing every repeat in the input sequence
     
     """

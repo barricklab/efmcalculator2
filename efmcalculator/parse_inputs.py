@@ -14,6 +14,16 @@ class BadSequenceError(ValueError):
 
 
 def parse_file(filepath: pathlib.Path) -> list:
+    """
+    parses the inputted files and returns a list of sequences found in each file
+
+    input:
+        filepath: path to the multifasta, genbank, or csv file containing the sequences to be scanned
+
+    returns:
+        list containing all the sequences to be scanned     
+    """
+    
     path_as_string = str(filepath)
     if not filepath.exists():
         raise OSError("File {} does not exist.".format(path_as_string))

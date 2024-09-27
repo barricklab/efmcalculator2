@@ -55,7 +55,7 @@ def make_plot(seqrecord, **repeat_dataframes):
 
     # Set up plot
 
-    fig = figure(width=1500, height=250)
+    fig = figure(width=1250, height=250)
 
     fig.xaxis.axis_label = "Position"
     fig.yaxis.visible = False

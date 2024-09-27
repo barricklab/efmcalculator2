@@ -7,6 +7,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 import base64
 import zipfile
+import hmac
 
 import os
 from ..short_seq_finder import predict
@@ -28,8 +29,34 @@ from ..mutation_rates import rip_score
 ASSET_LOCATION = os.path.join(os.path.dirname(__file__), "../visualization/assets")
 MAX_SIZE = 50000
 
+def check_password():
+    """Returns `True` if the user had the correct password."""
+
+    def password_entered():
+        """Checks whether a password entered by the user is correct."""
+        if hmac.compare_digest(st.session_state["password"], st.secrets["password"]):
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Don't store the password.
+        else:
+            st.session_state["password_correct"] = False
+
+    # Return True if the password is validated.
+    if st.session_state.get("password_correct", False):
+        return True
+
+    # Show input for password.
+    st.text_input(
+        "Password", type="password", on_change=password_entered, key="password"
+    )
+    if "password_correct" in st.session_state:
+        st.error("😕 Password incorrect")
+    return False
 
 def run_webapp():
+    if not check_password():
+        st.stop()  # Do not continue if check_password is not True.
+
+
     st._config.set_option(f"theme.base", "light")
     st.set_page_config(
         page_title="EFM Calculator",
@@ -39,12 +66,12 @@ def run_webapp():
         menu_items=None,
     )
 
-
     st.markdown("""
     <style>
         .block-container {
             padding-top: 0rem;
             padding-bottom: 0rem;
+            max-width: 1500px;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -139,13 +166,13 @@ def run_webapp():
             if uploaded_files:
                 inSeq = []
                 for uploaded_file in uploaded_files:
-                    uploaded_filetype = Path(uploaded_files.name).suffix
+                    uploaded_filetype = Path(uploaded_file.name).suffix
                     # Hash the file to create a safe name
                     filename = Path(
-                        tempdir + str(hash(uploaded_files.name)) + uploaded_filetype
+                        tempdir + str(hash(uploaded_file.name)) + uploaded_filetype
                     )
                     with open(filename, "wb") as f:
-                        f.write(uploaded_files.getbuffer())
+                        f.write(uploaded_file.getbuffer())
                     inSeq.extend(parse_file(filename))
                 st.success("Files uploaded.")
 
@@ -173,7 +200,9 @@ def run_webapp():
                 if filepath:
                     inSeq = parse_file(filepath)
 
-        if inSeq:
+        if not inSeq:
+            st.stop()
+        elif inSeq:
             validate_sequences(inSeq, MAX_SIZE)
             with st.spinner("Calculating..."):
                 results = predict_many(
