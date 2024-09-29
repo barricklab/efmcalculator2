@@ -200,12 +200,12 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
 
     collapsed_ssrs = (
         polars_df.filter(pl.col("category") == "SSR")
-        .select(["repeat", "repeat_len", "pairings"])
+        .select(["repeat", "repeat_len", "pairings", "wraparound"])
         .lazy()
         # Collect the positions from all potentially participating SSRs
         .explode("pairings")
         .group_by(["repeat", "repeat_len"])
-        .agg("pairings")
+        .agg("pairings", "wraparound")
         .with_columns(
             positions=pl.col("pairings").list.unique().list.sort(),
         )
@@ -251,7 +251,7 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
     collapsed_ssrs = collapsed_ssrs.to_pandas()
     collapsed_ssrs["starts"] = collapsed_ssrs["starts"] - 1
     collapsed_ssrs = pl.from_pandas(collapsed_ssrs).select(
-        pl.col(["repeat", "repeat_len", "starts"])
+        pl.col(["repeat", "repeat_len", "starts", "wraparound"])
     )
 
     # Count repeats from each start position
@@ -259,11 +259,42 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
         (
             collapsed_ssrs.lazy()
             .explode("starts")
-            .group_by("repeat", "repeat_len", "starts")
+            .group_by("repeat", "repeat_len", "starts", "wraparound")
             .count()
         )
         .rename({"starts": "start"})
         .collect()
+    )
+    pl.Config.set_tbl_rows(100)
+    print(collapsed_ssrs)
+    
+    collapsed_ssrs = (
+        collapsed_ssrs
+        .sort("start")
+        .group_by("repeat", "repeat_len")
+        .agg(
+            pl.col("start"),
+            pl.col("count"), 
+            pl.first("wraparound")
+        )
+        .with_columns(
+            pl.when(pl.col("wraparound").list.contains(True))
+            .then(
+                pl.concat_list([
+                    pl.col("count").list.slice(1, pl.col("count").list.lengths() - 2),
+                    (pl.col("count").list.first() + pl.col("count").list.last())
+                ]).alias("count")
+            )
+            .otherwise(pl.col("count")),
+
+            pl.when(pl.col("wraparound").list.contains(True))
+            .then(pl.col("start").list.slice(1).alias("start"))
+            .otherwise(pl.col("start"))
+        )
+        .explode(
+            pl.col("start"),
+            pl.col("count")
+        )
     )
 
     # @TODO: Correct for circular
