@@ -1,6 +1,6 @@
 import polars as pl
 from .constants import SUB_RATE
-pl.read_csv("./efmcalculator/data/gam_df.csv")
+gam_results = pl.read_csv("./efmcalculator/data/gam_df.csv")
 
 
 
@@ -106,7 +106,7 @@ def rmd_mut_rate_vector(rmd_df, org="ecoli"):
     return rmd_df
 
 
-def srs_mut_rate_vector(length, distance, org= "ecoli"):
+def srs_mut_rate_vector(rmd_df, org="ecoli"):
     """
     Calculate the recombination rate based on a GAM model.
 
@@ -115,17 +115,24 @@ def srs_mut_rate_vector(length, distance, org= "ecoli"):
     :param SRS_df: DataFrame containing the GAM model predictions with columns 'RBP_Length', 'TBD_length', and 'prediction'.
     :return: The predicted mutation rate or 0 if the input is invalid.
     """
+
+
+    print(rmd_df.head())
+    print(gam_results.head())
+    findings = rmd_df.join(gam_results, on=['distance', 'repeat_len'], how='left')
+    print(findings.head())
+
     # Check if the homologous sequences overlap
     if distance < 0:
         return 0
-    
+
     try:
         # Search for the prediction in the DataFrame
         result = pl.filter((pl.col("RBP_Length") == length) & (pl.col("TBD_length") == distance))
-        
+
         if result.is_empty():
             raise ValueError("No matching record found for the given length and distance.")
-        
+
         # Return the prediction value
         return result.select("mutation_rate").item()
 
@@ -166,5 +173,5 @@ def rip_score(ssr_df, srs_df, rmd_df, gam_df, sequence_length):
         "srs_sum": srs_sum,
         "rmd_sum": rmd_sum,
         "bps_sum": base_rate,
-        
+
     }

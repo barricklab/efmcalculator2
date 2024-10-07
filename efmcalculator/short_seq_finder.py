@@ -28,10 +28,10 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
     """Scans across a given input sequence and returns a list of subsequences
 
-    input: 
+    input:
         seq (string): the sequence to be scanned
         isCircular (boolean): Whether the sequence is circular or not
-    
+
     returns:
         polars dataframe containing every repeat smaller than 16 base pairs in the input sequence
 
@@ -59,7 +59,8 @@ def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
 
     repeats = (
         pl.LazyFrame(scan_genome()).group_by("repeat").agg(pl.col("position")).collect()
-    )
+    ).cast({"position": pl.List(pl.UInt32)})
+
     bar.finish()
 
     return repeats
@@ -67,24 +68,24 @@ def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
 
 def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
     """Scans for RMDs
-    
+
     input:
         df (dataframe): dataframe containing all repeats smaller than 16 base pairs
         seq (string): the sequence to be scanned
         seq_len (int): the length of the sequence
         isCircular (boolean): whether the sequence is circular or not
-    
-    returns: 
+
+    returns:
         polars dataframe containing every repeat in the input sequence
-    
+
     """
 
     known_long_repeats = df.filter(pl.col("repeat_len") == (MAX_SHORT_SEQ_LEN - 1))
     RMD_df = pl.DataFrame(
         {
             "repeat": pl.Series("repeat", [], pl.Utf8),
-            "pairings": pl.Series("pairings", [], pl.List(pl.Int64)),
-            "repeat_len": pl.Series("repeat_len", [], pl.Int64),
+            "pairings": pl.Series("pairings", [], pl.List(pl.UInt32)),
+            "repeat_len": pl.Series("repeat_len", [], pl.UInt32),
         }
     )
 
@@ -161,17 +162,17 @@ def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
 @st.cache_data(ttl="1h")
 def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     """Scans and predicts SSRs and RMDs. Returns dataframes representing each
-    
+
     input:
         seq (string): the sequence to be scanned
         strategy (str): the scanning strategy to be used. Either pairwise or linear
         isCircular (boolean): whether the sequence is circular or not
-    
+
     returns:
         ssr_df (dataframe): dataframe containing all the SSRs found in the sequence
         srs_df (dataframe): dataframe containing all the SRSs found in the sequence
         rmd_df (dataframe): dataframe containing all the RMDs found in the sequence
-    
+
     """
 
     seq_len = len(seq)
@@ -199,6 +200,7 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     else:
         raise ValueError("Invalid strategy")
 
+
     repeat_df = repeat_df.drop("position")
     repeat_df = repeat_df.drop("position_corrected")
     repeat_df = repeat_df.explode("pairings")
@@ -207,6 +209,7 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     repeat_df = repeat_df.with_columns(
         pl.col("repeat").str.len_chars().alias("repeat_len")
     )
+
 
     # Upgrade long SRSs to RMDs
     repeat_df = _scan_RMD(repeat_df, seq, seq_len, isCircular)

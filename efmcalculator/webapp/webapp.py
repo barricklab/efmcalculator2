@@ -143,6 +143,7 @@ def run_webapp():
         st.write("The EFM Calculator predicts mutational hotspots as a result of DNA polymerase slippage. It classifies these hotspots into three categories, Short Sequence Repeats, Short Repeated Sequences, and Repeat Mediated Deletions. For more information, please see the paper. If you have found this tool helpful, please remember to cite it as well.")
         st.write("Jack, B. R., Leonard, S. P., Mishler, D. M., Renda, B. A., Leon, D., Suárez, G. A., & Barrick, J. E. (2015). Predicting the Genetic Stability of Engineered DNA Sequences with the EFM Calculator. ACS Synthetic Biology, 4(8), 939–943. https://doi.org/10.1021/acssynbio.5b00068")
 
+
     with TemporaryDirectory() as tempdir:
 
         if option == upload_option:
@@ -162,6 +163,8 @@ def run_webapp():
                     inSeq.extend(parse_file(filename))
                 st.success("Files uploaded.")
 
+            is_circular = st.checkbox(label="Circular Prediction", value=True)
+
         elif option == enter_option:
 
             upload_disclaimer = f"""<div>
@@ -175,6 +178,8 @@ def run_webapp():
             if field:
                 inSeq = [SeqRecord(Seq(field), id="sequence")]
 
+            is_circular = st.checkbox(label="Circular Prediction", value=True)
+
         elif option == example_option:
             with col1:
                 gbs = []
@@ -186,15 +191,20 @@ def run_webapp():
                 if filepath:
                     inSeq = parse_file(filepath)
 
+                is_circular = True
+
+
         if not inSeq:
             st.stop()
+
+
         elif inSeq:
             validate_sequences(inSeq, MAX_SIZE)
             with st.spinner("Calculating..."):
                 results = predict_many(
                     sequences = inSeq,
                     strategy = "pairwise",
-                    isCircular = True,
+                    isCircular = is_circular,
                 )
 
 
@@ -246,12 +256,12 @@ def run_webapp():
             sequence = str(seq_record.seq.strip("\n\n").upper().replace("U", "T"))
 
             with st.spinner("Calculating..."):
-                ssr, srs, rmd = predict(sequence, strategy="pairwise", isCircular=False)
-                ssr, srs, rmd = post_process(ssr, srs, rmd)
+                ssr, srs, rmd = predict(sequence, strategy="pairwise", isCircular=is_circular)
+                ssr, srs, rmd = post_process(ssr, srs, rmd, len(sequence), isCircular=is_circular)
                 result = [ssr, srs, rmd]
 
                 fig, tables = make_plot(seq_record, ssr=result[0], srs=result[1], rmd=result[2])
-                summary = rip_score(result[0], result[1], result[2], len(seq_record.seq))
+                summary = rip_score(result[0], result[1], result[2], sequence_length = len(seq_record.seq))
                 layout = assemble(fig, summary, tables)
                 shown_result = components.html(file_html(layout, "cdn"), height=650)
     add_vertical_space(4)

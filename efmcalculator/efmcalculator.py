@@ -11,7 +11,7 @@ from Bio.Seq import Seq
 from .short_seq_finder import predict
 from .SRS_filter import filter_redundant
 from .filtering import filter_ssrs, filter_direct_repeats
-from .mutation_rates import ssr_mut_rate_vector, rmd_mut_rate_vector, rip_score
+from .mutation_rates import ssr_mut_rate_vector, srs_mut_rate_vector, rmd_mut_rate_vector, rip_score
 from .constants import VALID_STRATEGIES, FASTA_EXTS, GBK_EXTS
 from .parse_inputs import parse_file, validate_sequences, BadSequenceError
 

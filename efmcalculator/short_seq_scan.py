@@ -35,7 +35,7 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 def _pairwise_slips(polars_df, column, is_circular) -> pl.DataFrame:
     """Recieve a polars dataframe with column of [List[type]]
     Returns the dataframe back with a pairwise list of positions"
-    
+
     input:
         polars_df (dataframe): polars dataframe containing all repeats with lengths less than 16 base pairs
         column (str): name of column of [List[type]] in dataframe that contains the positions of each repeat
@@ -62,13 +62,15 @@ def _pairwise_slips(polars_df, column, is_circular) -> pl.DataFrame:
     linear_subset = polars_df.filter(pl.col('length') < MIN_SSR_LEN)
     pairwise = polars_df.filter(pl.col('length') >= MIN_SSR_LEN)
 
+
+
     linear_subset = _linear_slips(linear_subset, column, is_circular=is_circular)
 
     # Run pairwise for SRS's above minimum length
     pairwise = pairwise.lazy().with_columns(
         pl.col(column)
         .map_elements(map_function, return_dtype=pl.List(pl.List(pl.Int64)))
-        .alias(f"pairings")
+        .alias(f"pairings").cast(pl.List(pl.List(pl.UInt32)))
     )
 
     linear_subset = linear_subset
@@ -82,7 +84,7 @@ def _pairwise_slips(polars_df, column, is_circular) -> pl.DataFrame:
 def _linear_slips(polars_df, column, is_circular=False) -> pl.LazyFrame:
     """Recieve a polars dataframe with column of [List[type]]
     Returns the dataframe back with a linear list of pairings
-    
+
     input:
         polars_df (dataframe): polars dataframe containing all repeats with lengths less than 16 base pairs
         column (str): name of column of [List[type]] in dataframe that contains the positions of each repeat
@@ -137,7 +139,7 @@ def _calculate_distances(polars_df, seq_len, circular) -> pl.LazyFrame:
     """
     calculates the distance between occurrences of each repeat
 
-    input: 
+    input:
         polars_df: polars dataframe containing all repeats found in the scanned sequence
         seq_len (int): length of the scanned sequence
         circular: whether the scanned sequence is circular or not
@@ -146,17 +148,17 @@ def _calculate_distances(polars_df, seq_len, circular) -> pl.LazyFrame:
         inputted polars dataframe with a column of distances between each repeat
     """
     distance_df = polars_df.with_columns(
-        distance=pl.col("pairings").list.diff().list.get(1) - pl.col("repeat_len")
+        distance=pl.col("pairings").list.diff().list.get(1) - pl.col("repeat_len").cast(pl.UInt32)
     )
 
     if circular:
         distance_df = distance_df.with_columns(
             distance=pl.when(pl.col("distance") > seq_len / 2)
             .then(seq_len - pl.col("distance") - (2 * pl.col("repeat_len")))
-            .otherwise(pl.col("distance")),
+            .otherwise(pl.col("distance")).cast(pl.Int32),
             wraparound=pl.when(pl.col("distance") > seq_len / 2)
             .then(True)
-            .otherwise(False),
+            .otherwise(False)
         )
 
     return distance_df
@@ -190,10 +192,10 @@ def _categorize_efm(polars_df) -> pl.DataFrame:
 
 def _collapse_ssr(polars_df) -> pl.DataFrame:
     """Takes in dataframe of SSRs, returns dataframe of SSRs collapsed down.
-    
+
     input:
         polars_df: polars datafrmae containing all repeats found, with a column for repeat type
-    
+
     returns:
         polars dataframe containing only the SSRs found
     """
@@ -273,7 +275,7 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
         .group_by("repeat", "repeat_len")
         .agg(
             pl.col("start"),
-            pl.col("count"), 
+            pl.col("count"),
             pl.first("wraparound")
         )
         .with_columns(
