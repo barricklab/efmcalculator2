@@ -1,6 +1,8 @@
 import polars as pl
 from .constants import SUB_RATE
-gam_results = pl.read_csv("./efmcalculator/data/gam_df.csv")
+gam_results = pl.read_csv(
+    "./efmcalculator/data/gam_df.csv").cast({"repeat_len": pl.UInt32,
+                                            "distance": pl.Int32})
 
 
 
@@ -117,27 +119,8 @@ def srs_mut_rate_vector(rmd_df, org="ecoli"):
     """
 
 
-    print(rmd_df.head())
-    print(gam_results.head())
-    findings = rmd_df.join(gam_results, on=['distance', 'repeat_len'], how='left')
-    print(findings.head())
-
-    # Check if the homologous sequences overlap
-    if distance < 0:
-        return 0
-
-    try:
-        # Search for the prediction in the DataFrame
-        result = pl.filter((pl.col("RBP_Length") == length) & (pl.col("TBD_length") == distance))
-
-        if result.is_empty():
-            raise ValueError("No matching record found for the given length and distance.")
-
-        # Return the prediction value
-        return result.select("mutation_rate").item()
-
-    except Exception as e:
-        raise ValueError(f"An error occurred while calculating the mutation rate: {e}")
+    findings = rmd_df.join(gam_results, on=['distance', 'repeat_len'], how='left').with_columns(pl.col("mutation_rate").fill_null(strategy="zero"))
+    return findings
 
 
 def rip_score(ssr_df, srs_df, rmd_df, gam_df, sequence_length):
