@@ -7,7 +7,7 @@ def filter_ssrs(ssr_dataframe):
         # Filter based on SSR definition
         .filter(
             (pl.col("repeat_len") >= 2)
-            .and_(pl.col("count") >= 3)
+            .and_(pl.col("count") >= 2)
             .or_((pl.col("repeat_len") == 1).and_(pl.col("count") >= 4))
         )
     ).collect()
