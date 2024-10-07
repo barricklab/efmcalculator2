@@ -273,7 +273,7 @@ def post_process(ssr_df, srs_df, rmd_df, seq_len, isCircular):
     # Calculate Mutation Rates
 
     ssr_df = ssr_mut_rate_vector(ssr_df)
-    srs_df = rmd_mut_rate_vector(srs_df)
+    srs_df = srs_mut_rate_vector(srs_df)
     rmd_df = rmd_mut_rate_vector(rmd_df)
 
     return ssr_df, srs_df, rmd_df
