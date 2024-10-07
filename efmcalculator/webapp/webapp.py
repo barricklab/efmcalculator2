@@ -147,6 +147,8 @@ def run_webapp():
     with TemporaryDirectory() as tempdir:
 
         if option == upload_option:
+            with col1:
+                is_circular = st.checkbox(label="Circular Prediction", value=True)
             upload_disclaimer = f"Total sequence length must be less than {MAX_SIZE+1}. CSV files must have a 'seq' column and may have a 'name' column."
             uploaded_files = st.file_uploader("Choose a file:", type=VALID_EXTS, accept_multiple_files = True)
             st.write(upload_disclaimer)
@@ -163,10 +165,9 @@ def run_webapp():
                     inSeq.extend(parse_file(filename))
                 st.success("Files uploaded.")
 
-            is_circular = st.checkbox(label="Circular Prediction", value=True)
-
         elif option == enter_option:
-
+            with col1:
+                is_circular = st.checkbox(label="Circular Prediction", value=True)
             upload_disclaimer = f"""<div>
             <p>Total sequence length must be less than {MAX_SIZE+1}.</p>
             </div>"""
@@ -177,8 +178,6 @@ def run_webapp():
             field = "".join([i for i in field if not i.isdigit()])
             if field:
                 inSeq = [SeqRecord(Seq(field), id="sequence")]
-
-            is_circular = st.checkbox(label="Circular Prediction", value=True)
 
         elif option == example_option:
             with col1:

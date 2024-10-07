@@ -12,7 +12,7 @@ from .short_seq_finder import predict
 from .SRS_filter import filter_redundant
 from .filtering import filter_ssrs, filter_direct_repeats
 from .mutation_rates import ssr_mut_rate_vector, srs_mut_rate_vector, rmd_mut_rate_vector, rip_score
-from .constants import VALID_STRATEGIES, FASTA_EXTS, GBK_EXTS
+from .constants import VALID_STRATEGIES, FASTA_EXTS, GBK_EXTS, THRESHOLD
 from .parse_inputs import parse_file, validate_sequences, BadSequenceError
 
 from .utilities import is_pathname_valid, is_path_creatable, sanitize_filename
@@ -275,6 +275,12 @@ def post_process(ssr_df, srs_df, rmd_df, seq_len, isCircular):
     ssr_df = ssr_mut_rate_vector(ssr_df)
     srs_df = srs_mut_rate_vector(srs_df)
     rmd_df = rmd_mut_rate_vector(rmd_df)
+
+    # Filter on minimum threshold
+    ssr_df = ssr_df.filter(pl.col("mutation_rate") > THRESHOLD)
+    srs_df = srs_df.filter(pl.col("mutation_rate") > THRESHOLD)
+    rmd_df = rmd_df.filter(pl.col("mutation_rate") > THRESHOLD)
+
 
     return ssr_df, srs_df, rmd_df
 

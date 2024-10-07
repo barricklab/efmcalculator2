@@ -123,7 +123,7 @@ def srs_mut_rate_vector(rmd_df, org="ecoli"):
     return findings
 
 
-def rip_score(ssr_df, srs_df, rmd_df, gam_df, sequence_length):
+def rip_score(ssr_df, srs_df, rmd_df, sequence_length):
     if isinstance(ssr_df, pl.DataFrame) and not ssr_df.is_empty():
         ssr_sum = ssr_df.select(pl.sum("mutation_rate")).item()
     else:
@@ -136,14 +136,10 @@ def rip_score(ssr_df, srs_df, rmd_df, gam_df, sequence_length):
         rmd_sum = rmd_df.select(pl.sum("mutation_rate")).item()
     else:
         rmd_sum = 0
-    if isinstance(srs_df, pl.DataFrame) and not srs_df.is_empty():
-        srs_sum = srs_df.select(pl.sum("mutation_rate")).item()
-    else:
-        srs_sum = 0
 
     base_rate = float(sequence_length) * float(SUB_RATE)
     # Add in the mutation rate of an individual nucleotide
-    r_sum = float(ssr_sum + srs_sum + rmd_sum + srs_sum + base_rate)
+    r_sum = float(ssr_sum + srs_sum + rmd_sum  + base_rate)
 
     # Set the maximum rate sum to 1 for now.
     if r_sum > 1:
