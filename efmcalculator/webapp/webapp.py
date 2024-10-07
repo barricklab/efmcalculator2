@@ -145,20 +145,6 @@ def run_webapp():
 
     with TemporaryDirectory() as tempdir:
 
-        if option == upload_option or option == enter_option:
-            with col1:
-                license_accepted = st.checkbox("Accept License", value=False, label_visibility="visible")
-
-        else:
-            license_accepted = True
-
-        if not license_accepted:
-            with col1:
-                st.write("""The EFM Calculator is availablue under the [UT Austin Research License](https://github.com/barricklab/efm-calculator2?tab=License-1-ov-file). This tool is free for use in
-                            academic, research, experimental and personal use (but specifically excluding Commercial Use). By continuing, you agree to
-                            abide by the terms of this license.""")
-            return
-
         if option == upload_option:
             upload_disclaimer = f"Total sequence length must be less than {MAX_SIZE+1}. CSV files must have a 'seq' column and may have a 'name' column."
             uploaded_files = st.file_uploader("Choose a file:", type=VALID_EXTS, accept_multiple_files = True)
