@@ -159,7 +159,6 @@ def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
 
     return df  # In the same format as df alongside the original data
 
-@st.cache_data(ttl="1h")
 def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     """Scans and predicts SSRs and RMDs. Returns dataframes representing each
 
@@ -200,9 +199,10 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     else:
         raise ValueError("Invalid strategy")
 
-
-    repeat_df = repeat_df.drop("position")
-    repeat_df = repeat_df.drop("position_corrected")
+    if "position" in repeat_df:
+        repeat_df = repeat_df.drop("position")
+    if "position_corrected" in repeat_df:
+        repeat_df = repeat_df.drop("position_corrected")
     repeat_df = repeat_df.explode("pairings")
 
     # Get length of each repeat

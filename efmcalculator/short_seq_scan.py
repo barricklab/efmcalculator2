@@ -284,7 +284,7 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
             pl.when(pl.col("wraparound").list.contains(True))
             .then(
                 pl.concat_list([
-                    pl.col("count").list.slice(1, pl.col("count").list.lengths() - 2),
+                    pl.col("count").list.slice(1, pl.col("count").list.len() - 2),
                     (pl.col("count").list.first() + pl.col("count").list.last())
                 ]).alias("count")
             )
