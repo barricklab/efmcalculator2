@@ -1,7 +1,14 @@
 import polars as pl
+import os
+import sys
 from .constants import SUB_RATE
-gam_results = pl.read_csv(
-    "./efmcalculator/data/gam_df.csv").cast({"repeat_len": pl.UInt32,
+
+try:
+    gam_result_filepath = filepath = os.path.dirname(sys.modules['efmcalculator'].__file__)+'/data/gam_df.csv'
+except e:
+    print("Error while loading gam results")
+    exit(1)
+gam_results = pl.read_csv(gam_result_filepath).cast({"repeat_len": pl.UInt32,
                                             "distance": pl.Int32})
 
 
