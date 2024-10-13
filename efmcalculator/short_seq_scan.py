@@ -152,13 +152,25 @@ def _calculate_distances(polars_df, seq_len, circular) -> pl.LazyFrame:
     )
 
     if circular:
-        distance_df = distance_df.with_columns(
-            distance=pl.when(pl.col("distance") > seq_len / 2)
-            .then(seq_len - pl.col("distance") - (2 * pl.col("repeat_len")))
-            .otherwise(pl.col("distance")).cast(pl.Int32),
-            wraparound=pl.when(pl.col("distance") > seq_len / 2)
-            .then(True)
-            .otherwise(False)
+         distance_df = (
+            distance_df
+            .with_columns((pl.col("pairings").list.get(0) - (pl.col("pairings").list.get(1) + pl.col("repeat_len") - seq_len)).alias("alt_len"))
+            .with_columns(
+                distance=pl.when(pl.col("alt_len") >= 0)
+                .then(
+                    pl.when(pl.col("distance") > pl.col("alt_len"))
+                    .then(pl.col("alt_len"))
+                    .otherwise(pl.col("distance"))
+                )
+                .otherwise(pl.col("distance")),
+                wraparound=pl.when(pl.col("alt_len") >= 0)
+                .then(
+                    pl.when(pl.col("distance") > pl.col("alt_len"))
+                    .then(True)
+                    .otherwise(False)
+                )
+                .otherwise(False),
+                )
         )
     else:
         distance_df.with_columns(
