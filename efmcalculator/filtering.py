@@ -75,6 +75,25 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
         .filter(
             pl.col("repeat_len") > 5
         )
+        # filter out circular overlapping repeats
+        .with_columns(
+            (pl.col("position_left") + pl.col("repeat_len")).alias("left_end"),
+            (pl.col("position_right") + pl.col("repeat_len")).alias("right_end")
+        )
+        .with_columns(
+            pl.when(circular)
+            .then(
+                pl.when((pl.col("right_end")) >= seq_len)
+                .then(pl.col("right_end") - seq_len)
+            )
+            .otherwise(pl.col("right_end"))
+        )
+        .filter(
+            ~(
+                (pl.col("right_end") > pl.col("position_left")) &
+                (pl.col("right_end") < pl.col("left_end"))
+            )
+        )
         .sort(["repeat_len", "position_left"], descending=[True, False])
         .group_by(pl.col("repeat"))
         .agg(
@@ -134,22 +153,8 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
         )
     )
 
-
-    # want to remove the repeats in this df
-    filter_out = (
-        combined_dataframe
-        .filter(
-            (pl.col("adjusted_start").list.contains(-1)) |
-            (pl.col("negative_start").list.contains(-1))
-        )
-        .sort("repeat_len", descending=True)
-        .slice(1)
-    )
-
-    filtered_df = combined_dataframe.join(filter_out, on=["repeat", "position_left", "position_right"], how="anti")
-
     filtered_df = (
-    filtered_df
+    combined_dataframe
         .select(["repeat", "repeat_len", "position_left", "position_right", "distance", "type"])
         .explode(["position_left", "position_right", "distance", "type"])
     )
