@@ -1,7 +1,7 @@
 import polars as pl
 
 
-def filter_ssrs(ssr_dataframe):
+def filter_ssrs(ssr_dataframe, seq_len, circular):
     ssr_dataframe = (
         ssr_dataframe.lazy()
         # Filter based on SSR definition
@@ -12,7 +12,7 @@ def filter_ssrs(ssr_dataframe):
         )
     ).collect()
 
-    # Keep SSR with lowest length
+    # Keep SSR with lowest length that start at same position
     ssr_dataframe = (
         ssr_dataframe.sort("repeat_len")
         .group_by(pl.col("start"))
@@ -22,17 +22,40 @@ def filter_ssrs(ssr_dataframe):
     # Delete SSR within other more important SSRs ("CACACA" will have SSR of "CA" and "AC")
     ssr_dataframe = (
     ssr_dataframe.sort(pl.col("start"))
-    .with_columns(
-        pl.col("start").shift(1).alias("last_start"),
-        pl.col("count").shift(1).alias("last_count")
+        .with_columns(
+            pl.when(circular)
+            .then(
+                pl.when((pl.col("start") + (pl.col("count") * pl.col("repeat_len"))) >= seq_len)
+                .then(pl.col("start")-seq_len)
+                .otherwise(pl.col("start"))
+                )        
+        .otherwise(pl.col("start"))
         )
-    # gets rid only if starts 1 bp after last SSR, and has lower count
-    .filter(
-        (pl.col("last_start").is_null()) |
-        (pl.col("start") != pl.col("last_start") + 1) |
-        (pl.col("count") >= pl.col("last_count"))
+        .with_columns(
+        pl.col("start").shift(1).alias("last_start"),
+        pl.col("count").shift(1).alias("last_count"), 
+        )
+    
+        .filter(
+            # gets rid only if starts 1 bp after last SSR, and has lower or equal count
+            (
+                (pl.col("last_start").is_null()) |
+                (pl.col("start") != pl.col("last_start") + 1) |
+                (pl.col("count") > pl.col("last_count"))
+            ) & 
+            # keep SSR with lowest length when not starting from same position
+            (
+                (pl.col("last_start").is_null()) |
+                (pl.col("last_start") + pl.col("repeat_len") != pl.col("start"))
+            )
         )
     .select(["repeat", "repeat_len", "start", "count"])
+    # fix start values
+    .with_columns(
+        pl.when(pl.col("start") < 0)
+        .then(pl.col("start") + seq_len)
+        .otherwise(pl.col("start"))
+        )
     )
 
     return ssr_dataframe
