@@ -166,8 +166,20 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             # start is the 1st bp of SSR
             pl.col("start"),
             # end is the last bp of SSR
-            (pl.col("start")+(pl.col("count")*pl.col("repeat_len")) - 1).alias("end")
+            (pl.col("start")+(pl.col("count")*pl.col("repeat_len")) - 1).alias("end"),
+            pl.col("repeat_len"), 
+            pl.col("count")
         )
+        .with_columns(
+            pl.when(circular)
+            .then(
+                pl.when(pl.col("end") >= seq_len)
+                .then(pl.col("end") - seq_len)
+                .otherwise(pl.col("end"))
+            ),
+            (pl.col("repeat_len") * pl.col("count")).alias("ssr_length")
+        )
+        .select("start", "end", "ssr_length")
     )
 
     # srs_dataframe with a separate row for each repeat and each SSR range
@@ -183,9 +195,10 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
                         ((pl.col("position_left") >= pl.col("start")) & ((pl.col("position_right") + pl.col("repeat_len") - 1) <= pl.col("end"))) | 
                         # account for circular repeats
                         (
-                            ((pl.col("position_right") >= pl.col("start")) & ((pl.col("position_left") + pl.col("repeat_len") - 1) <= pl.col("end"))) & 
-                            (2*pl.col("repeat_len")+pl.col("distance") <= (pl.col("end")-pl.col("start")+1)) &
-                            (pl.col("position_left") + pl.col("repeat_len") - 1 >= seq_len)
+                            (pl.col("position_right") >= pl.col("start")) & 
+                            ((pl.col("position_left") + pl.col("repeat_len") - 2) <= pl.col("end")) & 
+                            ((2*pl.col("repeat_len"))+pl.col("distance") <= pl.col("ssr_length")) &
+                            (pl.col("position_right") + pl.col("repeat_len") - 1 >= seq_len)
                         )
                     )
                     .alias("nested")
