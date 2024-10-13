@@ -161,7 +161,9 @@ def _calculate_distances(polars_df, seq_len, circular) -> pl.LazyFrame:
             .otherwise(False)
         )
     else:
-        wraparound = False
+        distance_df.withcolumns(
+            wraparound = False
+        )
 
     return distance_df
 
