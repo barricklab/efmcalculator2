@@ -239,10 +239,16 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
     )
     collapsed_ssrs = pl.from_pandas(collapsed_ssrs)
 
-    collapsed_ssrs = collapsed_ssrs.with_columns(
-        truth_table=(
-            pl.col("differences").list.eval(
-                (pl.element() != 0).or_(pl.element().is_null())
+    collapsed_ssrs = (
+        collapsed_ssrs
+        .with_columns(
+            pl.col("differences").cast(pl.List(pl.Float64))
+            )
+        .with_columns(
+            truth_table=(
+                pl.col("differences").list.eval(
+                    (pl.element() != 0).or_(pl.element().is_null())
+                )
             )
         )
     )
@@ -285,33 +291,35 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
     )
 
     # Correct for circular
-    collapsed_ssrs = (
-        collapsed_ssrs
-        .sort("start")
-        .group_by("repeat", "repeat_len")
-        .agg(
-            pl.col("start"),
-            pl.col("count"),
-            pl.first("wraparound")
-        )
-        .with_columns(
-            pl.when(pl.col("wraparound").list.contains(True))
-            .then(
-                pl.concat_list([
-                    pl.col("count").list.slice(1, pl.col("count").list.len() - 2),
-                    (pl.col("count").list.first() + pl.col("count").list.last())
-                ]).alias("count")
+    if collapsed_ssrs.height > 0:
+        # Correct for circular SSR
+        collapsed_ssrs = (
+            collapsed_ssrs
+            .sort("start")
+            .group_by("repeat", "repeat_len")
+            .agg(
+                pl.col("start"),
+                pl.col("count"), 
+                pl.first("wraparound")
             )
-            .otherwise(pl.col("count")),
-            pl.when(pl.col("wraparound").list.contains(True))
-            .then(pl.col("start").list.slice(1).alias("start"))
-            .otherwise(pl.col("start"))
+            .with_columns(
+                pl.when(pl.col("wraparound").list.contains(True))
+                .then(
+                    pl.concat_list([
+                        pl.col("count").list.slice(1, pl.col("count").list.len() - 2),
+                        (pl.col("count").list.first() + pl.col("count").list.last())
+                    ]).alias("count")
+                )
+                .otherwise(pl.col("count")),
+                pl.when(pl.col("wraparound").list.contains(True))
+                .then(pl.col("start").list.slice(1).alias("start"))
+                .otherwise(pl.col("start"))
+            )
+            .explode(
+                pl.col("start"),
+                pl.col("count")
+            )
         )
-        .explode(
-            pl.col("start"),
-            pl.col("count")
-        )
-    )
 
     return collapsed_ssrs
 

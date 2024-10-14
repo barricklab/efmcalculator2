@@ -25,11 +25,11 @@ def filter_ssrs(ssr_dataframe, seq_len, circular):
         .with_columns(
             pl.when(circular)
             .then(
-                pl.when((pl.col("start") + (pl.col("count") * pl.col("repeat_len"))) >= seq_len)
-                .then(pl.col("start")-seq_len)
-                .otherwise(pl.col("start"))
+                pl.when((pl.col("start").cast(pl.Int64) + (pl.col("count").cast(pl.Int64) * pl.col("repeat_len").cast(pl.Int64))) >= seq_len)
+                .then(pl.col("start").cast(pl.Int64)-seq_len)
+                .otherwise(pl.col("start").cast(pl.Int64))
                 )        
-        .otherwise(pl.col("start"))
+        .otherwise(pl.col("start").cast(pl.Int64))
         )
         .with_columns(
         pl.col("start").shift(1).alias("last_start"),
@@ -88,6 +88,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             )
             .otherwise(pl.col("right_end"))
         )
+        # noncircular overlapping repeats are covered by pairwise approach already
         .filter(
             ~(
                 (pl.col("right_end") > pl.col("position_left")) &
@@ -160,71 +161,73 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
     )
 
     # filter out SRS nested fully inside SSRs
-    ssr_ranges = (
-        ssr_dataframe
-        .select(
-            # start is the 1st bp of SSR
-            pl.col("start"),
-            # end is the last bp of SSR
-            (pl.col("start")+(pl.col("count")*pl.col("repeat_len")) - 1).alias("end"),
-            pl.col("repeat_len"), 
-            pl.col("count")
-        )
-        .with_columns(
-            pl.when(circular)
-            .then(
-                pl.when(pl.col("end") >= seq_len)
-                .then(pl.col("end") - seq_len)
-                .otherwise(pl.col("end"))
-            ),
-            (pl.col("repeat_len") * pl.col("count")).alias("ssr_length")
-        )
-        .select("start", "end", "ssr_length")
-    )
-
-    # srs_dataframe with a separate row for each repeat and each SSR range
-    ssr_srs_cross = filtered_df.join(ssr_ranges, how="cross")
-
-    filtered_df = (
-        ssr_srs_cross
-        .with_columns(
-            pl.when(circular)
-            .then(
-                (
-                    (
-                        ((pl.col("position_left") >= pl.col("start")) & ((pl.col("position_right") + pl.col("repeat_len") - 1) <= pl.col("end"))) | 
-                        # account for circular repeats
-                        (
-                            (pl.col("position_right") >= pl.col("start")) & 
-                            ((pl.col("position_left") + pl.col("repeat_len") - 2) <= pl.col("end")) & 
-                            ((2*pl.col("repeat_len"))+pl.col("distance") <= pl.col("ssr_length")) &
-                            (pl.col("position_right") + pl.col("repeat_len") - 1 >= seq_len)
-                        )
-                    )
-                    .alias("nested")
-                )
+    # if statement needed because cross join with an empty df creates an empty df
+    if ssr_dataframe.height > 0:
+        ssr_ranges = (
+            ssr_dataframe
+            .select(
+                # start is the 1st bp of SSR
+                pl.col("start").cast(pl.Int64),
+                # end is the last bp of SSR
+                (pl.col("start").cast(pl.Int64)+(pl.col("count").cast(pl.Int64)*pl.col("repeat_len").cast(pl.Int64)) - 1).alias("end"),
+                pl.col("repeat_len").cast(pl.Int64), 
+                pl.col("count").cast(pl.Int64)
             )
-            .otherwise(
-                ((pl.col("position_left") >= pl.col("start")) & ((pl.col("position_right") + pl.col("repeat_len") - 1) <= pl.col("end")))
-                .alias("nested")
+            .with_columns(
+                pl.when(circular)
+                .then(
+                    pl.when(pl.col("end") >= seq_len)
+                    .then(pl.col("end") - seq_len)
+                    .otherwise(pl.col("end"))
+                ),
+                (pl.col("repeat_len") * pl.col("count")).alias("ssr_length")
+            )
+            .select("start", "end", "ssr_length")
+        )
+
+        # srs_dataframe with a separate row for each repeat and each SSR range
+        ssr_srs_cross = filtered_df.join(ssr_ranges, how="cross")
+
+        filtered_df = (
+            ssr_srs_cross
+            .with_columns(
+                pl.when(circular)
+                .then(
+                    (
+                        (
+                            ((pl.col("position_left") >= pl.col("start")) & ((pl.col("position_right") + pl.col("repeat_len") - 1) <= pl.col("end"))) | 
+                            # account for circular repeats
+                            (
+                                (pl.col("position_right") >= pl.col("start")) & 
+                                ((pl.col("position_left") + pl.col("repeat_len") - 2) <= pl.col("end")) & 
+                                ((2*pl.col("repeat_len"))+pl.col("distance") <= pl.col("ssr_length")) &
+                                (pl.col("position_right") + pl.col("repeat_len") - 1 >= seq_len)
+                            )
+                        )
+                        .alias("nested")
+                    )
                 )
+                .otherwise(
+                    ((pl.col("position_left") >= pl.col("start")) & ((pl.col("position_right") + pl.col("repeat_len") - 1) <= pl.col("end")))
+                    .alias("nested")
+                    )
+            )
+            .group_by(
+                pl.col("position_left"), 
+                pl.col("position_right"),
+                pl.col("repeat")
+            )
+            .agg(
+                pl.col("nested"),
+                pl.first("distance"),
+                pl.first("type"),
+                pl.first("repeat_len")
+            )
+            .filter(
+                ~pl.col("nested").list.any()
+            )
         )
-        .group_by(
-            pl.col("position_left"), 
-            pl.col("position_right"),
-            pl.col("repeat")
-        )
-        .agg(
-            pl.col("nested"),
-            pl.first("distance"),
-            pl.first("type"),
-            pl.first("repeat_len")
-        )
-        .filter(
-            ~pl.col("nested").list.any()
-        )
-        .select("repeat", "repeat_len", "position_left", "position_right", "distance", "type")
-    )
+    filtered_df = filtered_df.select("repeat", "repeat_len", "position_left", "position_right", "distance", "type")
 
     # split back into rmd_dataframe and srs_dataframe
     rmd_dataframe = filtered_df.filter(pl.col("type") == "RMD").drop("type")
