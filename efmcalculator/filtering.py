@@ -25,24 +25,24 @@ def filter_ssrs(ssr_dataframe, seq_len, circular):
         .with_columns(
             pl.when(circular)
             .then(
-                pl.when((pl.col("start").cast(pl.Int64) + (pl.col("count").cast(pl.Int64) * pl.col("repeat_len").cast(pl.Int64))) >= seq_len)
-                .then(pl.col("start").cast(pl.Int64)-seq_len)
-                .otherwise(pl.col("start").cast(pl.Int64))
-                )        
-        .otherwise(pl.col("start").cast(pl.Int64))
+                pl.when((pl.col("start") + (pl.col("count") * pl.col("repeat_len"))) >= seq_len)
+                .then(pl.col("start")-seq_len)
+                .otherwise(pl.col("start"))
+                )
+        .otherwise(pl.col("start"))
         )
         .with_columns(
         pl.col("start").shift(1).alias("last_start"),
-        pl.col("count").shift(1).alias("last_count"), 
+        pl.col("count").shift(1).alias("last_count"),
         )
-    
+
         .filter(
             # gets rid only if starts 1 bp after last SSR, and has lower or equal count
             (
                 (pl.col("last_start").is_null()) |
                 (pl.col("start") != pl.col("last_start") + 1) |
                 (pl.col("count") > pl.col("last_count"))
-            ) & 
+            ) &
             # keep SSR with lowest length when not starting from same position
             (
                 (pl.col("last_start").is_null()) |
@@ -64,7 +64,7 @@ def filter_ssrs(ssr_dataframe, seq_len, circular):
 def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, circular):
     # Delete redundant SRS repeats
 
-    # label RMDs and SRSs and combine into 1 df 
+    # label RMDs and SRSs and combine into 1 df
     rmd_dataframe = rmd_dataframe.with_columns(pl.lit("RMD").alias("type"))
     srs_dataframe = srs_dataframe.with_columns(pl.lit("SRS").alias("type"))
     combined_dataframe = pl.concat([srs_dataframe, rmd_dataframe])
@@ -99,9 +99,9 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
         .group_by(pl.col("repeat"))
         .agg(
             pl.first("repeat_len"),
-            pl.col("position_left"), 
+            pl.col("position_left"),
             pl.col("position_right"),
-            pl.col("distance"), 
+            pl.col("distance"),
             pl.first("type")
             )
         .with_columns(
@@ -117,7 +117,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
              pl.first("repeat_len"),
              pl.first("position_left"),
              pl.first("position_right"),
-             pl.first("distance"), 
+             pl.first("distance"),
              pl.first("type")
              )
         .explode(pl.col("repeat"))
@@ -136,21 +136,21 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             pl.col("position_right"),
             pl.first("repeat_len"),
             pl.col("distance"),
-            pl.first("count"), 
+            pl.first("count"),
             pl.col("type"),
             (pl.col("position_right") - seq_len).alias("negative_start")
         )
 
         .with_columns(
             pl.col("position_left").shift(1).list.unique().alias("last_position_left"),
-            pl.col("position_left").list.eval(pl.element() -1).list.unique().alias("adjusted_start"), 
+            pl.col("position_left").list.eval(pl.element() -1).list.unique().alias("adjusted_start"),
             pl.col("repeat_len").shift(1).alias("last_len")
         )
     # delete if (last_pos == adjusted start or last_neg == adjusted start) AND last_len - len == 1
         .filter(
             (pl.col("last_position_left").is_null()) |
             (pl.col("adjusted_start") != pl.col("last_position_left")) |
-            (pl.col("repeat_len") + 1 != pl.col("last_len"))        
+            (pl.col("repeat_len") + 1 != pl.col("last_len"))
         )
     )
 
@@ -167,11 +167,11 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             ssr_dataframe
             .select(
                 # start is the 1st bp of SSR
-                pl.col("start").cast(pl.Int64),
+                pl.col("start"),
                 # end is the last bp of SSR
-                (pl.col("start").cast(pl.Int64)+(pl.col("count").cast(pl.Int64)*pl.col("repeat_len").cast(pl.Int64)) - 1).alias("end"),
-                pl.col("repeat_len").cast(pl.Int64), 
-                pl.col("count").cast(pl.Int64)
+                (pl.col("start")+(pl.col("count")*pl.col("repeat_len")) - 1).alias("end"),
+                pl.col("repeat_len"),
+                pl.col("count")
             )
             .with_columns(
                 pl.when(circular)
@@ -195,11 +195,11 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
                 .then(
                     (
                         (
-                            ((pl.col("position_left") >= pl.col("start")) & ((pl.col("position_right") + pl.col("repeat_len") - 1) <= pl.col("end"))) | 
+                            ((pl.col("position_left") >= pl.col("start")) & ((pl.col("position_right") + pl.col("repeat_len") - 1) <= pl.col("end"))) |
                             # account for circular repeats
                             (
-                                (pl.col("position_right") >= pl.col("start")) & 
-                                ((pl.col("position_left") + pl.col("repeat_len") - 2) <= pl.col("end")) & 
+                                (pl.col("position_right") >= pl.col("start")) &
+                                ((pl.col("position_left") + pl.col("repeat_len") - 2) <= pl.col("end")) &
                                 ((2*pl.col("repeat_len"))+pl.col("distance") <= pl.col("ssr_length")) &
                                 (pl.col("position_right") + pl.col("repeat_len") - 1 >= seq_len)
                             )
@@ -213,7 +213,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
                     )
             )
             .group_by(
-                pl.col("position_left"), 
+                pl.col("position_left"),
                 pl.col("position_right"),
                 pl.col("repeat")
             )

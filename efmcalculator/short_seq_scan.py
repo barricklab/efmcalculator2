@@ -162,22 +162,22 @@ def _calculate_distances(polars_df, seq_len, circular) -> pl.LazyFrame:
                     .then(pl.col("alt_len"))
                     .otherwise(pl.col("distance"))
                 )
-                .otherwise(pl.col("distance")),
+                .otherwise(pl.col("distance")).cast(pl.Int32),
                 wraparound=pl.when(pl.col("alt_len") >= 0)
                 .then(
                     pl.when(pl.col("distance") > pl.col("alt_len"))
                     .then(True)
                     .otherwise(False)
                 )
-                .otherwise(False),
+                .otherwise(False)
                 )
         )
     else:
         distance_df.with_columns(
-            wraparound = False
+            wraparound = False,
         )
-
     return distance_df
+
 
 
 def _categorize_efm(polars_df) -> pl.DataFrame:
@@ -299,7 +299,7 @@ def _collapse_ssr(polars_df) -> pl.DataFrame:
             .group_by("repeat", "repeat_len")
             .agg(
                 pl.col("start"),
-                pl.col("count"), 
+                pl.col("count"),
                 pl.first("wraparound")
             )
             .with_columns(
