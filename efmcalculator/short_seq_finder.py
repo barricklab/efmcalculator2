@@ -59,7 +59,7 @@ def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
 
     repeats = (
         pl.LazyFrame(scan_genome()).group_by("repeat").agg(pl.col("position")).collect()
-    ).cast({"position": pl.List(pl.UInt32)})
+    ).cast({"position": pl.List(pl.Int32)})
 
     bar.finish()
 
@@ -84,8 +84,8 @@ def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
     RMD_df = pl.DataFrame(
         {
             "repeat": pl.Series("repeat", [], pl.Utf8),
-            "pairings": pl.Series("pairings", [], pl.List(pl.UInt32)),
-            "repeat_len": pl.Series("repeat_len", [], pl.UInt32),
+            "pairings": pl.Series("pairings", [], pl.List(pl.Int32)),
+            "repeat_len": pl.Series("repeat_len", [], pl.Int32),
         }
     )
 
@@ -153,7 +153,7 @@ def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
             lambda pairings: store_RMD(pairings, seq), return_dtype=pl.List(pl.Null)
         )
     )
-    RMD_df = RMD_df.with_columns(pl.col("repeat_len").cast(pl.UInt32))
+    RMD_df = RMD_df.with_columns(pl.col("repeat_len").cast(pl.Int32))
 
     df = pl.concat([df, RMD_df])
 
@@ -204,10 +204,9 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     if "position_corrected" in repeat_df:
         repeat_df = repeat_df.drop("position_corrected")
     repeat_df = repeat_df.explode("pairings")
-
     # Get length of each repeat
     repeat_df = repeat_df.with_columns(
-        pl.col("repeat").str.len_chars().alias("repeat_len")
+        pl.col("repeat").str.len_chars().alias("repeat_len").cast(pl.Int32)
     )
 
 
@@ -251,10 +250,10 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     else:
         schema = {
             "repeat": pl.Utf8,
-            "repeat_len": pl.UInt32,
-            "position_left": pl.UInt32,
-            "position_right": pl.UInt32,
-            "distance": pl.UInt32,
+            "repeat_len": pl.Int32,
+            "position_left": pl.Int32,
+            "position_right": pl.Int32,
+            "distance": pl.Int32,
             "category": pl.Categorical,
         }
         repeat_df = pl.DataFrame(schema=schema)
