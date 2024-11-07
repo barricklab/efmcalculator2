@@ -7,7 +7,7 @@ def filter_ssrs(ssr_dataframe, seq_len, circular):
         # Filter based on SSR definition
         .filter(
             (pl.col("repeat_len") >= 2)
-            .and_(pl.col("count") >= 2)
+            .and_(pl.col("count") >= 3)
             .or_((pl.col("repeat_len") == 1).and_(pl.col("count") >= 4))
         )
     ).collect()
@@ -69,6 +69,8 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
     srs_dataframe = srs_dataframe.with_columns(pl.lit("SRS").alias("type"))
     combined_dataframe = pl.concat([srs_dataframe, rmd_dataframe])
 
+
+
     #filter combined dataframe
     combined_dataframe = (
         combined_dataframe
@@ -85,6 +87,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             .then(
                 pl.when((pl.col("right_end")) >= seq_len)
                 .then(pl.col("right_end") - seq_len)
+                .otherwise(pl.col("right_end"))
             )
             .otherwise(pl.col("right_end"))
         )
@@ -160,6 +163,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
         .explode(["position_left", "position_right", "distance", "type"])
     )
 
+
     # filter out SRS nested fully inside SSRs
     # if statement needed because cross join with an empty df creates an empty df
     if ssr_dataframe.height > 0:
@@ -200,8 +204,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
                             (
                                 (pl.col("position_right") >= pl.col("start")) &
                                 ((pl.col("position_left") + pl.col("repeat_len") - 2) <= pl.col("end")) &
-                                ((2*pl.col("repeat_len"))+pl.col("distance") <= pl.col("ssr_length")) &
-                                (pl.col("position_right") + pl.col("repeat_len") - 1 >= seq_len)
+                                ((2*pl.col("repeat_len"))+pl.col("distance") <= pl.col("ssr_length"))
                             )
                         )
                         .alias("nested")
@@ -227,12 +230,12 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
                 ~pl.col("nested").list.any()
             )
         )
+
     filtered_df = filtered_df.select("repeat", "repeat_len", "position_left", "position_right", "distance", "type")
 
     # split back into rmd_dataframe and srs_dataframe
     rmd_dataframe = filtered_df.filter(pl.col("type") == "RMD").drop("type")
     srs_dataframe = filtered_df.filter(pl.col("type") == "SRS").drop("type")
-
 
     return rmd_dataframe, srs_dataframe
 

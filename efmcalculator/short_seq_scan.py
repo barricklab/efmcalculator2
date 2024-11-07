@@ -70,7 +70,7 @@ def _pairwise_slips(polars_df, column, is_circular) -> pl.DataFrame:
     pairwise = pairwise.lazy().with_columns(
         pl.col(column)
         .map_elements(map_function, return_dtype=pl.List(pl.List(pl.Int64)))
-        .alias(f"pairings").cast(pl.List(pl.List(pl.UInt32)))
+        .alias(f"pairings").cast(pl.List(pl.List(pl.Int32)))
     )
 
     linear_subset = linear_subset
@@ -148,7 +148,7 @@ def _calculate_distances(polars_df, seq_len, circular) -> pl.LazyFrame:
         inputted polars dataframe with a column of distances between each repeat
     """
     distance_df = polars_df.with_columns(
-        distance=pl.col("pairings").list.diff().list.get(1) - pl.col("repeat_len").cast(pl.UInt32)
+        distance=pl.col("pairings").list.diff().list.get(1) - pl.col("repeat_len").cast(pl.Int32)
     )
 
     if circular:

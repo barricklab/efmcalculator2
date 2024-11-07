@@ -8,10 +8,8 @@ try:
 except e:
     print("Error while loading gam results")
     exit(1)
-gam_results = pl.read_csv(gam_result_filepath).cast({"repeat_len": pl.UInt32,
+gam_results = pl.read_csv(gam_result_filepath).cast({"repeat_len": pl.Int32,
                                             "distance": pl.Int32})
-
-
 
 
 def ssr_mut_rate(repeat_count, unit_length, org):
