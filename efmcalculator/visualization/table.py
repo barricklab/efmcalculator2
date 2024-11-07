@@ -23,11 +23,11 @@ def generate_bokeh_table(df, name, callback=None) -> DataTable:
         elif column_name == "mutation_rate":
             formatted_column = TableColumn(
                 field=column_name,
-                title=column_name,
+                title=label_rename(column_name),
                 formatter=ScientificFormatter(precision=2),
             )
         else:
-            formatted_column = TableColumn(field=column_name, title=column_name)
+            formatted_column = TableColumn(field=column_name, title=label_rename(column_name))
         columns.append(formatted_column)
 
     source.selected.indices = selected
@@ -39,6 +39,7 @@ def generate_bokeh_table(df, name, callback=None) -> DataTable:
         width=500,
         editable=True,
         selectable="checkbox",
+        index_position = None
     )
     if callback:
         callback = callback(source)
@@ -48,3 +49,15 @@ def generate_bokeh_table(df, name, callback=None) -> DataTable:
 def generate_empty_table(name):
     table = Div(text = f"No {name} hotspots predicted", width=750)
     return table
+
+def label_rename(title):
+    result = title.replace("_", " ")
+        
+    if len(title) > 0:
+        result = result[0].upper() + result[1: len(result)]
+    
+    if result.find(" ") != -1 and result.find(" ") != (len(result) - 1):
+        space_index = result.find(" ")
+        result = result[0 : space_index + 1] + result[space_index + 1].upper() + result[space_index + 2 : len(result)]
+        
+    return result
