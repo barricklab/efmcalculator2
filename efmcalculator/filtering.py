@@ -7,7 +7,7 @@ def filter_ssrs(ssr_dataframe, seq_len, circular):
         # Filter based on SSR definition
         .filter(
             (pl.col("repeat_len") >= 2)
-            .and_(pl.col("count") >= 2)
+            .and_(pl.col("count") >= 3)
             .or_((pl.col("repeat_len") == 1).and_(pl.col("count") >= 4))
         )
     ).collect()
@@ -87,6 +87,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             .then(
                 pl.when((pl.col("right_end")) >= seq_len)
                 .then(pl.col("right_end") - seq_len)
+                .otherwise(pl.col("right_end"))
             )
             .otherwise(pl.col("right_end"))
         )
@@ -203,8 +204,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
                             (
                                 (pl.col("position_right") >= pl.col("start")) &
                                 ((pl.col("position_left") + pl.col("repeat_len") - 2) <= pl.col("end")) &
-                                ((2*pl.col("repeat_len"))+pl.col("distance") <= pl.col("ssr_length")) &
-                                (pl.col("position_right") + pl.col("repeat_len") - 1 >= seq_len)
+                                ((2*pl.col("repeat_len"))+pl.col("distance") <= pl.col("ssr_length"))
                             )
                         )
                         .alias("nested")
