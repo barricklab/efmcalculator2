@@ -202,8 +202,7 @@ def bulk_output(results_list, sequences, outpath, skip_vis = False):
             if not os.path.exists(folder):
                 os.makedirs(folder)
         except FileExistsError:
-            logger.error(f"Output folder {folder} already exists as a file.")
-            exit(1)
+            continue
 
         # Export results ------------
 
