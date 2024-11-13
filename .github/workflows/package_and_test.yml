@@ -1,0 +1,32 @@
+name: Build and Test
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 0 1 * *"
+
+jobs:
+  create-env:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v3
+
+      - name: install efmcalculator
+        run: |
+          pip install ./
+
+      - name: test ostir
+        run: |
+          python -m unittest
