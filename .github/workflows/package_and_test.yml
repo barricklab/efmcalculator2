@@ -23,11 +23,10 @@ jobs:
       - name: checkout repository
         uses: actions/checkout@v3
 
-      - name: make venv
-        run: |
-          python3.12 -m venv .venv
-          source .venv/bin/activate
-          pip install -r requirements.txt
+      - name: Install Python 3
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.12
 
       - name: install efmcalculator
         run: |
