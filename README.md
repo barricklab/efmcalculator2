@@ -1,13 +1,15 @@
+[![Status](https://github.com/barricklab/efm-calculator2/actions/workflows/package_and_test.yml/badge.svg)](https://github.com/barricklab/efm-calculator2/actions/workflows/package_and_test.yml)
+
 `efmcalculator` is a Python package or web tool for detecting mutational hotspots. It predicts the mutation rates associated with each hotspot and combines them into a relative instability score. These hotspots include simple sequence repeats, repeat mediated deletions, and short repeat sequences. This code updates and improves upon the last version of the [EFM calculator](https://github.com/barricklab/efm-calculator).
 
-`efmcalculator` supports multifasta, genbank, or csv files as input and accepts parameters from the command line. It also supports the scanning of both linear and circular sequences. It defaults to a pairwise comparison strategy (all occurrences of a repeat are compared with all other occurrences), but it also contains an option for a linear comparison strategy (each occurrence of a repeat is only compared with the next occurrence in the sequence) to accelerate the analysis of large sequences. 
+`efmcalculator` supports multifasta, genbank, or csv files as input and accepts parameters from the command line. It also supports the scanning of both linear and circular sequences. It defaults to a pairwise comparison strategy (all occurrences of a repeat are compared with all other occurrences), but it also contains an option for a linear comparison strategy (each occurrence of a repeat is only compared with the next occurrence in the sequence) to accelerate the analysis of large sequences.
 
 
-# Installation 
+# Installation
 Efmcalculator can be accessed as a free web tool at ____.
 
 ## From pip:
-Run pip install efmcalculator 
+Run pip install efmcalculator
 
 # Command Line Usage
 - -h: help
