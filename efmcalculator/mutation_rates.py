@@ -122,22 +122,10 @@ def srs_mut_rate_vector(rmd_df, org="ecoli"):
     :param SRS_df: DataFrame containing the GAM model predictions with columns 'RBP_Length', 'TBD_length', and 'prediction'.
     :return: The predicted mutation rate or 0 if the input is invalid.
     """
-    # Check if the homologous sequences overlap
-    if distance < 0:
-        return 0
-    
-    try:
-        # Search for the prediction in the DataFrame
-        result = pl.filter((pl.col("RBP_Length") == length) & (pl.col("TBD_length") == distance))
-        
-        if result.is_empty():
-            raise ValueError("No matching record found for the given length and distance.")
-        
-        # Return the prediction value
-        return result.select("mutation_rate").item()
 
-    except Exception as e:
-        raise ValueError(f"An error occurred while calculating the mutation rate: {e}")
+
+    findings = rmd_df.join(gam_results, on=['distance', 'repeat_len'], how='left').with_columns(pl.col("mutation_rate").fill_null(strategy="zero"))
+    return findings
 
 
 def rip_score(ssr_df, srs_df, rmd_df, sequence_length):
