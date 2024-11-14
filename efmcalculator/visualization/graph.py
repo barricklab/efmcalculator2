@@ -35,6 +35,7 @@ from .rmd import draw_rmd
 from .srs import draw_srs
 from .eval_top import eval_top
 from .table import generate_empty_table
+from .table import generate_nerfed_bokeh_table
 from bokeh.models import Range1d
 
 import logging
@@ -91,6 +92,20 @@ def make_plot(seqrecord, **repeat_dataframes):
     else:
         tables["RMD"] = generate_empty_table("RMD")
 
+    #recreating with only 2 columns in order to avoid issues while concat, will add position column soon
+    columns_to_keep = ["repeat", "mutation_rate"]
+    ssr_selected = extract_columns(ssr_df, columns_to_keep)
+    srs_selected = extract_columns(srs_df, columns_to_keep)
+    rmd_selected = extract_columns(rmd_df, columns_to_keep)
+
+    combined_df = pl.concat([ssr_selected, srs_selected, rmd_selected])
+    
+    if not combined_df.is_empty():
+        top_10_combined = combined_df.sort(by="mutation_rate", descending = True)
+        tables["Top"] = generate_nerfed_bokeh_table(top_10_combined)
+    else:
+        tables["Top"] = generate_empty_table("Top")
+
     fig.line(
         [0, xmax],
         [1000, 1000],
@@ -99,3 +114,10 @@ def make_plot(seqrecord, **repeat_dataframes):
     )
 
     return fig, tables
+
+def extract_columns(df, columns):
+    if df is None or df.is_empty():
+        return pl.DataFrame({col: [] for col in columns})
+    selected_data = {col: df[col] if col in df.columns else pl.lit(None) for col in columns}
+    
+    return pl.DataFrame(selected_data)

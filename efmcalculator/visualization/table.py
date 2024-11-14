@@ -61,3 +61,13 @@ def label_rename(title):
         result = result[0 : space_index + 1] + result[space_index + 1].upper() + result[space_index + 2 : len(result)]
         
     return result
+
+def generate_nerfed_bokeh_table(polarTable):
+    if isinstance(polarTable, pl.DataFrame):
+        polarTable = polarTable.to_pandas()
+    
+    source = ColumnDataSource(polarTable)
+    columns = [TableColumn(field=col, title=col) for col in polarTable.columns]
+    data_table = DataTable(source=source, columns=columns, width=500, index_position = None)
+    
+    return data_table
