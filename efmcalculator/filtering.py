@@ -161,6 +161,9 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
     combined_dataframe
         .select(["repeat", "repeat_len", "position_left", "position_right", "distance", "type"])
         .explode(["position_left", "position_right", "distance", "type"])
+        .sort(["repeat_len"], descending=True)
+        .group_by(pl.col("position_left"), pl.col("position_right"))
+        .head(1)
     )
 
 
