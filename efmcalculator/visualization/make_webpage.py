@@ -70,11 +70,11 @@ def assemble(layout, summary, tables):
         layout = Div()
 
     style = Styles(font = "IBM Plex Sans") # <- Doesnt appear to work?
-    summary_layout = column(Div(text=f"Rip Score: {summary["rip"]}", styles=style, width=500),
-                            Div(text=f"SSR: {summary["ssr_sum"]}", width=500),
-                            Div(text=f"SRS: {summary["srs_sum"]}", width=500),
-                            Div(text=f"RMD: {summary["rmd_sum"]}", width=500),
-                            Div(text=f"Basal: {summary["bps_sum"]}", width=500),)
+    summary_layout = column(Div(text=f"Rip Score: {summary["rip"]:.3g}", styles=style, width=500),
+                            Div(text=f"SSR: {summary["ssr_sum"]:.2e}", width=500),
+                            Div(text=f"SRS: {summary["srs_sum"]:.2e}", width=500),
+                            Div(text=f"RMD: {summary["rmd_sum"]:.2e}", width=500),
+                            Div(text=f"Basal: {summary["bps_sum"]:.2e}", width=500),)
 
     if len(tables) > 1:
         # Make buttons that show the appropriat tables

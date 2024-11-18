@@ -94,11 +94,11 @@ def make_plot(seqrecord, **repeat_dataframes):
 
     #recreating with only 2 columns in order to avoid issues while concat, will add position column soon
     columns_to_keep = ["repeat", "mutation_rate"]
-    ssr_selected = extract_columns(ssr_df, columns_to_keep)
-    srs_selected = extract_columns(srs_df, columns_to_keep)
-    rmd_selected = extract_columns(rmd_df, columns_to_keep)
+    ssr_selected = extract_columns(ssr_df, columns_to_keep, "SSR")
+    srs_selected = extract_columns(srs_df, columns_to_keep, "SRS")
+    rmd_selected = extract_columns(rmd_df, columns_to_keep, "RMD")
 
-    combined_df = pl.concat([ssr_selected, srs_selected, rmd_selected])
+    combined_df = pl.concat([ssr_selected, srs_selected, rmd_selected], how="diagonal")
     
     if not combined_df.is_empty():
         top_10_combined = combined_df.sort(by="mutation_rate", descending = True)
@@ -115,9 +115,18 @@ def make_plot(seqrecord, **repeat_dataframes):
 
     return fig, tables
 
-def extract_columns(df, columns):
+def extract_columns(df, columns, type):
     if df is None or df.is_empty():
         return pl.DataFrame({col: [] for col in columns})
     selected_data = {col: df[col] if col in df.columns else pl.lit(None) for col in columns}
     
-    return pl.DataFrame(selected_data)
+    df = pl.DataFrame(selected_data)
+    
+    if type == "SSR":
+        df = df.with_columns(pl.lit("SSR").alias("type"))
+    elif type == "SRS":
+        df = df.with_columns(pl.lit("SRS").alias("type"))
+    else:
+        df = df.with_columns(pl.lit("RMD").alias("type"))
+    
+    return df

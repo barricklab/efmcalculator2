@@ -65,6 +65,12 @@ def label_rename(title):
 def generate_nerfed_bokeh_table(polarTable):
     if isinstance(polarTable, pl.DataFrame):
         polarTable = polarTable.to_pandas()
+        polarTable["mutation_rate"] = polarTable["mutation_rate"].apply(lambda x: f"{x:.2e}")
+    
+    clean_columns = []
+    for column in polarTable.columns:
+        clean_columns.append(label_rename(column))
+    
     
     source = ColumnDataSource(polarTable)
     columns = [TableColumn(field=col, title=col) for col in polarTable.columns]
