@@ -186,7 +186,8 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
                     pl.when(pl.col("end") >= seq_len)
                     .then(pl.col("end") - seq_len)
                     .otherwise(pl.col("end"))
-                ),
+                )
+                .otherwise(pl.col("end")),
                 (pl.col("repeat_len") * pl.col("count")).alias("ssr_length")
             )
             .select("start", "end", "ssr_length")
