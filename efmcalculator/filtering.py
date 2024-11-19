@@ -6,9 +6,9 @@ def filter_ssrs(ssr_dataframe, seq_len, circular):
         ssr_dataframe.lazy()
         # Filter based on SSR definition
         .filter(
-            (pl.col("repeat_len") >= 2)
+            (pl.col("repeat_len") >= 3)
             .and_(pl.col("count") >= 3)
-            .or_((pl.col("repeat_len") == 1).and_(pl.col("count") >= 4))
+            .or_((pl.col("repeat_len") <= 2).and_(pl.col("count") >= 4))
         )
     ).collect()
 
