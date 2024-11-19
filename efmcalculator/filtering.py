@@ -184,13 +184,19 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
                 pl.when(circular)
                 .then(
                     pl.when(pl.col("end") >= seq_len)
-                    .then(pl.col("end") - seq_len)
-                    .otherwise(pl.col("end"))
+                    .then(True)
+                    .otherwise(False)
+                    .alias("wraparound")
                 )
-                .otherwise(pl.col("end")),
-                (pl.col("repeat_len") * pl.col("count")).alias("ssr_length")
+                .otherwise(False).alias("wraparound")
             )
-            .select("start", "end", "ssr_length")
+            .with_columns(
+                (pl.col("repeat_len")*pl.col("count")).alias("ssr_length"),
+                pl.when(pl.col("wraparound") == True)
+                .then(pl.col("end")-seq_len)
+                .otherwise(pl.col("end"))
+            )
+            .select("start", "end", "ssr_length", "wraparound")
         )
 
         # srs_dataframe with a separate row for each repeat and each SSR range
@@ -199,16 +205,20 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
         filtered_df = (
             ssr_srs_cross
             .with_columns(
-                pl.when(circular)
+                pl.when(pl.col("wraparound") == True)
                 .then(
                     (
                         (
-                            ((pl.col("position_left") >= pl.col("start")) & ((pl.col("position_right") + pl.col("repeat_len") - 1) <= pl.col("end"))) |
-                            # account for circular repeats
-                            (
-                                (pl.col("position_right") >= pl.col("start")) &
-                                ((pl.col("position_left") + pl.col("repeat_len") - 2) <= pl.col("end")) &
-                                ((2*pl.col("repeat_len"))+pl.col("distance") <= pl.col("ssr_length"))
+                            # remove if no part of srs is after end and before start of wraparound ssr
+                            ~(
+                                (
+                                    (pl.col("position_left")<pl.col("start")) &
+                                    ((pl.col("position_left")+pl.col("repeat_len")-2) > pl.col("end"))
+                                ) |
+                                (
+                                    (pl.col("position_right") < pl.col("start")) &
+                                    ((pl.col("position_right")+pl.col("repeat_len")-2) > pl.col("end"))
+                                )
                             )
                         )
                         .alias("nested")
