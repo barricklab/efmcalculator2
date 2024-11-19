@@ -67,13 +67,8 @@ def generate_nerfed_bokeh_table(polarTable):
         polarTable = polarTable.to_pandas()
         polarTable["mutation_rate"] = polarTable["mutation_rate"].apply(lambda x: f"{x:.2e}")
     
-    clean_columns = []
-    for column in polarTable.columns:
-        clean_columns.append(label_rename(column))
-    
-    
     source = ColumnDataSource(polarTable)
-    columns = [TableColumn(field=col, title=col) for col in polarTable.columns]
+    columns = [TableColumn(field=col, title=label_rename(col)) for col in polarTable.columns]
     data_table = DataTable(source=source, columns=columns, width=500, index_position = None)
     
     return data_table
