@@ -71,7 +71,7 @@ def make_plot(seqrecord, **repeat_dataframes):
     ssr_df, srs_df, rmd_df = eval_top(ssr_df, srs_df, rmd_df)
 
     if seqrecord.annotations:
-        fig = plot_features(seqrecord, fig)
+        fig = plot_features(seqrecord, fig)[0]
 
     tables = {}
     if isinstance(ssr_df, pl.DataFrame) and not ssr_df.is_empty():

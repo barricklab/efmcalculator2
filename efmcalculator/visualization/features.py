@@ -30,6 +30,13 @@ from typing import List
 
 import logging
 
+genbank_dictionary = {}
+
+def get_annotation_positions():
+    position = [0, 0, len(genbank_dictionary)]
+    if len(genbank_dictionary) != 0:
+        position = genbank_dictionary["position"]
+    return position
 
 def plot_features(seqrecord, fig):
     xmax = len(seqrecord.seq)
@@ -149,7 +156,7 @@ def plot_features(seqrecord, fig):
         color="black",
     )
 
-    return fig
+    return fig, genbank_dictionary
 
 
 def get_feature_color(feature: SeqFeature) -> str:

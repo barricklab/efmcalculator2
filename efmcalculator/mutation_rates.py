@@ -2,6 +2,7 @@ import polars as pl
 import os
 import sys
 from .constants import SUB_RATE
+from .visualization.features import get_annotation_positions
 
 try:
     gam_result_filepath = filepath = os.path.dirname(sys.modules['efmcalculator'].__file__)+'/data/gam_df.csv'
@@ -157,5 +158,5 @@ def rip_score(ssr_df, srs_df, rmd_df, sequence_length):
         "srs_sum": srs_sum,
         "rmd_sum": rmd_sum,
         "bps_sum": base_rate,
-
+        #"annotations" : get_annotation_positions(),
     }
