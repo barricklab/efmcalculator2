@@ -15,6 +15,7 @@ from ..visualization.graph import make_plot
 from ..visualization.make_webpage import assemble
 from ..constants import VALID_EXTS
 from ..parse_inputs import parse_file, validate_sequences, BadSequenceError
+from importlib.metadata import version
 
 from ..efmcalculator import post_process
 from bokeh.embed import file_html
@@ -120,6 +121,7 @@ def run_webapp():
             """,
             unsafe_allow_html=True
         )
+        st.text(f"Version {version('efmcalculator')}")
 
     with colbadge:
         st.html(r'<a href="https://github.com/barricklab/efm-calculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/ostir?style=social&label=barricklab%2FOSTIR"></a>')
