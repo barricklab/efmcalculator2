@@ -2,6 +2,7 @@ import pathlib
 import logging
 import csv
 from Bio import SeqIO, SeqRecord, Seq
+from pathlib import Path
 
 from .constants import FASTA_EXTS, GBK_EXTS
 
@@ -21,9 +22,9 @@ def parse_file(filepath: pathlib.Path) -> list:
         filepath: path to the multifasta, genbank, or csv file containing the sequences to be scanned
 
     returns:
-        list containing all the sequences to be scanned     
+        list containing all the sequences to be scanned
     """
-    
+
     path_as_string = str(filepath)
     if not filepath.exists():
         raise OSError("File {} does not exist.".format(path_as_string))
@@ -37,7 +38,24 @@ def parse_file(filepath: pathlib.Path) -> list:
         raise ValueError(
             f"File {filepath} is not a known file format. Must be one of {FASTA_EXTS + GBK_EXTS + [".csv"]}."
         )
-    return list(sequences)
+
+    # If the genbank file doesnt have a name, add it
+    test_sequences = []
+    for i, seq in enumerate(sequences):
+        try:
+            filename = Path(filepath).stem
+            if not seq.name:
+                seq.name = f"{filename}"
+            if not seq.description or seq.description == '':
+                seq.description = f"{filename}"
+            test_sequences.append(seq)
+        except:
+            pass
+
+    for seq in test_sequences:
+        print(f"{seq.name=}, {seq.description=}")
+
+    return test_sequences
 
 
 def validate_sequences(sequences, max_len=None):
