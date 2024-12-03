@@ -36,6 +36,8 @@ from .srs import draw_srs
 from .eval_top import eval_top
 from .table import generate_empty_table
 from .table import generate_nerfed_bokeh_table
+from .features import get_annotation_positions
+from .features import get_annotation_names
 from bokeh.models import Range1d
 
 import logging
@@ -93,12 +95,25 @@ def make_plot(seqrecord, **repeat_dataframes):
         tables["RMD"] = generate_empty_table("RMD")
 
     #recreating with only 2 columns in order to avoid issues while concat, will add position column soon
-    columns_to_keep = ["repeat", "mutation_rate"]
-    ssr_selected = extract_columns(ssr_df, columns_to_keep, "SSR")
-    srs_selected = extract_columns(srs_df, columns_to_keep, "SRS")
-    rmd_selected = extract_columns(rmd_df, columns_to_keep, "RMD")
-
+    columns_to_keep = ["repeat", "mutation_rate", "type", "annotation"]
+    ssr_selected = addType(ssr_df, "SSR")
+    srs_selected = addType(srs_df, "SRS")
+    rmd_selected = addType(rmd_df, "RMD")
+    
     combined_df = pl.concat([ssr_selected, srs_selected, rmd_selected], how="diagonal")
+    combined_df = addAnnotation(combined_df)
+    combined_df = extract_columns(combined_df, columns_to_keep)
+    
+    
+    #ssr_selected = addAnnotation(ssr_selected, "SSR")
+    #srs_selected = addAnnotation(srs_selected, "SRS")
+    #rmd_selected = addAnnotation(rmd_selected, "RMD")
+    
+    #ssr_selected = extract_columns(ssr_selected, columns_to_keep)
+    #srs_selected = extract_columns(srs_selected, columns_to_keep)
+    #rmd_selected = extract_columns(rmd_selected, columns_to_keep)
+
+    
     
     if not combined_df.is_empty():
         top_10_combined = combined_df.sort(by="mutation_rate", descending = True)
@@ -115,18 +130,83 @@ def make_plot(seqrecord, **repeat_dataframes):
 
     return fig, tables
 
-def extract_columns(df, columns, type):
+#def extract_columns(df, columns, mut_type):
+def extract_columns(df, columns):   
     if df is None or df.is_empty():
         return pl.DataFrame({col: [] for col in columns})
     selected_data = {col: df[col] if col in df.columns else pl.lit(None) for col in columns}
     
     df = pl.DataFrame(selected_data)
     
-    if type == "SSR":
+    #if mut_type == "SSR":
+    #    df = df.with_columns(pl.lit("SSR").alias("type"))
+    #elif mut_type == "SRS":
+    #    df = df.with_columns(pl.lit("SRS").alias("type"))
+    #else:
+    #    df = df.with_columns(pl.lit("RMD").alias("type"))
+    
+    return df
+
+def addType(df, mut_type):
+    if mut_type == "SSR":
         df = df.with_columns(pl.lit("SSR").alias("type"))
-    elif type == "SRS":
+    elif mut_type == "SRS":
         df = df.with_columns(pl.lit("SRS").alias("type"))
     else:
         df = df.with_columns(pl.lit("RMD").alias("type"))
-    
     return df
+
+
+def addAnnotation(df):
+    annopos = get_annotation_positions()
+    annoname = get_annotation_names()
+    processannopos = []
+    #print(annoname)
+    processannoname = [item for sublist in annoname for subsublist in sublist for item in subsublist]
+    
+    for i in annopos[0]:
+        ends = i.split('-')
+        result = (int(ends[0]), int(ends[1]))
+        result = tuple(result)
+        processannopos.append(result)
+    
+    #print(processannoname)
+    #print(processannopos)
+    #printannopos and processannonname indicies now refer to the same thing
+    
+    #check for overlapping
+    #for every element, check to see if position lies withing
+    mapped_annotations = []
+    
+    for row in df.rows(named=True):
+        all_annotations = ""
+        for j in range(0, len(processannopos)):
+            if row["type"] != "SSR":
+                if row["position_left"] <= processannopos[j][1] and row["position_right"] >= processannopos[j][0]:
+                    all_annotations += processannoname[j] + ' | '
+            else:
+                all_annotations += " " #can remove this
+        mapped_annotations.append(all_annotations)
+    
+    #print(mapped_annotations)
+    df = df.with_columns(pl.Series("annotation", mapped_annotations))
+    return df
+    
+    
+    #as of now, all annotations captures overlaps, issue is getting it to align
+    
+    #if mut_type == "RMD" or mut_type == "SRS": # 
+    #    for row in df.rows(named=True):
+    #        all_annotations = ""
+    #        for j in range(0, len(processannopos)):
+    #            if row["position_left"] <= processannopos[j][1] and row["position_right"] >= processannopos[j][0]:
+    #                all_annotations += processannoname[j] + ' | '
+    #        mapped_annotations.append(all_annotations)
+    #else:
+    #    mapped_annotations.append(" ")
+    #df = df.with_columns(pl.Series("annotation", mapped_annotations))
+    #store indices of overlapping index
+    #use index to include names into new column  
+    #print(len(annopos) + " | " + annopos[0] + " | " + len(annopos[0]))
+    
+    
