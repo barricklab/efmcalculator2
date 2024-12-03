@@ -84,8 +84,8 @@ def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
     RMD_df = pl.DataFrame(
         {
             "repeat": pl.Series("repeat", [], pl.Utf8),
-            "pairings": pl.Series("pairings", [], pl.List(pl.Int32)),
-            "repeat_len": pl.Series("repeat_len", [], pl.Int32),
+            "pairings": pl.Series("pairings", [], pl.List(pl.Int64)),
+            "repeat_len": pl.Series("repeat_len", [], pl.Int64),
         }
     )
 
@@ -153,7 +153,9 @@ def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
             lambda pairings: store_RMD(pairings, seq), return_dtype=pl.List(pl.Null)
         )
     )
-    RMD_df = RMD_df.with_columns(pl.col("repeat_len").cast(pl.Int32))
+    RMD_df = RMD_df.with_columns(
+        pl.col("pairings").cast(pl.List(pl.Int32)),
+        pl.col("repeat_len").cast(pl.Int32))
 
     df = pl.concat([df, RMD_df])
 
