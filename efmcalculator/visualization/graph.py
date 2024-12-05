@@ -193,7 +193,8 @@ def addAnnotation(df):
                 if row["position_left"] <= processannopos[j][1] and row["position_right"] >= processannopos[j][0]:
                     all_annotations += processannoname[j] + ' | '
             else:
-                all_annotations += " " #can remove this
+                if row["start"] <= processannopos[j][1] and (row["start"] + (row["repeat_len"] * row["count"])) >= processannopos[j][0]:
+                    all_annotations += processannoname[j] + ' | '
         mapped_annotations.append(all_annotations)
     
     #print(mapped_annotations)
