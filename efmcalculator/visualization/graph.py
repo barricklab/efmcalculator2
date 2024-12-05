@@ -53,6 +53,10 @@ def make_plot(seqrecord, **repeat_dataframes):
     ssr_df = repeat_dataframes.get("ssr", None)
     srs_df = repeat_dataframes.get("srs", None)
     rmd_df = repeat_dataframes.get("rmd", None)
+    
+    hasAnnotations = False
+    if seqrecord.annotations:
+        hasAnnotations = True
 
     curdoc().stagger_database = StaggerDatabase()
 
@@ -72,7 +76,7 @@ def make_plot(seqrecord, **repeat_dataframes):
 
     ssr_df, srs_df, rmd_df = eval_top(ssr_df, srs_df, rmd_df)
 
-    if seqrecord.annotations:
+    if hasAnnotations:
         fig = plot_features(seqrecord, fig)[0]
 
     tables = {}
@@ -95,13 +99,17 @@ def make_plot(seqrecord, **repeat_dataframes):
         tables["RMD"] = generate_empty_table("RMD")
 
     #recreating with only 2 columns in order to avoid issues while concat, will add position column soon
-    columns_to_keep = ["repeat", "mutation_rate", "type", "annotation"]
+    if hasAnnotations:
+        columns_to_keep = ["repeat", "mutation_rate", "type", "annotation"]
+    else:
+        columns_to_keep = ["repeat", "mutation_rate", "type"]
     ssr_selected = addType(ssr_df, "SSR")
     srs_selected = addType(srs_df, "SRS")
     rmd_selected = addType(rmd_df, "RMD")
     
     combined_df = pl.concat([ssr_selected, srs_selected, rmd_selected], how="diagonal")
-    combined_df = addAnnotation(combined_df)
+    if hasAnnotations:
+        combined_df = addAnnotation(combined_df)
     combined_df = extract_columns(combined_df, columns_to_keep)
     
     
