@@ -157,6 +157,7 @@ def run_webapp():
             if uploaded_files:
                 inSeq = []
                 for uploaded_file in uploaded_files:
+                    original_filename = os.path.splitext(uploaded_file.name)[0]
                     uploaded_filetype = Path(uploaded_file.name).suffix
                     # Hash the file to create a safe name
                     filename = Path(
@@ -164,7 +165,22 @@ def run_webapp():
                     )
                     with open(filename, "wb") as f:
                         f.write(uploaded_file.getbuffer())
-                    inSeq.extend(parse_file(filename))
+                    sequences = parse_file(filename, use_filename=False)
+                    file_sequences = []
+
+                    for sequence in sequences:
+                        filename = original_filename
+                        print(filename)
+                        if not sequence.name:
+                            sequence.name = f"{filename}"
+                        if not sequence.description or sequence.description == '':
+                            sequence.description = f"{filename}"
+                        file_sequences.append(sequence)
+
+                    inSeq.extend(file_sequences)
+
+
+
                 st.success("Files uploaded.")
 
         elif option == enter_option:

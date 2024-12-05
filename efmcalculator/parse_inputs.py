@@ -14,7 +14,7 @@ class BadSequenceError(ValueError):
     pass
 
 
-def parse_file(filepath: pathlib.Path) -> list:
+def parse_file(filepath: pathlib.Path, use_filename: bool = True) -> list:
     """
     parses the inputted files and returns a list of sequences found in each file
 
@@ -43,11 +43,12 @@ def parse_file(filepath: pathlib.Path) -> list:
     test_sequences = []
     for i, seq in enumerate(sequences):
         try:
-            filename = Path(filepath).stem
-            if not seq.name:
-                seq.name = f"{filename}"
-            if not seq.description or seq.description == '':
-                seq.description = f"{filename}"
+            if use_filename:
+                filename = Path(filepath).stem
+                if not seq.name:
+                    seq.name = f"{filename}"
+                if not seq.description or seq.description == '':
+                    seq.description = f"{filename}"
             test_sequences.append(seq)
         except:
             pass
