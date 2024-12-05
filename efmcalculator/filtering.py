@@ -75,7 +75,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
     combined_dataframe = (
         combined_dataframe
         .filter(
-            pl.col("repeat_len") > 5
+            pl.col("repeat_len") > 4
         )
         # filter out circular overlapping repeats
         .with_columns(
