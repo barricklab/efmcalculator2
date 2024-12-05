@@ -77,7 +77,7 @@ def make_plot(seqrecord, **repeat_dataframes):
     ssr_df, srs_df, rmd_df = eval_top(ssr_df, srs_df, rmd_df)
 
     if hasAnnotations:
-        fig = plot_features(seqrecord, fig)[0]
+        fig = plot_features(seqrecord, fig)
 
     tables = {}
     if isinstance(ssr_df, pl.DataFrame) and not ssr_df.is_empty():
@@ -121,17 +121,6 @@ def make_plot(seqrecord, **repeat_dataframes):
         combined_df = addAnnotation(combined_df, "combined")
     combined_df = extract_columns(combined_df, columns_to_keep)
     
-    
-    #ssr_selected = addAnnotation(ssr_selected, "SSR")
-    #srs_selected = addAnnotation(srs_selected, "SRS")
-    #rmd_selected = addAnnotation(rmd_selected, "RMD")
-    
-    #ssr_selected = extract_columns(ssr_selected, columns_to_keep)
-    #srs_selected = extract_columns(srs_selected, columns_to_keep)
-    #rmd_selected = extract_columns(rmd_selected, columns_to_keep)
-
-    
-    
     if not combined_df.is_empty():
         top_10_combined = combined_df.sort(by="mutation_rate", descending = True)
         tables["Top"] = generate_nerfed_bokeh_table(top_10_combined)
@@ -154,13 +143,6 @@ def extract_columns(df, columns):
     selected_data = {col: df[col] if col in df.columns else pl.lit(None) for col in columns}
     
     df = pl.DataFrame(selected_data)
-    
-    #if mut_type == "SSR":
-    #    df = df.with_columns(pl.lit("SSR").alias("type"))
-    #elif mut_type == "SRS":
-    #    df = df.with_columns(pl.lit("SRS").alias("type"))
-    #else:
-    #    df = df.with_columns(pl.lit("RMD").alias("type"))
     
     return df
 
@@ -187,12 +169,7 @@ def addAnnotation(df, table_type):
         result = tuple(result)
         processannopos.append(result)
     
-    #print(processannoname)
-    #print(processannopos)
-    #printannopos and processannonname indicies now refer to the same thing
-    
     #check for overlapping
-    #for every element, check to see if position lies withing
     mapped_annotations = []
     
     if table_type == "combined":
@@ -213,8 +190,6 @@ def addAnnotation(df, table_type):
                 if row["start"] <= processannopos[j][1] and (row["start"] + (row["repeat_len"] * row["count"])) >= processannopos[j][0]:
                     all_annotations += processannoname[j] + ' | '
             mapped_annotations.append(all_annotations)
-        #print(len(mapped_annotations))
-        #print(df.select(pl.len()))
     else:
         for row in df.rows(named=True):
             all_annotations = ""
@@ -226,22 +201,5 @@ def addAnnotation(df, table_type):
     #print(mapped_annotations)
     df = df.with_columns(pl.Series("annotation", mapped_annotations))
     return df
-    
-    
-    #as of now, all annotations captures overlaps, issue is getting it to align
-    
-    #if mut_type == "RMD" or mut_type == "SRS": # 
-    #    for row in df.rows(named=True):
-    #        all_annotations = ""
-    #        for j in range(0, len(processannopos)):
-    #            if row["position_left"] <= processannopos[j][1] and row["position_right"] >= processannopos[j][0]:
-    #                all_annotations += processannoname[j] + ' | '
-    #        mapped_annotations.append(all_annotations)
-    #else:
-    #    mapped_annotations.append(" ")
-    #df = df.with_columns(pl.Series("annotation", mapped_annotations))
-    #store indices of overlapping index
-    #use index to include names into new column  
-    #print(len(annopos) + " | " + annopos[0] + " | " + len(annopos[0]))
     
     

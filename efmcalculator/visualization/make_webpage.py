@@ -75,7 +75,6 @@ def assemble(layout, summary, tables):
                             Div(text=f"SRS: {summary["srs_sum"]:.2e}", width=500),
                             Div(text=f"RMD: {summary["rmd_sum"]:.2e}", width=500),
                             Div(text=f"Basal: {summary["bps_sum"]:.2e}", width=500),)
-                            #Div(text=f"Annotations: {summary["annotations"]}", width=500),)
 
     if len(tables) > 1:
         # Make buttons that show the appropriat tables

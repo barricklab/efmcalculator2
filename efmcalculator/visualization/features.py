@@ -162,8 +162,7 @@ def plot_features(seqrecord, fig):
         color="black",
     )
 
-    return fig, genbank_dictionary
-
+    return fig
 
 def get_feature_color(feature: SeqFeature) -> str:
     feature_type = feature.type
