@@ -53,7 +53,7 @@ def make_plot(seqrecord, **repeat_dataframes):
     ssr_df = repeat_dataframes.get("ssr", None)
     srs_df = repeat_dataframes.get("srs", None)
     rmd_df = repeat_dataframes.get("rmd", None)
-    
+
     hasAnnotations = False
     if seqrecord.annotations:
         hasAnnotations = True
@@ -112,12 +112,12 @@ def make_plot(seqrecord, **repeat_dataframes):
     ssr_selected = addType(ssr_df, "SSR")
     srs_selected = addType(srs_df, "SRS")
     rmd_selected = addType(rmd_df, "RMD")
-    
+
     combined_df = pl.concat([ssr_selected, srs_selected, rmd_selected], how="diagonal")
     if hasAnnotations:
         combined_df = addAnnotation(combined_df, "combined")
     combined_df = extract_columns(combined_df, columns_to_keep)
-    
+
     if not combined_df.is_empty():
         top_10_combined = combined_df.sort(by="mutation_rate", descending = True)
         tables["Top"] = generate_nerfed_bokeh_table(top_10_combined)
@@ -131,17 +131,25 @@ def make_plot(seqrecord, **repeat_dataframes):
         color="black",
     )
 
+
+    reordered_tables = {
+            "Top": tables["Top"],
+            "SSR": tables["SSR"],
+            "SRS": tables["SRS"],
+            "RMD": tables["RMD"]
+        }
+
     return fig, tables
 
 #cleans up infomation for mutations before presenting specific columns
-def extract_columns(df, columns):   
+def extract_columns(df, columns):
     if df is None or df.is_empty():
         return pl.DataFrame({col: [] for col in columns})
     selected_data = {col: df[col] if col in df.columns else pl.lit(None) for col in columns}
     df = df.fill_nan(' ')
-    
+
     df = pl.DataFrame(selected_data)
-    
+
     return df
 
 #adds mutation rate type (intended to be used for the "Top" table)
@@ -160,16 +168,16 @@ def addAnnotation(df, table_type):
     annoname = get_annotation_names()
     processannopos = []
     processannoname = [item for sublist in annoname for subsublist in sublist for item in subsublist]
-    
+
     for i in annopos[0]:
         ends = i.split('-')
         result = (int(ends[0]), int(ends[1]))
         result = tuple(result)
         processannopos.append(result)
-    
+
     #check for overlapping logic
     mapped_annotations = []
-    
+
     if table_type == "combined":
         for row in df.rows(named=True):
             all_annotations = ""
@@ -195,8 +203,6 @@ def addAnnotation(df, table_type):
                 if row["position_left"] <= processannopos[j][1] and row["position_right"] >= processannopos[j][0]:
                         all_annotations += processannoname[j] + ' | '
             mapped_annotations.append(all_annotations)
-    
+
     df = df.with_columns(pl.Series("annotation", mapped_annotations))
     return df
-    
-    
