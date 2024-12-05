@@ -83,8 +83,6 @@ def make_plot(seqrecord, **repeat_dataframes):
     if isinstance(ssr_df, pl.DataFrame) and not ssr_df.is_empty():
         if hasAnnotations:
             ssr_df = addAnnotation(ssr_df, "ssr")
-            #print("processing ssr annotation")
-            print(ssr_df)
         fig, table = draw_ssr(fig, ssr_df)
         tables["SSR"] = table
     else:
@@ -93,7 +91,6 @@ def make_plot(seqrecord, **repeat_dataframes):
     if isinstance(srs_df, pl.DataFrame) and not srs_df.is_empty():
         if hasAnnotations:
             srs_df = addAnnotation(srs_df, "srs")
-            #print("processing srs annotation")
         fig, table = draw_srs(fig, srs_df)
         tables["SRS"] = table
     else:
@@ -136,7 +133,7 @@ def make_plot(seqrecord, **repeat_dataframes):
 
     return fig, tables
 
-#def extract_columns(df, columns, mut_type):
+#cleans up infomation for mutations before presenting specific columns
 def extract_columns(df, columns):   
     if df is None or df.is_empty():
         return pl.DataFrame({col: [] for col in columns})
@@ -146,6 +143,7 @@ def extract_columns(df, columns):
     
     return df
 
+#adds mutation rate type (intended to be used for the "Top" table)
 def addType(df, mut_type):
     if mut_type == "SSR":
         df = df.with_columns(pl.lit("SSR").alias("type"))
@@ -155,12 +153,11 @@ def addType(df, mut_type):
         df = df.with_columns(pl.lit("RMD").alias("type"))
     return df
 
-
+#adds annotations to a given dataframe; please check if annotations exist before calling this function
 def addAnnotation(df, table_type):
     annopos = get_annotation_positions()
     annoname = get_annotation_names()
     processannopos = []
-    #print(annoname)
     processannoname = [item for sublist in annoname for subsublist in sublist for item in subsublist]
     
     for i in annopos[0]:
@@ -169,7 +166,7 @@ def addAnnotation(df, table_type):
         result = tuple(result)
         processannopos.append(result)
     
-    #check for overlapping
+    #check for overlapping logic
     mapped_annotations = []
     
     if table_type == "combined":
@@ -198,7 +195,6 @@ def addAnnotation(df, table_type):
                         all_annotations += processannoname[j] + ' | '
             mapped_annotations.append(all_annotations)
     
-    #print(mapped_annotations)
     df = df.with_columns(pl.Series("annotation", mapped_annotations))
     return df
     
