@@ -30,6 +30,15 @@ from typing import List
 
 import logging
 
+genbank_dictionary = {}
+annotation_positions = []
+annotation_names = []
+
+def get_annotation_positions():
+    return annotation_positions
+
+def get_annotation_names():
+    return annotation_names
 
 def plot_features(seqrecord, fig):
     xmax = len(seqrecord.seq)
@@ -123,8 +132,12 @@ def plot_features(seqrecord, fig):
         genbank_dictionary["position"].append(
             f"{genbank_annotation.location.start}-{genbank_annotation.location.end}"
         )
+        #annotation_positions.append(genbank_dictionary["position"])
         genbank_dictionary["strand"].append(genbank_annotation.location.strand)
 
+    annotation_positions.append(genbank_dictionary["position"])
+    annotation_names.append(genbank_dictionary["name"])
+    #annotation_positions = dict(zip(genbank_dictionary["name"], genbank_dictionary["position"]))
     genbank_glyphs = fig.patches(
         "x",
         "y",
@@ -150,7 +163,6 @@ def plot_features(seqrecord, fig):
     )
 
     return fig
-
 
 def get_feature_color(feature: SeqFeature) -> str:
     feature_type = feature.type

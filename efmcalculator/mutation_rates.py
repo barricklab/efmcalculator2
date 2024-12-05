@@ -157,5 +157,4 @@ def rip_score(ssr_df, srs_df, rmd_df, sequence_length):
         "srs_sum": srs_sum,
         "rmd_sum": rmd_sum,
         "bps_sum": base_rate,
-
     }
