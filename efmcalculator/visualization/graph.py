@@ -81,18 +81,27 @@ def make_plot(seqrecord, **repeat_dataframes):
 
     tables = {}
     if isinstance(ssr_df, pl.DataFrame) and not ssr_df.is_empty():
+        if hasAnnotations:
+            ssr_df = addAnnotation(ssr_df, "ssr")
+            #print("processing ssr annotation")
+            print(ssr_df)
         fig, table = draw_ssr(fig, ssr_df)
         tables["SSR"] = table
     else:
         tables["SSR"] = generate_empty_table("SSR")
 
     if isinstance(srs_df, pl.DataFrame) and not srs_df.is_empty():
+        if hasAnnotations:
+            srs_df = addAnnotation(srs_df, "srs")
+            #print("processing srs annotation")
         fig, table = draw_srs(fig, srs_df)
         tables["SRS"] = table
     else:
         tables["SRS"] = generate_empty_table("SRS")
 
     if isinstance(rmd_df, pl.DataFrame) and not rmd_df.is_empty():
+        if hasAnnotations:
+            rmd_df = addAnnotation(rmd_df, "rmd")
         fig, table = draw_rmd(fig, rmd_df)
         tables["RMD"] = table
     else:
@@ -109,7 +118,7 @@ def make_plot(seqrecord, **repeat_dataframes):
     
     combined_df = pl.concat([ssr_selected, srs_selected, rmd_selected], how="diagonal")
     if hasAnnotations:
-        combined_df = addAnnotation(combined_df)
+        combined_df = addAnnotation(combined_df, "combined")
     combined_df = extract_columns(combined_df, columns_to_keep)
     
     
@@ -165,7 +174,7 @@ def addType(df, mut_type):
     return df
 
 
-def addAnnotation(df):
+def addAnnotation(df, table_type):
     annopos = get_annotation_positions()
     annoname = get_annotation_names()
     processannopos = []
@@ -186,16 +195,33 @@ def addAnnotation(df):
     #for every element, check to see if position lies withing
     mapped_annotations = []
     
-    for row in df.rows(named=True):
-        all_annotations = ""
-        for j in range(0, len(processannopos)):
-            if row["type"] != "SSR":
-                if row["position_left"] <= processannopos[j][1] and row["position_right"] >= processannopos[j][0]:
-                    all_annotations += processannoname[j] + ' | '
-            else:
+    if table_type == "combined":
+        for row in df.rows(named=True):
+            all_annotations = ""
+            for j in range(0, len(processannopos)):
+                if row["type"] != "SSR":
+                    if row["position_left"] <= processannopos[j][1] and row["position_right"] >= processannopos[j][0]:
+                        all_annotations += processannoname[j] + ' | '
+                else:
+                    if row["start"] <= processannopos[j][1] and (row["start"] + (row["repeat_len"] * row["count"])) >= processannopos[j][0]:
+                        all_annotations += processannoname[j] + ' | '
+            mapped_annotations.append(all_annotations)
+    elif table_type == "ssr":
+        for row in df.rows(named=True):
+            all_annotations = ""
+            for j in range(0, len(processannopos)):
                 if row["start"] <= processannopos[j][1] and (row["start"] + (row["repeat_len"] * row["count"])) >= processannopos[j][0]:
                     all_annotations += processannoname[j] + ' | '
-        mapped_annotations.append(all_annotations)
+            mapped_annotations.append(all_annotations)
+        #print(len(mapped_annotations))
+        #print(df.select(pl.len()))
+    else:
+        for row in df.rows(named=True):
+            all_annotations = ""
+            for j in range(0, len(processannopos)):
+                if row["position_left"] <= processannopos[j][1] and row["position_right"] >= processannopos[j][0]:
+                        all_annotations += processannoname[j] + ' | '
+            mapped_annotations.append(all_annotations)
     
     #print(mapped_annotations)
     df = df.with_columns(pl.Series("annotation", mapped_annotations))
