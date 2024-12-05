@@ -106,7 +106,7 @@ def make_plot(seqrecord, **repeat_dataframes):
 
     #recreating with only 2 columns in order to avoid issues while concat, will add position column soon
     if hasAnnotations:
-        columns_to_keep = ["repeat", "mutation_rate", "type", "annotation"]
+        columns_to_keep = ["repeat", "mutation_rate", "start", "count", "position_left", "position_right", "type", "annotation"]
     else:
         columns_to_keep = ["repeat", "mutation_rate", "type"]
     ssr_selected = addType(ssr_df, "SSR")
@@ -138,6 +138,7 @@ def extract_columns(df, columns):
     if df is None or df.is_empty():
         return pl.DataFrame({col: [] for col in columns})
     selected_data = {col: df[col] if col in df.columns else pl.lit(None) for col in columns}
+    df = df.fill_nan(' ')
     
     df = pl.DataFrame(selected_data)
     

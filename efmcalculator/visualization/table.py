@@ -36,7 +36,7 @@ def generate_bokeh_table(df, name, callback=None) -> DataTable:
         source=source,
         columns=columns,
         name=table_name,
-        width=500,
+        width=800,
         editable=True,
         selectable="checkbox",
         index_position = None
@@ -69,6 +69,6 @@ def generate_nerfed_bokeh_table(polarTable):
     
     source = ColumnDataSource(polarTable)
     columns = [TableColumn(field=col, title=label_rename(col)) for col in polarTable.columns]
-    data_table = DataTable(source=source, columns=columns, width=500, index_position = None)
+    data_table = DataTable(source=source, columns=columns, width=800, index_position = None)
     
     return data_table
