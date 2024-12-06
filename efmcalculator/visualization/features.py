@@ -132,7 +132,6 @@ def plot_features(seqrecord, fig):
         genbank_dictionary["position"].append(
             f"{genbank_annotation.location.start}-{genbank_annotation.location.end}"
         )
-        #annotation_positions.append(genbank_dictionary["position"])
         genbank_dictionary["strand"].append(genbank_annotation.location.strand)
 
     annotation_positions.append(genbank_dictionary["position"])

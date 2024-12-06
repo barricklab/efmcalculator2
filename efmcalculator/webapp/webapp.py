@@ -4,6 +4,7 @@ import io
 import glob
 import Bio.SeqIO as SeqIO
 from Bio.SeqRecord import SeqRecord
+from Bio.SeqFeature import CompoundLocation
 from Bio.Seq import Seq
 import base64
 import zipfile
@@ -52,6 +53,25 @@ def check_password():
     if "password_correct" in st.session_state:
         st.error("😕 Password incorrect")
     return False
+
+def check_feats_look_circular(seq):
+    """Checks to see if features look circular."""
+    features = seq.features
+    for feature in features:
+        if not isinstance(feature.location, CompoundLocation):
+            continue
+        # Check whether the compound feature is actually a wraparound
+        wraparound_part_index = None
+        rightmost_part = None
+        last_part_start = None
+        for i, part in enumerate(feature.location.parts):
+            if rightmost_part != None and part.start < last_part_start:
+                return True
+            if rightmost_part == None:
+                rightmost_part = i
+                last_part_start = part.start
+    else:
+        return False
 
 def run_webapp():
     if not check_password():
@@ -280,5 +300,8 @@ def run_webapp():
                 fig, tables = make_plot(seq_record, ssr=result[0], srs=result[1], rmd=result[2])
                 summary = rip_score(result[0], result[1], result[2], sequence_length = len(seq_record.seq))
                 layout = assemble(fig, summary, tables)
+                looks_circular = check_feats_look_circular(seq_record)
+                if looks_circular:
+                    st.warning("You deselected the circular option, but your file looks circular.", icon="⚠️")
                 shown_result = components.html(file_html(layout, "cdn"), height=650)
     add_vertical_space(4)
