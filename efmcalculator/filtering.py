@@ -6,10 +6,10 @@ def filter_ssrs(ssr_dataframe, seq_len, circular):
         ssr_dataframe.lazy()
         # Filter based on SSR definition
         .filter(
-            (pl.col("repeat_len") >= 3)
+            (pl.col("repeat_len") >= 2)
             .and_(pl.col("count") >= 3)
-            .or_((pl.col("repeat_len") <= 2).and_(pl.col("count") >= 4))
-        )
+            .or_((pl.col("repeat_len") == 1).and_(pl.col("count") >= 4))
+        )   #! EFM1 is bugged with repeat_ len>= 3 and <= 2 bp
     ).collect()
 
     # Keep SSR with lowest length that start at same position
