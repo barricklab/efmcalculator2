@@ -150,7 +150,6 @@ def _main():
             logger.error("Input is not an existing file or valid sequence")
             exit(1)
 
-
     try:
         validate_sequences(sequences)
     except BadSequenceError as e:
@@ -159,7 +158,6 @@ def _main():
 
     # Unpack sequences into list ---------
     sequences = list(sequences)
-    print(f"{sequences=}")
 
     # Prepend numbers to sequence names if there are more than one ---------
 
