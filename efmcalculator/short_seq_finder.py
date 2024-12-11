@@ -218,10 +218,10 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     # Calculate Distances
     repeat_df = _calculate_distances(repeat_df, seq_len, isCircular)
     repeat_df = repeat_df.filter(pl.col("distance") >= 0)
+    repeat_df = repeat_df.unique()
 
     # Categorize positions
     repeat_df = _categorize_efm(repeat_df)
-
     # Collapse SSRs down
     ssr_df = _collapse_ssr(repeat_df).select(
         pl.col(["repeat", "repeat_len", "start", "count"])

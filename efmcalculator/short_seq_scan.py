@@ -150,7 +150,6 @@ def _calculate_distances(polars_df, seq_len, circular) -> pl.LazyFrame:
     distance_df = polars_df.with_columns(
         distance=pl.col("pairings").list.diff().list.get(1) - pl.col("repeat_len").cast(pl.Int32)
     )
-
     if circular:
          distance_df = (
             distance_df
@@ -173,7 +172,7 @@ def _calculate_distances(polars_df, seq_len, circular) -> pl.LazyFrame:
                 )
         )
     else:
-        distance_df.with_columns(
+        distance_df = distance_df.with_columns(
             wraparound = False,
         )
     return distance_df
