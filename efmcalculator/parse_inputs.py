@@ -67,11 +67,14 @@ def validate_sequences(sequences, max_len=None):
             raise BadSequenceError(
                 f"Input sequence(s) is too long. Max length is {max_len} bases."
             )
-        IUPAC_BASES = set("ACGTURYSWKMBDHVNacgturyswkmbdhvn")
-        if not set(seq).issubset(IUPAC_BASES):
-            raise BadSequenceError(
-                f"Input sequence contains invalid characters. Only IUPAC bases are allowed."
-            )
+        validate_sequence(seq)
+
+def validate_sequence(seq):
+    IUPAC_BASES = set("ACGTURYSWKMBDHVNacgturyswkmbdhvn")
+    if not set(seq).issubset(IUPAC_BASES):
+        raise BadSequenceError(
+            f"Input sequence contains invalid characters. Only IUPAC bases are allowed."
+        )
 
 def parse_csv(path_as_string):
     with open(path_as_string, "r") as csvfile:

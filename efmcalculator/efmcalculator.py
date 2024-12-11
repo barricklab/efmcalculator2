@@ -13,7 +13,7 @@ from .SRS_filter import filter_redundant
 from .filtering import filter_ssrs, filter_direct_repeats
 from .mutation_rates import ssr_mut_rate_vector, srs_mut_rate_vector, rmd_mut_rate_vector, rip_score
 from .constants import VALID_STRATEGIES, FASTA_EXTS, GBK_EXTS, THRESHOLD
-from .parse_inputs import parse_file, validate_sequences, BadSequenceError
+from .parse_inputs import parse_file, validate_sequences, validate_sequence, BadSequenceError
 
 from .utilities import is_pathname_valid, is_path_creatable, sanitize_filename
 from .visualization.graph import make_plot
@@ -137,15 +137,19 @@ def _main():
     args.isCirc = args.circular
 
     # Grab sequence information --------
-    inpath = pathlib.Path(args.inpath)
     try:
-        sequences = parse_file(inpath)
+        sequences = parse_file(pathlib.Path(args.inpath))
     except ValueError as e:
         logger.error(e)
         exit(1)
     except OSError as e:
-        logger.error(e)
-        exit(1)
+        try:
+            validate_sequence(SeqRecord(Seq(args.inpath), id="text input", name="text input"))
+            sequences = [SeqRecord(Seq(args.inpath), id="text input", name="text input")]
+        except:
+            logger.error("Input is not an existing file or valid sequence")
+            exit(1)
+
 
     try:
         validate_sequences(sequences)
@@ -155,6 +159,7 @@ def _main():
 
     # Unpack sequences into list ---------
     sequences = list(sequences)
+    print(f"{sequences=}")
 
     # Prepend numbers to sequence names if there are more than one ---------
 
