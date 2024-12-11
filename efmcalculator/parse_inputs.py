@@ -53,13 +53,10 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True) -> list:
         except:
             pass
 
-    for seq in test_sequences:
-        print(f"{seq.name=}, {seq.description=}")
-
     return test_sequences
 
 
-def validate_sequences(sequences, max_len=None):
+def validate_sequences(sequences, circular=True, max_len=None):
     cumulative_length = 0
     for seq in sequences:
         cumulative_length += len(seq)
@@ -67,14 +64,24 @@ def validate_sequences(sequences, max_len=None):
             raise BadSequenceError(
                 f"Input sequence(s) is too long. Max length is {max_len} bases."
             )
-        validate_sequence(seq)
+        validate_sequence(seq, circular=circular)
 
-def validate_sequence(seq):
+def validate_sequence(seq, circular=True):
     IUPAC_BASES = set("ACGTURYSWKMBDHVNacgturyswkmbdhvn")
-    if not set(seq).issubset(IUPAC_BASES):
+    seq_set = set(seq.upper().replace(" ", ""))
+    if not seq_set.issubset(IUPAC_BASES):
         raise BadSequenceError(
             f"Input sequence contains invalid characters. Only IUPAC bases are allowed."
         )
+    if "t" in seq_set and "u" in seq_set:
+        raise BadSequenceError(
+            f"Input sequence has both T and U. This is probably a mistake."
+        )
+    if seq_set.issubset(RYSWKMBDHVN):
+        raise BadSequenceError(
+            f"EFM Calculator cannot currently handle IUPAC ambiguity codes."
+        )
+    detect_special_cases(seq, circular=circular)
 
 def parse_csv(path_as_string):
     with open(path_as_string, "r") as csvfile:
@@ -98,3 +105,13 @@ def parse_csv(path_as_string):
             formatted_entry = SeqRecord(Seq(sequence),name=name)
             sequences.append(formatted_entry)
     return sequences
+
+def detect_special_cases(sequence, circular=True):
+    def can_tile(s):
+        doubled_s = s + s
+        modified_doubled = doubled_s[1:-1]
+        return s in modified_doubled
+    if can_tile(str(sequence).lower()) and circular:
+        raise BadSequenceError("Circular sequence is an infinitely long SSR. Did you mean to use a linear strategy?")
+    if len(str(sequence).lower()) < 21 and circular:
+        raise BadSequenceError("EFM Calculator is limited to circular sequences of at least 21 bases.")

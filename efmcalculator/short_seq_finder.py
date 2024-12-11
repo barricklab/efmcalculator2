@@ -19,6 +19,7 @@ import tempfile
 from typing import List
 from .constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE
 from .utilities import FakeBar
+from .parse_inputs import detect_special_cases
 import streamlit as st
 
 logger = logging.getLogger(__name__)
@@ -175,7 +176,7 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
         rmd_df (dataframe): dataframe containing all the RMDs found in the sequence
 
     """
-
+    seq = seq.upper().replace(" ", "")
     seq_len = len(seq)
 
     valid_strategies = ["pairwise", "linear"]
@@ -183,6 +184,8 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
         raise ValueError(
             f"Invalid strategy: {strategy}. Must be one of {valid_strategies}"
         )
+
+    detect_special_cases(seq, circular=isCircular)
 
     # Curate target sequences
 

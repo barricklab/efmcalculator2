@@ -167,7 +167,7 @@ def run_webapp():
 
 
     with TemporaryDirectory() as tempdir:
-
+        is_circular = False
         if option == upload_option:
             with col1:
                 is_circular = st.checkbox(label="Circular Prediction", value=True)
@@ -236,7 +236,7 @@ def run_webapp():
 
 
         elif inSeq:
-            validate_sequences(inSeq, MAX_SIZE)
+            validate_sequences(inSeq, circular=is_circular, max_len=MAX_SIZE)
             with st.spinner("Calculating..."):
                 results = predict_many(
                     sequences = inSeq,

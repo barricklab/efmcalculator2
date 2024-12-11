@@ -144,14 +144,14 @@ def _main():
         exit(1)
     except OSError as e:
         try:
-            validate_sequence(SeqRecord(Seq(args.inpath), id="text input", name="text input"))
+            validate_sequence(SeqRecord(Seq(args.inpath), id="text input", name="text input"), circular=args.circular)
             sequences = [SeqRecord(Seq(args.inpath), id="text input", name="text input")]
         except:
             logger.error("Input is not an existing file or valid sequence")
             exit(1)
 
     try:
-        validate_sequences(sequences)
+        validate_sequences(sequences, circular=args.circular)
     except BadSequenceError as e:
         logger.error(e)
         exit(1)
