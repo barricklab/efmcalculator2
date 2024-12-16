@@ -1,5 +1,4 @@
-raise NotImplementedError("This file is not yet implemented")
-
+raise NotImplementedError()
 import pathlib
 import logging
 import csv
@@ -13,34 +12,110 @@ import polars as pl
 def assign_features_ssr(ssrdf: DataFrame, seqobj: Seq, circular: bool):
     # Test to see if dataframe has a position and length column
     features = sequence_to_features_df(seqobj, circular)
-    print(features)
     ssrdf = ssrdf.with_columns((pl.col("start") + pl.col("repeat_len")*pl.col("count")-1).alias("end"))
-    print(ssrdf)
 
     # Annotation on Left edge
     left_edge = ssrdf.join_where(features, (pl.col("left_bound") <= pl.col("start"))
                                          & (pl.col("start") <= pl.col("right_bound"))
                                          & (pl.col("end") > pl.col("right_bound")))
-
+    left_edge = left_edge.with_columns(pl.lit("edge").alias("featureclass"))
 
     # Annotation on right edge
     right_edge = ssrdf.join_where(features, (pl.col("left_bound") <= pl.col("end"))
                                          & (pl.col("end") <= pl.col("right_bound"))
                                          & (pl.col("start") < pl.col("left_bound")))
+    right_edge = right_edge.with_columns(pl.lit("edge").alias("featureclass"))
 
     # Annotation inside
     inside = ssrdf.join_where(features, (pl.col("start") <= pl.col("left_bound")) & (pl.col("end") >= pl.col("right_bound")))
+    inside = inside.with_columns(pl.lit("inside").alias("featureclass"))
 
-    # Prediction inside
+    # Annotation wraps
     wraps = ssrdf.join_where(features, (pl.col("start") >= pl.col("left_bound")) & (pl.col("end") <= pl.col("right_bound")))
+    wraps = wraps.with_columns(pl.lit("wraps").alias("featureclass"))
+
+    anno = pl.concat([left_edge, right_edge, inside, wraps]).unique()
+    anno = anno.group_by(["repeat", "repeat_len", "start", "count", "mutation_rate"]
+                        ).agg(pl.col('name'), pl.col('object')
+    )
+
+    intergenic = ssrdf.join(anno.select(["repeat", "repeat_len", "start", "count"]), how="anti", on=["repeat", "repeat_len", "start", "count"]
+    ).with_columns(pl.lit([]).alias("name")).with_columns(pl.lit([]).alias("object")).select(["repeat", "repeat_len", "start", "count", "mutation_rate", "name", "object"])
 
 
-    pass
+    ssrdf = pl.concat([anno, intergenic])
 
-def assign_features_rmd(dataframe: DataFrame, seqobj: Seq, circular: bool):
+    return ssrdf
+
+
+def assign_features_rmd(rmd_or_ssr_df: DataFrame, seqobj: Seq, circular: bool):
     # Test to see if a dataframe has a position left, position right, and length column
-    #
-    pass
+    features = sequence_to_features_df(seqobj, circular)
+    sequence_length = len(seqobj)
+    df = (rmd_or_ssr_df
+            .with_columns(pl.when(
+            pl.col("distance") > sequence_length
+            ).then(pl.lit(True)
+            ).otherwise(pl.lit(False)
+            ).alias("wraps"))
+
+            .with_columns(pl.when(
+            pl.col("wraps") == False
+            ).then(pl.col("position_left"))
+            .otherwise(pl.col("position_right")).alias("start")
+            )
+            .with_columns(
+            pl.when(
+                pl.col("wraps") == False
+            ).then(pl.col("position_right") + pl.col("repeat_len"))
+            .otherwise(pl.col("position_left") + pl.col("repeat_len")).alias("end")
+            ))
+
+    # ----- Non-wrapping examples
+
+    # Annotation on Left edge
+    left_edge = df.filter(pl.col("wraps") == False).join_where(features, ((pl.col("left_bound") <= pl.col("start")))
+                                            & (pl.col("start") <= pl.col("right_bound"))
+                                            & (pl.col("end") > pl.col("right_bound"))
+                                            )
+    left_edge_wraps = df.filter(pl.col("wraps") == True).join_where(features, (
+                                            pl.col("left_bound") <= pl.col("start"))
+                                            & (pl.col("right_bound") >= pl.col("start")))
+
+    left_edge = pl.concat([left_edge, left_edge_wraps]).with_columns(pl.lit("edge").alias("featureclass"))
+
+    # Annotation on right edge
+    right_edge = df.filter(pl.col("wraps") == False).join_where(features, (pl.col("left_bound") <= pl.col("end"))
+                                            & (pl.col("end") <= pl.col("right_bound"))
+                                            & (pl.col("start") < pl.col("left_bound")))
+    right_edge_wraps = df.filter(pl.col("wraps") == True).join_where(features, (
+                                            pl.col("left_bound") <= pl.col("end"))
+                                            & (pl.col("right_bound") >= pl.col("end")))
+    right_edge = pl.concat([right_edge, right_edge_wraps]).with_columns(pl.lit("edge").alias("featureclass"))
+
+    # Annotation inside
+    inside = df.filter(pl.col("wraps") == False).join_where(features, (pl.col("start") <= pl.col("left_bound")) & (pl.col("end") >= pl.col("right_bound")))
+    inside_wraps_a = df.filter(pl.col("wraps") == True).join_where(features, (pl.col("start") <= pl.col("left_bound")))
+    inside_wraps_b = df.filter(pl.col("wraps") == True).join_where(features, (pl.col("end") >= pl.col("right_bound")))
+    inside = pl.concat([inside, inside_wraps_a, inside_wraps_b]).with_columns(pl.lit("inside").alias("featureclass"))
+
+    # Annotation wraps
+    wraps = df.filter(pl.col("wraps") == False).join_where(features, (pl.col("start") >= pl.col("left_bound")) & (pl.col("end") <= pl.col("right_bound")))
+    wraps_wraps_a = df.filter(pl.col("wraps") == True).join_where(features, (pl.col("start") >= pl.col("left_bound")))
+    wraps_wraps_b = df.filter(pl.col("wraps") == True).join_where(features, (pl.col("end") <= pl.col("right_bound")))
+    wraps = pl.concat([wraps, wraps_wraps_a, wraps_wraps_b]).with_columns(pl.lit("wraps").alias("featureclass"))
+
+    anno = pl.concat([left_edge, right_edge, inside, wraps]).unique()
+    anno = anno.group_by(["repeat", "repeat_len", "position_left", "position_right", "distance", "mutation_rate"]
+                        ).agg(pl.col('name'), pl.col('object'))
+
+    intergenic = df.join(anno.select(["repeat", "repeat_len", "position_left", "position_right", "distance"]), how="anti", on=["repeat", "repeat_len", "position_left", "position_right", "distance"]
+    ).with_columns(pl.lit([]).alias("name")).with_columns(pl.lit([]).alias("object")).select(["repeat", "repeat_len", "position_left", "position_right", "distance", "mutation_rate", "name", "object"])
+
+    df = pl.concat([anno, intergenic])
+
+    return df
+
 
 def assign_features():
     pass
