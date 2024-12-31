@@ -68,7 +68,8 @@ def validate_sequences(sequences, circular=True, max_len=None):
 
 def validate_sequence(seq, circular=True):
     IUPAC_BASES = set("ACGTURYSWKMBDHVNacgturyswkmbdhvn")
-    seq_set = set(seq.upper().replace(" ", ""))
+    sequence = str(seq.seq)
+    seq_set = set(sequence.upper().replace(" ", ""))
     if not seq_set.issubset(IUPAC_BASES):
         raise BadSequenceError(
             f"Input sequence contains invalid characters. Only IUPAC bases are allowed."
@@ -77,7 +78,7 @@ def validate_sequence(seq, circular=True):
         raise BadSequenceError(
             f"Input sequence has both T and U. This is probably a mistake."
         )
-    if seq_set.issubset(RYSWKMBDHVN):
+    if seq_set.issubset("RYSWKMBDHVN"):
         raise BadSequenceError(
             f"EFM Calculator cannot currently handle IUPAC ambiguity codes."
         )
