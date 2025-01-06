@@ -26,6 +26,8 @@ from rich.logging import RichHandler
 from streamlit_extras.concurrency_limiter import concurrency_limiter
 import streamlit as st
 
+from .features import assign_features_ssr, assign_features_rmd
+
 from bokeh.plotting import output_file, save
 
 FORMAT = "%(message)s"
@@ -209,9 +211,10 @@ def bulk_output(results_list, sequences, outpath, skip_vis = False):
 
         # Export results ------------
 
-        result[0].write_csv(folder + "ssr.csv")
-        result[1].write_csv(folder + "srs.csv")
-        result[2].write_csv(folder + "rmd.csv")
+
+        result[0].select(pl.exclude(['name', 'object'])).write_csv(folder + "ssr.csv")
+        result[1].select(pl.exclude(['name', 'object'])).write_csv(folder + "srs.csv")
+        result[2].select(pl.exclude(['name', 'object'])).write_csv(folder + "rmd.csv")
 
         # Run data vis ---------
         if skip_vis:
@@ -262,15 +265,15 @@ def predict_many(
         # Perform predictions
         seq = str(record.seq.strip("\n").upper().replace("U", "T"))
         ssr_df, srs_df, rmd_df = predict(seq, strategy, isCircular)
-        ssr_df, srs_df, rmd_df = post_process(ssr_df, srs_df, rmd_df, len(record), isCircular)
+        ssr_df, srs_df, rmd_df = post_process(ssr_df, srs_df, rmd_df, record, isCircular)
 
         yield [ssr_df, srs_df, rmd_df]
 
 
-def post_process(ssr_df, srs_df, rmd_df, seq_len, isCircular):
+def post_process(ssr_df, srs_df, rmd_df, seqobj, isCircular):
     # Perform Filtering
-    ssr_df = filter_ssrs(ssr_df, seq_len, isCircular)
-    rmd_df, srs_df = filter_direct_repeats(rmd_df, srs_df, seq_len, ssr_df, isCircular)
+    ssr_df = filter_ssrs(ssr_df, len(seqobj), isCircular)
+    rmd_df, srs_df = filter_direct_repeats(rmd_df, srs_df, len(seqobj), ssr_df, isCircular)
 
     # Calculate Mutation Rates
 
@@ -283,6 +286,11 @@ def post_process(ssr_df, srs_df, rmd_df, seq_len, isCircular):
     #srs_df = srs_df.filter(pl.col("mutation_rate") > THRESHOLD)
     #rmd_df = rmd_df.filter(pl.col("mutation_rate") > THRESHOLD)
 
+    # Apply annotations
+    if seqobj.annotations:
+        ssr_df = assign_features_ssr(ssr_df, seqobj, isCircular)
+        srs_df = assign_features_rmd(srs_df, seqobj, isCircular)
+        rmd_df = assign_features_rmd(rmd_df, seqobj, isCircular)
 
     return ssr_df, srs_df, rmd_df
 

@@ -1,4 +1,3 @@
-raise NotImplementedError()
 import pathlib
 import logging
 import csv
@@ -8,11 +7,19 @@ from pathlib import Path
 from polars import DataFrame
 import polars as pl
 
+def seqfeature_hash(seqfeature: SeqFeature):
+    """Hash for a SeqFeature objects"""
+    return hash(str(seqfeature))
 
 def assign_features_ssr(ssrdf: DataFrame, seqobj: Seq, circular: bool):
+    if ssrdf.is_empty():
+        ssrdf = ssrdf.with_columns(pl.lit(None).alias("name").cast(pl.List(pl.String)),
+            pl.lit(None).alias("object").cast(pl.List(pl.Int64)))
+        return ssrdf
+
     # Test to see if dataframe has a position and length column
     features = sequence_to_features_df(seqobj, circular)
-    ssrdf = ssrdf.with_columns((pl.col("start") + pl.col("repeat_len")*pl.col("count")-1).alias("end"))
+    ssrdf = ssrdf.with_columns((pl.col("start") + pl.col("repeat_len")*pl.col("count")-1).alias("end").cast(pl.Int32))
 
     # Annotation on Left edge
     left_edge = ssrdf.join_where(features, (pl.col("left_bound") <= pl.col("start"))
@@ -48,11 +55,17 @@ def assign_features_ssr(ssrdf: DataFrame, seqobj: Seq, circular: bool):
     return ssrdf
 
 
-def assign_features_rmd(rmd_or_ssr_df: DataFrame, seqobj: Seq, circular: bool):
+def assign_features_rmd(rmd_or_srs_df: DataFrame, seqobj: Seq, circular: bool):
+
+    if rmd_or_srs_df.is_empty():
+        rmd_or_srs_df = rmd_or_srs_df.with_columns(pl.lit(None).alias("name").cast(pl.List(pl.String)),
+            pl.lit(None).alias("object").cast(pl.List(pl.Int64)))
+        return rmd_or_srs_df
+
     # Test to see if a dataframe has a position left, position right, and length column
     features = sequence_to_features_df(seqobj, circular)
     sequence_length = len(seqobj)
-    df = (rmd_or_ssr_df
+    df = (rmd_or_srs_df
             .with_columns(pl.when(
             pl.col("distance") > sequence_length
             ).then(pl.lit(True)
@@ -115,7 +128,6 @@ def assign_features_rmd(rmd_or_ssr_df: DataFrame, seqobj: Seq, circular: bool):
     df = pl.concat([anno, intergenic])
 
     return df
-
 
 def assign_features():
     pass
@@ -196,59 +208,15 @@ def sequence_to_features_df(sequence, circular=True):
     df = pl.DataFrame([(feature.type,
                         get_feature_bounds(feature.location),
                         feature.qualifiers.get("label", "")[0],
-                        feature) for feature in features],
+                        seqfeature_hash(feature)) for feature in features],
         schema=['type', 'loc', 'name', 'object'],
         orient="row")
 
     # expand out loc
     df = df.with_columns(pl.col("loc").list.to_struct(fields=['left_bound', 'right_bound'])).unnest("loc")
+    df = df.with_columns(
+        pl.col("left_bound").cast(pl.Int32),
+        pl.col("right_bound").cast(pl.Int32)
+    )
 
     return df
-
-
-def parse_file(filepath: pathlib.Path, use_filename: bool = True) -> list:
-    """
-    parses the inputted files and returns a list of sequences found in each file
-
-    input:
-        filepath: path to the multifasta, genbank, or csv file containing the sequences to be scanned
-
-    returns:
-        list containing all the sequences to be scanned
-    """
-
-    path_as_string = str(filepath)
-    if not filepath.exists():
-        raise OSError("File {} does not exist.".format(path_as_string))
-    elif filepath.suffix in FASTA_EXTS:
-        sequences = SeqIO.parse(path_as_string, "fasta")
-    elif filepath.suffix in GBK_EXTS:
-        sequences = SeqIO.parse(path_as_string, "genbank")
-    else:
-        raise ValueError(
-            f"File {filepath} is not a known file format. Must be one of {FASTA_EXTS + GBK_EXTS + [".csv"]}."
-        )
-
-    # If the genbank file doesnt have a name, add it
-    test_sequences = []
-    for i, seq in enumerate(sequences):
-        try:
-            if use_filename:
-                filename = Path(filepath).stem
-                if not seq.name:
-                    seq.name = f"{filename}"
-                if not seq.description or seq.description == '':
-                    seq.description = f"{filename}"
-            test_sequences.append(seq)
-        except:
-            pass
-
-    return test_sequences
-
-if __name__ == "__main__":
-    rmd_df = pl.read_csv("rmd_df")
-    ssr_df = pl.read_csv("ssr_df")
-    srs_df = pl.read_csv("srs_df")
-
-    sequence = parse_file(Path("l6-10_plasmid_bba.gb"))[0]
-    assign_features_ssr(ssr_df, sequence, circular=True)

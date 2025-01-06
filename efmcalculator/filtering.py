@@ -66,6 +66,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
 
     # label RMDs and SRSs and combine into 1 df
     rmd_dataframe = rmd_dataframe.with_columns(pl.lit("RMD").alias("type"))
+
     srs_dataframe = srs_dataframe.with_columns(pl.lit("SRS").alias("type"))
     combined_dataframe = pl.concat([srs_dataframe, rmd_dataframe])
 

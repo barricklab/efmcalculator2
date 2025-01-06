@@ -18,7 +18,7 @@ def generate_bokeh_table(df, name, callback=None) -> DataTable:
     source = ColumnDataSource(data)
     columns = []
     for column_name in column_names:
-        if column_name in ["index", "show"]:
+        if column_name in ["index", "show", "name", "object"]:
             continue
         elif column_name == "mutation_rate":
             formatted_column = TableColumn(
@@ -52,23 +52,23 @@ def generate_empty_table(name):
 
 def label_rename(title):
     result = title.replace("_", " ")
-        
+
     if len(title) > 0:
         result = result[0].upper() + result[1: len(result)]
-    
+
     if result.find(" ") != -1 and result.find(" ") != (len(result) - 1):
         space_index = result.find(" ")
         result = result[0 : space_index + 1] + result[space_index + 1].upper() + result[space_index + 2 : len(result)]
-        
+
     return result
 
 def generate_nerfed_bokeh_table(polarTable):
     if isinstance(polarTable, pl.DataFrame):
         polarTable = polarTable.to_pandas()
         polarTable["mutation_rate"] = polarTable["mutation_rate"].apply(lambda x: f"{x:.2e}")
-    
+
     source = ColumnDataSource(polarTable)
     columns = [TableColumn(field=col, title=label_rename(col)) for col in polarTable.columns]
     data_table = DataTable(source=source, columns=columns, width=800, index_position = None)
-    
+
     return data_table

@@ -293,8 +293,9 @@ def run_webapp():
             sequence = str(seq_record.seq.strip("\n\n").upper().replace("U", "T"))
 
             with st.spinner("Calculating..."):
+                sequence = str(seq_record.seq.strip("\n\n").upper().replace("U", "T"))
                 ssr, srs, rmd = predict(sequence, strategy="pairwise", isCircular=is_circular)
-                ssr, srs, rmd = post_process(ssr, srs, rmd, len(sequence), isCircular=is_circular)
+                ssr, srs, rmd = post_process(ssr, srs, rmd, seq_record, isCircular=is_circular)
                 result = [ssr, srs, rmd]
 
                 fig, tables = make_plot(seq_record, ssr=result[0], srs=result[1], rmd=result[2])
