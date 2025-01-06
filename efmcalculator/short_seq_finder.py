@@ -9,7 +9,6 @@ from .short_seq_scan import (
     _categorize_efm,
     _collapse_ssr,
 )
-from .mut_rate_finder import get_mut_rate, get_recombo_rate
 from collections import namedtuple
 from progress.bar import IncrementalBar
 from collections import Counter, defaultdict
