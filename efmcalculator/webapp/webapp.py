@@ -298,11 +298,10 @@ def run_webapp():
                 ssr, srs, rmd = post_process(ssr, srs, rmd, seq_record, isCircular=is_circular)
                 result = [ssr, srs, rmd]
 
-                fig, tables = make_plot(seq_record, ssr=result[0], srs=result[1], rmd=result[2])
+
                 summary = rip_score(result[0], result[1], result[2], sequence_length = len(seq_record.seq))
-                layout = assemble(fig, summary, tables)
                 looks_circular = check_feats_look_circular(seq_record)
                 if looks_circular:
                     st.warning("You deselected the circular option, but your file looks circular.", icon="⚠️")
-                shown_result = components.html(file_html(layout, "cdn"), height=650)
+                st.write('Vis and graph not yet implemented')
     add_vertical_space(4)
