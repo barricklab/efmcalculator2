@@ -80,8 +80,8 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
         )
         # filter out circular overlapping repeats
         .with_columns(
-            (pl.col("position_left") + pl.col("repeat_len")).alias("left_end"),
-            (pl.col("position_right") + pl.col("repeat_len")).alias("right_end")
+            (pl.col("first_repeat") + pl.col("repeat_len")).alias("left_end"),
+            (pl.col("second_repeat") + pl.col("repeat_len")).alias("right_end")
         )
         .with_columns(
             pl.when(circular)
@@ -95,21 +95,21 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
         # noncircular overlapping repeats are covered by pairwise approach already
         .filter(
             ~(
-                (pl.col("right_end") > pl.col("position_left")) &
+                (pl.col("right_end") > pl.col("first_repeat")) &
                 (pl.col("right_end") < pl.col("left_end"))
             )
         )
-        .sort(["repeat_len", "position_left"], descending=[True, False])
+        .sort(["repeat_len", "first_repeat"], descending=[True, False])
         .group_by(pl.col("repeat"))
         .agg(
             pl.first("repeat_len"),
-            pl.col("position_left"),
-            pl.col("position_right"),
+            pl.col("first_repeat"),
+            pl.col("second_repeat"),
             pl.col("distance"),
             pl.first("type")
             )
         .with_columns(
-            pl.concat_list(["position_left", "position_right"]).alias("positions")
+            pl.concat_list(["first_repeat", "second_repeat"]).alias("positions")
         )
         # removes smaller RMDs that have the exact same positions as larger RMDs
         .sort(["repeat_len"], descending=True)
@@ -119,51 +119,51 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
         .group_by(pl.col("positions"))
         .agg(pl.col("repeat"),
              pl.first("repeat_len"),
-             pl.first("position_left"),
-             pl.first("position_right"),
+             pl.first("first_repeat"),
+             pl.first("second_repeat"),
              pl.first("distance"),
              pl.first("type")
              )
         .explode(pl.col("repeat"))
-        .group_by(pl.col("position_left"))
+        .group_by(pl.col("first_repeat"))
         .head(1)
 
         #removes shorter versions of the same repeat that start at different positions
         .with_columns(
             pl.col("positions").list.len().alias("count")
         )
-        .explode(pl.col(["position_left", "position_right", "distance"]))
-        .sort(["count", "position_left", "repeat_len"], descending=[True, False, True])
+        .explode(pl.col(["first_repeat", "second_repeat", "distance"]))
+        .sort(["count", "first_repeat", "repeat_len"], descending=[True, False, True])
         .group_by(pl.col("repeat"), maintain_order=True)
         .agg(
-            pl.col("position_left"),
-            pl.col("position_right"),
+            pl.col("first_repeat"),
+            pl.col("second_repeat"),
             pl.first("repeat_len"),
             pl.col("distance"),
             pl.first("count"),
             pl.col("type"),
-            (pl.col("position_right") - seq_len).alias("negative_start")
+            (pl.col("second_repeat") - seq_len).alias("negative_start")
         )
 
         .with_columns(
-            pl.col("position_left").shift(1).list.unique().alias("last_position_left"),
-            pl.col("position_left").list.eval(pl.element() -1).list.unique().alias("adjusted_start"),
+            pl.col("first_repeat").shift(1).list.unique().alias("last_first_repeat"),
+            pl.col("first_repeat").list.eval(pl.element() -1).list.unique().alias("adjusted_start"),
             pl.col("repeat_len").shift(1).alias("last_len")
         )
     # delete if (last_pos == adjusted start or last_neg == adjusted start) AND last_len - len == 1
         .filter(
-            (pl.col("last_position_left").is_null()) |
-            (pl.col("adjusted_start") != pl.col("last_position_left")) |
+            (pl.col("last_first_repeat").is_null()) |
+            (pl.col("adjusted_start") != pl.col("last_first_repeat")) |
             (pl.col("repeat_len") + 1 != pl.col("last_len"))
         )
     )
 
     filtered_df = (
     combined_dataframe
-        .select(["repeat", "repeat_len", "position_left", "position_right", "distance", "type"])
-        .explode(["position_left", "position_right", "distance", "type"])
+        .select(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance", "type"])
+        .explode(["first_repeat", "second_repeat", "distance", "type"])
         .sort(["repeat_len"], descending=True)
-        .group_by(pl.col("position_left"), pl.col("position_right"))
+        .group_by(pl.col("first_repeat"), pl.col("second_repeat"))
         .head(1)
     )
 
@@ -213,12 +213,12 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
                             # remove if no part of srs is after end and before start of wraparound ssr
                             ~(
                                 (
-                                    (pl.col("position_left")<pl.col("start")) &
-                                    ((pl.col("position_left")+pl.col("repeat_len")-2) > pl.col("end"))
+                                    (pl.col("first_repeat")<pl.col("start")) &
+                                    ((pl.col("first_repeat")+pl.col("repeat_len")-2) > pl.col("end"))
                                 ) |
                                 (
-                                    (pl.col("position_right") < pl.col("start")) &
-                                    ((pl.col("position_right")+pl.col("repeat_len")-2) > pl.col("end"))
+                                    (pl.col("second_repeat") < pl.col("start")) &
+                                    ((pl.col("second_repeat")+pl.col("repeat_len")-2) > pl.col("end"))
                                 )
                             )
                         )
@@ -226,13 +226,13 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
                     )
                 )
                 .otherwise(
-                    ((pl.col("position_left") >= pl.col("start")) & ((pl.col("position_right") + pl.col("repeat_len") - 1) <= pl.col("end")))
+                    ((pl.col("first_repeat") >= pl.col("start")) & ((pl.col("second_repeat") + pl.col("repeat_len") - 1) <= pl.col("end")))
                     .alias("nested")
                     )
             )
             .group_by(
-                pl.col("position_left"),
-                pl.col("position_right"),
+                pl.col("first_repeat"),
+                pl.col("second_repeat"),
                 pl.col("repeat")
             )
             .agg(
@@ -246,7 +246,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             )
         )
 
-    filtered_df = filtered_df.select("repeat", "repeat_len", "position_left", "position_right", "distance", "type")
+    filtered_df = filtered_df.select("repeat", "repeat_len", "first_repeat", "second_repeat", "distance", "type")
 
     # split back into rmd_dataframe and srs_dataframe
     rmd_dataframe = filtered_df.filter(pl.col("type") == "RMD").drop("type")

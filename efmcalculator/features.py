@@ -74,14 +74,14 @@ def assign_features_rmd(rmd_or_srs_df: DataFrame, seqobj: Seq, circular: bool):
 
             .with_columns(pl.when(
             pl.col("wraps") == False
-            ).then(pl.col("position_left"))
-            .otherwise(pl.col("position_right")).alias("start")
+            ).then(pl.col("first_repeat"))
+            .otherwise(pl.col("second_repeat")).alias("start")
             )
             .with_columns(
             pl.when(
                 pl.col("wraps") == False
-            ).then(pl.col("position_right") + pl.col("repeat_len"))
-            .otherwise(pl.col("position_left") + pl.col("repeat_len")).alias("end")
+            ).then(pl.col("second_repeat") + pl.col("repeat_len"))
+            .otherwise(pl.col("first_repeat") + pl.col("repeat_len")).alias("end")
             ))
 
     # ----- Non-wrapping examples
@@ -119,11 +119,11 @@ def assign_features_rmd(rmd_or_srs_df: DataFrame, seqobj: Seq, circular: bool):
     wraps = pl.concat([wraps, wraps_wraps_a, wraps_wraps_b]).with_columns(pl.lit("wraps").alias("featureclass"))
 
     anno = pl.concat([left_edge, right_edge, inside, wraps]).unique()
-    anno = anno.group_by(["repeat", "repeat_len", "position_left", "position_right", "distance", "mutation_rate"]
+    anno = anno.group_by(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance", "mutation_rate"]
                         ).agg(pl.col('name'), pl.col('object'))
 
-    intergenic = df.join(anno.select(["repeat", "repeat_len", "position_left", "position_right", "distance"]), how="anti", on=["repeat", "repeat_len", "position_left", "position_right", "distance"]
-    ).with_columns(pl.lit([]).alias("name")).with_columns(pl.lit([]).alias("object")).select(["repeat", "repeat_len", "position_left", "position_right", "distance", "mutation_rate", "name", "object"])
+    intergenic = df.join(anno.select(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance"]), how="anti", on=["repeat", "repeat_len", "first_repeat", "second_repeat", "distance"]
+    ).with_columns(pl.lit([]).alias("name")).with_columns(pl.lit([]).alias("object")).select(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance", "mutation_rate", "name", "object"])
 
     df = pl.concat([anno, intergenic])
 

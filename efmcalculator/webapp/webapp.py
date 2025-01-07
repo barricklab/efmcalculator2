@@ -9,14 +9,13 @@ from Bio.Seq import Seq
 import base64
 import zipfile
 import hmac
-
+import polars as pl
 import os
 from ..short_seq_finder import predict
-from ..visualization.graph import make_plot
-from ..visualization.make_webpage import assemble
 from ..constants import VALID_EXTS
 from ..parse_inputs import parse_file, validate_sequences, BadSequenceError
 from importlib.metadata import version
+from .bokeh_plot import bokeh_plot
 
 from ..efmcalculator import post_process
 from bokeh.embed import file_html
@@ -25,8 +24,9 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 from streamlit_extras.stylable_container import stylable_container
 from streamlit_extras.add_vertical_space import add_vertical_space
-from ..efmcalculator import bulk_output, predict_many
+from ..efmcalculator import predict_many
 from ..mutation_rates import rip_score
+from .vis_utils import eval_top
 
 ASSET_LOCATION = os.path.join(os.path.dirname(__file__), "../visualization/assets")
 MAX_SIZE = 50000
@@ -129,6 +129,13 @@ def run_webapp():
         """,
         unsafe_allow_html=True
     )
+
+    st.markdown("""
+    <style>
+        * {
+           overflow-anchor: none !important;
+           }
+    </style>""", unsafe_allow_html=True)
 
     collogo,_,colbadge = st.columns([2,1,2], vertical_alignment="bottom")
     with collogo:
@@ -273,7 +280,7 @@ def run_webapp():
             with col6:
                 st.write("\n")
                 with TemporaryDirectory() as tempdir:
-                    bulk_output(results, inSeq, tempdir, skip_vis = True)
+                    #bulk_output(results, inSeq, tempdir, skip_vis = True)
 
                     filestream=io.BytesIO() # https://stackoverflow.com/questions/75304410/streamlit-download-button-not-working-when-trying-to-download-files-as-zip
                     with zipfile.ZipFile(filestream, mode='w', compression=zipfile.ZIP_DEFLATED) as zipf:
@@ -294,14 +301,60 @@ def run_webapp():
 
             with st.spinner("Calculating..."):
                 sequence = str(seq_record.seq.strip("\n\n").upper().replace("U", "T"))
+                unique_features = []
+                for feature in seq_record.features:
+                    name = feature.qualifiers.get("label")
+                    if name not in unique_features:
+                        unique_features.append(name[0])
+                unique_features = sorted(unique_features)
+
+
                 ssr, srs, rmd = predict(sequence, strategy="pairwise", isCircular=is_circular)
                 ssr, srs, rmd = post_process(ssr, srs, rmd, seq_record, isCircular=is_circular)
-                result = [ssr, srs, rmd]
+                results = [ssr, srs, rmd]
+
+                ssr_columns = results[0].columns
+                srs_columns = results[1].columns
+                rmd_columns = results[2].columns
+
+                figcontainer = st.container(height=640)
 
 
-                summary = rip_score(result[0], result[1], result[2], sequence_length = len(seq_record.seq))
+                if unique_features:
+                    feature_filter = st.multiselect('Filter by feature annotation', unique_features)
+                    if feature_filter:
+                        for i, result in enumerate(results):
+                            results[i] = result.filter( pl.col('name').list.set_intersection(feature_filter).list.len() != 0)
+
+                summary = rip_score(results[0], results[1], results[2], sequence_length = len(seq_record.seq))
                 looks_circular = check_feats_look_circular(seq_record)
                 if looks_circular:
                     st.warning("You deselected the circular option, but your file looks circular.", icon="⚠️")
-                st.write('Vis and graph not yet implemented')
+
+                top_df, results = eval_top(results[0], results[1], results[2])
+
+                tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
+
+                for i, result in enumerate(results):
+                    results[i] = result.to_pandas()
+
+                with tab1:
+                    top_table = st.dataframe(top_df.to_pandas())
+                with tab2:
+                    results[0] = results[0].sort_values(by="mutation_rate", ascending=False)
+                    results[0] = results[0].style.format({"mutation_rate": "{:,.2e}"})
+                    ssr_df = st.data_editor(results[0], hide_index=True, disabled=ssr_columns)
+                with tab3:
+                    results[1] = results[1].sort_values(by="mutation_rate", ascending=False)
+                    results[1] = results[1].style.format({"mutation_rate": "{:,.2e}"})
+                    srs_df = st.data_editor(results[1], hide_index=True, disabled=srs_columns)
+                with tab4:
+                    results[2] = results[2].sort_values(by="mutation_rate", ascending=False)
+                    results[2] = results[2].style.format({"mutation_rate": "{:,.2e}"})
+                    rmd_df = st.data_editor(results[2], hide_index=True, disabled=rmd_columns)
+
+                fig = bokeh_plot(results[0], results[1], results[2], seq_record)
+                with figcontainer:
+                    st.bokeh_chart(fig, use_container_width=True)
+
     add_vertical_space(4)

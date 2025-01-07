@@ -244,8 +244,8 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
             .with_columns(
                 pl.col("pairings").list.to_struct(
                     fields=[
-                        "position_left",
-                        "position_right",
+                        "first_repeat",
+                        "second_repeat",
                     ]
                 )
             )
@@ -255,18 +255,18 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
         schema = {
             "repeat": pl.Utf8,
             "repeat_len": pl.Int32,
-            "position_left": pl.Int32,
-            "position_right": pl.Int32,
+            "first_repeat": pl.Int32,
+            "second_repeat": pl.Int32,
             "distance": pl.Int32,
             "category": pl.Categorical,
         }
         repeat_df = pl.DataFrame(schema=schema)
 
     srs_df = repeat_df.filter(pl.col("category") == "SRS").select(
-        pl.col(["repeat", "repeat_len", "position_left", "position_right", "distance"])
+        pl.col(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance"])
     )
     rmd_df = repeat_df.filter(pl.col("category") == "RMD").select(
-        pl.col(["repeat", "repeat_len", "position_left", "position_right", "distance"])
+        pl.col(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance"])
     )
 
     return [ssr_df, srs_df, rmd_df]

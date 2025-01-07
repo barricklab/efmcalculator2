@@ -5,6 +5,7 @@ import Bio.SeqIO as SeqIO
 import pandas as pd
 import polars as pl
 import pathlib
+from rich import print
 import os
 from Bio.Seq import Seq
 
@@ -15,8 +16,6 @@ from .constants import VALID_STRATEGIES, FASTA_EXTS, GBK_EXTS, THRESHOLD
 from .parse_inputs import parse_file, validate_sequences, validate_sequence, BadSequenceError
 
 from .utilities import is_pathname_valid, is_path_creatable, sanitize_filename
-from .visualization.graph import make_plot
-from .visualization.make_webpage import make_standalone_page, export_html
 
 from Bio.SeqRecord import SeqRecord
 from typing import Union, List, Set, Generator
@@ -105,7 +104,5 @@ def post_process(ssr_df, srs_df, rmd_df, seqobj, isCircular):
     return ssr_df, srs_df, rmd_df
 
 
-if __name__ == "__main__":
-    _main()
 
 # EOF
