@@ -12,7 +12,7 @@ import hmac
 import polars as pl
 import os
 from ..short_seq_finder import predict
-from ..constants import VALID_EXTS
+from ..constants import VALID_EXTS, MAX_SIZE
 from ..parse_inputs import parse_file, validate_sequences
 from ..bad_state_mitigation import BadSequenceError
 from importlib.metadata import version
@@ -29,9 +29,11 @@ from ..efmcalculator import predict_many
 from ..mutation_rates import rip_score
 from .vis_utils import eval_top
 from .state_machine import StateMachine
+from ..EFMSequence import EFMSequence
+
+import hashlib
 
 ASSET_LOCATION = os.path.join(os.path.dirname(__file__), "../visualization/assets")
-MAX_SIZE = 50000
 
 def check_password():
     """Returns `True` if the user had the correct password."""
@@ -178,6 +180,7 @@ def run_webapp():
     # Initialize session state
     if not st.session_state.get("statemachine", False):
         st.session_state["statemachine"] = StateMachine()
+    statemachine = st.session_state["statemachine"]
 
     with TemporaryDirectory() as tempdir:
         is_circular = False
@@ -198,7 +201,7 @@ def run_webapp():
                     )
                     with open(filename, "wb") as f:
                         f.write(uploaded_file.getbuffer())
-                    sequences = parse_file(filename, use_filename=False)
+                    sequences = parse_file(filename, use_filename=False, iscircular = is_circular)
                     file_sequences = []
 
                     for sequence in sequences:
@@ -226,6 +229,8 @@ def run_webapp():
             field = field.replace(" ", "")
             field = "".join([i for i in field if not i.isdigit()])
             if field:
+                record = SeqRecord(Seq(field), id="sequence")
+                record = EFMSequence(record, is_circular, originhash = hashlib.md5(("string" + field).encode()))
                 inSeq = [SeqRecord(Seq(field), id="sequence")]
 
         elif option == example_option:
@@ -246,14 +251,7 @@ def run_webapp():
         else:
             pass
 
-        validate_sequences(inSeq, circular=is_circular, max_len=MAX_SIZE)
-        with st.spinner("Calculating..."):
-            results = predict_many(
-                sequences = inSeq,
-                strategy = "pairwise",
-                isCircular = is_circular,
-            )
-
+        statemachine.import_sequences(inSeq)
 
         sequence_dict = {}
         sequence_names = []
@@ -265,7 +263,6 @@ def run_webapp():
                 sequence_name = f"{i+1}_Sequence"
             sequence_names.append(sequence_name)
             sequence_dict[sequence_name] = seq
-
 
         if len(inSeq) == 1:
             disable_dropdown = True
@@ -309,7 +306,7 @@ def run_webapp():
                     unique_features.append(name[0])
             unique_features = sorted(unique_features)
 
-            seq_record.call_predictions(strategy="pairwise", is_circular=is_circular)
+            seq_record.call_predictions(strategy="pairwise")
             results = [seq_record.ssrs, seq_record.srss, seq_record.rmds]
 
             ssr_columns = results[0].columns
@@ -317,7 +314,6 @@ def run_webapp():
             rmd_columns = results[2].columns
 
             figcontainer = st.container(height=640)
-
 
             if unique_features:
                 feature_filter = st.multiselect('Filter by feature annotation', unique_features)

@@ -14,8 +14,7 @@ from .bad_state_mitigation import BadSequenceError, detect_special_cases
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-
-def parse_file(filepath: pathlib.Path, use_filename: bool = True) -> list:
+def parse_file(filepath: pathlib.Path, use_filename: bool = True, iscircular = False) -> list:
     """
     parses the inputted files and returns a list of sequences found in each file
 
@@ -52,8 +51,8 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True) -> list:
                     seq.name = f"{filename}"
                 if not seq.description or seq.description == '':
                     seq.description = f"{filename}"
-            originhash = hashlib.md5(fileinfo + bytes(i)).hexdigest()
-            efmseq = EFMSequence(seq, originhash)
+            originhash = hashlib.md5(fileinfo + bytes(i) + str(iscircular).encode()).hexdigest()
+            efmseq = EFMSequence(seq, iscircular, originhash)
             test_sequences.append(efmseq)
         except:
             pass
@@ -68,9 +67,9 @@ def validate_sequences(sequences, circular=True, max_len=None):
             raise BadSequenceError(
                 f"Input sequence(s) is too long. Max length is {max_len} bases."
             )
-        validate_sequence(seq, circular=circular)
+        validate_sequence(seq)
 
-def validate_sequence(seq, circular=True):
+def validate_sequence(seq):
     IUPAC_BASES = set("ACGTURYSWKMBDHVNacgturyswkmbdhvn")
     sequence = str(seq.seq)
     seq_set = set(sequence.upper().replace(" ", ""))
@@ -86,7 +85,7 @@ def validate_sequence(seq, circular=True):
         raise BadSequenceError(
             f"EFM Calculator cannot currently handle IUPAC ambiguity codes."
         )
-    detect_special_cases(seq, circular=circular)
+    detect_special_cases(seq)
 
 def parse_csv(path_as_string):
     with open(path_as_string, "r") as csvfile:

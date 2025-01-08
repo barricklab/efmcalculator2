@@ -18,7 +18,6 @@ import tempfile
 from typing import List
 from .constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE
 from .utilities import FakeBar
-from .bad_state_mitigation import detect_special_cases
 import streamlit as st
 
 logger = logging.getLogger(__name__)
@@ -183,8 +182,6 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
         raise ValueError(
             f"Invalid strategy: {strategy}. Must be one of {valid_strategies}"
         )
-
-    detect_special_cases(seq, circular=isCircular)
 
     # Curate target sequences
 
