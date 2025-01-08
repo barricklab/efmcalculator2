@@ -253,17 +253,6 @@ def run_webapp():
 
         statemachine.import_sequences(inSeq)
 
-        sequence_dict = {}
-        sequence_names = []
-
-        for i, seq in enumerate(inSeq):
-            if seq.description:
-                sequence_name = f"{i+1}_{seq.description}"
-            else:
-                sequence_name = f"{i+1}_Sequence"
-            sequence_names.append(sequence_name)
-            sequence_dict[sequence_name] = seq
-
         if len(inSeq) == 1:
             disable_dropdown = True
         else:
@@ -273,9 +262,11 @@ def run_webapp():
 
         with col4:
             selected_sequence = st.selectbox(
-                "Sample:", sequence_names,
+                "Sample:", statemachine.named_sequences.keys(),
                 disabled = disable_dropdown
             )
+            selectedhash = statemachine.named_sequences[selected_sequence]
+            seq_record = statemachine.user_sequences[selectedhash]
 
         with col6:
             st.write("\n")
@@ -296,53 +287,54 @@ def run_webapp():
                     mime="application/zip", type="primary"
                 )
 
-        seq_record = sequence_dict[selected_sequence]
 
-        with st.spinner("Calculating..."):
-            unique_features = []
-            for feature in seq_record.features:
-                name = feature.qualifiers.get("label")
-                if name not in unique_features:
-                    unique_features.append(name[0])
-            unique_features = sorted(unique_features)
+        unique_features = []
+        for feature in seq_record.features:
+            name = feature.qualifiers.get("label")
+            if name not in unique_features:
+                unique_features.append(name[0])
+        unique_features = sorted(unique_features)
 
-            seq_record.call_predictions(strategy="pairwise")
-            results = [seq_record.ssrs, seq_record.srss, seq_record.rmds]
+        if not seq_record.predicted:
+            with st.spinner("Calculating..."):
+                seq_record.call_predictions(strategy="pairwise")
+                seq_record.session_dataframes = [seq_record.ssrs, seq_record.srss, seq_record.rmds]
+        results = seq_record.session_dataframes
+        ssr_columns = results[0].columns
+        srs_columns = results[1].columns
+        rmd_columns = results[2].columns
 
-            ssr_columns = results[0].columns
-            srs_columns = results[1].columns
-            rmd_columns = results[2].columns
+        top_df, results = eval_top(results[0], results[1], results[2])
 
-            figcontainer = st.container(height=640)
+        figcontainer = st.container(height=640)
 
-            if unique_features:
-                feature_filter = st.multiselect('Filter by feature annotation', unique_features)
-                if feature_filter:
-                    for i, result in enumerate(results):
-                        results[i] = result.filter( pl.col('name').list.set_intersection(feature_filter).list.len() != 0)
+        if unique_features:
+            feature_filter = st.multiselect('Filter by feature annotation', unique_features)
+            if feature_filter:
+                for i, result in enumerate(results):
+                    results[i] = result.filter( pl.col('name').list.set_intersection(feature_filter).list.len() != 0)
 
-            summary = rip_score(results[0], results[1], results[2], sequence_length = len(seq_record.seq))
-            looks_circular = check_feats_look_circular(seq_record)
-            if looks_circular:
-                st.warning("You deselected the circular option, but your file looks circular.", icon="⚠️")
+        summary = rip_score(results[0], results[1], results[2], sequence_length = len(seq_record.seq))
+        looks_circular = check_feats_look_circular(seq_record)
+        if looks_circular:
+            st.warning("You deselected the circular option, but your file looks circular.", icon="⚠️")
 
-            top_df, results = eval_top(results[0], results[1], results[2])
 
-            tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
-            with tab1:
-                top_table = st.dataframe(top_df.to_pandas())
-            with tab2:
-                ssrtable = results[0].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
-                st.data_editor(ssrtable, hide_index=True, disabled=ssr_columns, use_container_width=True)
-            with tab3:
-                srstable = results[1].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
-                st.data_editor(srstable, hide_index=True, disabled=srs_columns, use_container_width=True)
-            with tab4:
-                rmdtable = results[2].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
-                st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns, use_container_width=True)
+        tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
+        with tab1:
+            top_table = st.dataframe(top_df.to_pandas())
+        with tab2:
+            ssrtable = results[0].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+            st.data_editor(ssrtable, hide_index=True, disabled=ssr_columns, use_container_width=True)
+        with tab3:
+            srstable = results[1].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+            st.data_editor(srstable, hide_index=True, disabled=srs_columns, use_container_width=True)
+        with tab4:
+            rmdtable = results[2].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+            st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns, use_container_width=True)
 
-            fig = bokeh_plot(results[0], results[1], results[2], seq_record)
-            with figcontainer:
-                st.bokeh_chart(fig, use_container_width=True)
+        fig = bokeh_plot(results[0], results[1], results[2], seq_record)
+        with figcontainer:
+            st.bokeh_chart(fig, use_container_width=True)
 
     add_vertical_space(4)

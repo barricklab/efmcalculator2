@@ -11,6 +11,7 @@ class StateMachine:
 
     def import_sequences(self, sequences):
         """Import newly uploaded sequences while retaining state of existing sequences"""
+        # Import sequences without overwriting old ones
         new = {seq._originhash: seq for seq in sequences}
         for key in new:
             if key in self.user_sequences:
@@ -19,8 +20,17 @@ class StateMachine:
             return
         self.user_sequences = new
 
+        # Validate sequences if they changed
         validate_sequences(self.user_sequences.values(), max_len=MAX_SIZE)
 
+        # Update sequence names
+        for i, seqhash in enumerate(self.user_sequences):
+            seq = self.user_sequences[seqhash]
+            if seq.description:
+                sequence_name = f"{i+1}_{seq.description}"
+            else:
+                sequence_name = f"{i+1}_Sequence"
+            self.named_sequences[sequence_name] = seqhash
 
     def download_results(self):
         pass

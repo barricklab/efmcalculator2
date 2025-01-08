@@ -16,23 +16,36 @@ class EFMSequence(SeqRecord):
             features = seqrecord.features,
             annotations = seqrecord.annotations,
             letter_annotations = seqrecord.letter_annotations)
-
+        self.seq = seqrecord.seq
         self.formatted_name = None
         self.is_circular = is_circular
 
+        self._predicted = False
         self._ssrs = None
         self._srss = None
         self._rmds = None
 
         self._unique_annotations = {}
 
-        self._selected_predictions = []
-        self._selected_annotations = []
-        self._filtered_ssrs = None
-        self._filtered_srss = None
-        self._filtered_rmds = None
+        self.session_dataframes = []
 
         self._originhash = originhash
+
+    @property
+    def seq(self):
+        return self._seq
+
+    @seq.setter
+    def seq(self, seq):
+        self._ssrs = None
+        self._srss = None
+        self._rmds = None
+        self._predicted = False
+        self._seq = seq
+
+    @property
+    def predicted(self):
+        return self._predicted
 
     @property
     def ssrs(self):
@@ -68,6 +81,14 @@ class EFMSequence(SeqRecord):
                                                              rmd_df,
                                                              self,
                                                              self.is_circular)
+        self._predicted = True
+
+    def update_ssr_session(self, ssr_df):
+        self.session_dataframes[0] = ssr_df
+    def update_srs_session(self, srs_df):
+        self.session_dataframes[1] = srs_df
+    def update_rmd_session(self, rmd_df):
+        self.session_dataframes[2] = rmd_df
 
     def same_origin(self, other):
         if not self._originhash or not other._filehash:
