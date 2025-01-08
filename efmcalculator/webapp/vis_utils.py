@@ -1,7 +1,7 @@
 import polars as pl
 
 
-def eval_top(ssr_df=None, srs_df=None, rmd_df=None, num_report: int = 5):
+def eval_top(ssr_df=None, srs_df=None, rmd_df=None, num_report: int = 1):
     # Get the top n=num_report contributors across all categories
     valid_dataframes = []
     if isinstance(ssr_df, pl.DataFrame) and not ssr_df.is_empty():

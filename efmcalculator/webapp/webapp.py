@@ -151,7 +151,7 @@ def run_webapp():
         st.text(f"Version {version('efmcalculator')}")
 
     with colbadge:
-        st.html(r'<a href="https://github.com/barricklab/efm-calculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/ostir?style=social&label=barricklab%2FOSTIR"></a>')
+        st.html(r'<a href="https://github.com/barricklab/efm-calculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/efm-calculator2?style=social&label=barricklab%2Fefm-calculator2"></a>')
 
 
     col1,col2,col3 = st.columns([2,1,2])
@@ -237,7 +237,6 @@ def run_webapp():
 
                 is_circular = True
 
-
         if not inSeq:
             st.stop()
 
@@ -308,7 +307,6 @@ def run_webapp():
                         unique_features.append(name[0])
                 unique_features = sorted(unique_features)
 
-
                 ssr, srs, rmd = predict(sequence, strategy="pairwise", isCircular=is_circular)
                 ssr, srs, rmd = post_process(ssr, srs, rmd, seq_record, isCircular=is_circular)
                 results = [ssr, srs, rmd]
@@ -334,24 +332,17 @@ def run_webapp():
                 top_df, results = eval_top(results[0], results[1], results[2])
 
                 tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
-
-                for i, result in enumerate(results):
-                    results[i] = result.to_pandas()
-
                 with tab1:
                     top_table = st.dataframe(top_df.to_pandas())
                 with tab2:
-                    results[0] = results[0].sort_values(by="mutation_rate", ascending=False)
-                    results[0] = results[0].style.format({"mutation_rate": "{:,.2e}"})
-                    ssr_df = st.data_editor(results[0], hide_index=True, disabled=ssr_columns)
+                    ssrtable = results[0].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+                    st.data_editor(ssrtable, hide_index=True, disabled=ssr_columns, use_container_width=True)
                 with tab3:
-                    results[1] = results[1].sort_values(by="mutation_rate", ascending=False)
-                    results[1] = results[1].style.format({"mutation_rate": "{:,.2e}"})
-                    srs_df = st.data_editor(results[1], hide_index=True, disabled=srs_columns)
+                    srstable = results[1].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+                    st.data_editor(srstable, hide_index=True, disabled=srs_columns, use_container_width=True)
                 with tab4:
-                    results[2] = results[2].sort_values(by="mutation_rate", ascending=False)
-                    results[2] = results[2].style.format({"mutation_rate": "{:,.2e}"})
-                    rmd_df = st.data_editor(results[2], hide_index=True, disabled=rmd_columns)
+                    rmdtable = results[2].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+                    st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns, use_container_width=True)
 
                 fig = bokeh_plot(results[0], results[1], results[2], seq_record)
                 with figcontainer:
