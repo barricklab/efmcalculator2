@@ -27,6 +27,7 @@ from streamlit_extras.add_vertical_space import add_vertical_space
 from ..efmcalculator import predict_many
 from ..mutation_rates import rip_score
 from .vis_utils import eval_top
+from .state_machine import StateMachine
 
 ASSET_LOCATION = os.path.join(os.path.dirname(__file__), "../visualization/assets")
 MAX_SIZE = 50000
@@ -173,6 +174,10 @@ def run_webapp():
         st.write("Jack, B. R., Leonard, S. P., Mishler, D. M., Renda, B. A., Leon, D., Suárez, G. A., & Barrick, J. E. (2015). Predicting the Genetic Stability of Engineered DNA Sequences with the EFM Calculator. ACS Synthetic Biology, 4(8), 939–943. https://doi.org/10.1021/acssynbio.5b00068")
 
 
+    # Initialize session state
+    if not st.session_state.get("statemachine", False):
+        st.session_state["statemachine"] = StateMachine()
+
     with TemporaryDirectory() as tempdir:
         is_circular = False
         if option == upload_option:
@@ -206,8 +211,6 @@ def run_webapp():
 
                     inSeq.extend(file_sequences)
 
-
-
                 st.success("Files uploaded.")
 
         elif option == enter_option:
@@ -239,113 +242,113 @@ def run_webapp():
 
         if not inSeq:
             st.stop()
+        else:
+            pass
+
+        validate_sequences(inSeq, circular=is_circular, max_len=MAX_SIZE)
+        with st.spinner("Calculating..."):
+            results = predict_many(
+                sequences = inSeq,
+                strategy = "pairwise",
+                isCircular = is_circular,
+            )
 
 
-        elif inSeq:
-            validate_sequences(inSeq, circular=is_circular, max_len=MAX_SIZE)
-            with st.spinner("Calculating..."):
-                results = predict_many(
-                    sequences = inSeq,
-                    strategy = "pairwise",
-                    isCircular = is_circular,
-                )
+        sequence_dict = {}
+        sequence_names = []
 
-
-            sequence_dict = {}
-            sequence_names = []
-
-            for i, seq in enumerate(inSeq):
-                if seq.description:
-                    sequence_name = f"{i+1}_{seq.description}"
-                else:
-                    sequence_name = f"{i+1}_Sequence"
-                sequence_names.append(sequence_name)
-                sequence_dict[sequence_name] = seq
-
-
-            if len(inSeq) == 1:
-                disable_dropdown = True
+        for i, seq in enumerate(inSeq):
+            if seq.description:
+                sequence_name = f"{i+1}_{seq.description}"
             else:
-                disable_dropdown = False
+                sequence_name = f"{i+1}_Sequence"
+            sequence_names.append(sequence_name)
+            sequence_dict[sequence_name] = seq
 
-            col4,col5,col6 = st.columns([2,1,2])
 
-            with col4:
-                selected_sequence = st.selectbox(
-                    "Sample:", sequence_names,
-                    disabled = disable_dropdown
+        if len(inSeq) == 1:
+            disable_dropdown = True
+        else:
+            disable_dropdown = False
+
+        col4,col5,col6 = st.columns([2,1,2])
+
+        with col4:
+            selected_sequence = st.selectbox(
+                "Sample:", sequence_names,
+                disabled = disable_dropdown
+            )
+
+        with col6:
+            st.write("\n")
+            with TemporaryDirectory() as tempdir:
+                #bulk_output(results, inSeq, tempdir, skip_vis = True)
+
+                filestream=io.BytesIO() # https://stackoverflow.com/questions/75304410/streamlit-download-button-not-working-when-trying-to-download-files-as-zip
+                with zipfile.ZipFile(filestream, mode='w', compression=zipfile.ZIP_DEFLATED) as zipf:
+                    for root, dirs, files in os.walk(tempdir):
+                            for file in files:
+                                zipf.write(os.path.join(root, file),
+                                            os.path.relpath(os.path.join(root, file),
+                                                            os.path.join(tempdir, '..')))
+                st.download_button(
+                    label="Download results (zip)",
+                    data=filestream,
+                    file_name="results.zip",
+                    mime="application/zip", type="primary"
                 )
 
-            with col6:
-                st.write("\n")
-                with TemporaryDirectory() as tempdir:
-                    #bulk_output(results, inSeq, tempdir, skip_vis = True)
+        seq_record = sequence_dict[selected_sequence]
+        sequence = str(seq_record.seq.strip("\n\n").upper().replace("U", "T"))
 
-                    filestream=io.BytesIO() # https://stackoverflow.com/questions/75304410/streamlit-download-button-not-working-when-trying-to-download-files-as-zip
-                    with zipfile.ZipFile(filestream, mode='w', compression=zipfile.ZIP_DEFLATED) as zipf:
-                        for root, dirs, files in os.walk(tempdir):
-                                for file in files:
-                                    zipf.write(os.path.join(root, file),
-                                                os.path.relpath(os.path.join(root, file),
-                                                                os.path.join(tempdir, '..')))
-                    st.download_button(
-                        label="Download results (zip)",
-                        data=filestream,
-                        file_name="results.zip",
-                        mime="application/zip", type="primary"
-                    )
-
-            seq_record = sequence_dict[selected_sequence]
+        with st.spinner("Calculating..."):
             sequence = str(seq_record.seq.strip("\n\n").upper().replace("U", "T"))
+            unique_features = []
+            for feature in seq_record.features:
+                name = feature.qualifiers.get("label")
+                if name not in unique_features:
+                    unique_features.append(name[0])
+            unique_features = sorted(unique_features)
 
-            with st.spinner("Calculating..."):
-                sequence = str(seq_record.seq.strip("\n\n").upper().replace("U", "T"))
-                unique_features = []
-                for feature in seq_record.features:
-                    name = feature.qualifiers.get("label")
-                    if name not in unique_features:
-                        unique_features.append(name[0])
-                unique_features = sorted(unique_features)
+            ssr, srs, rmd = predict(sequence, strategy="pairwise", isCircular=is_circular)
+            ssr, srs, rmd = post_process(ssr, srs, rmd, seq_record, isCircular=is_circular)
+            results = [ssr, srs, rmd]
 
-                ssr, srs, rmd = predict(sequence, strategy="pairwise", isCircular=is_circular)
-                ssr, srs, rmd = post_process(ssr, srs, rmd, seq_record, isCircular=is_circular)
-                results = [ssr, srs, rmd]
+            ssr_columns = results[0].columns
+            srs_columns = results[1].columns
+            rmd_columns = results[2].columns
 
-                ssr_columns = results[0].columns
-                srs_columns = results[1].columns
-                rmd_columns = results[2].columns
-
-                figcontainer = st.container(height=640)
+            figcontainer = st.container(height=640)
 
 
-                if unique_features:
-                    feature_filter = st.multiselect('Filter by feature annotation', unique_features)
-                    if feature_filter:
-                        for i, result in enumerate(results):
-                            results[i] = result.filter( pl.col('name').list.set_intersection(feature_filter).list.len() != 0)
+            if unique_features:
+                feature_filter = st.multiselect('Filter by feature annotation', unique_features)
+                if feature_filter:
+                    for i, result in enumerate(results):
+                        results[i] = result.filter( pl.col('name').list.set_intersection(feature_filter).list.len() != 0)
 
-                summary = rip_score(results[0], results[1], results[2], sequence_length = len(seq_record.seq))
-                looks_circular = check_feats_look_circular(seq_record)
-                if looks_circular:
-                    st.warning("You deselected the circular option, but your file looks circular.", icon="⚠️")
+            summary = rip_score(results[0], results[1], results[2], sequence_length = len(seq_record.seq))
+            looks_circular = check_feats_look_circular(seq_record)
+            if looks_circular:
+                st.warning("You deselected the circular option, but your file looks circular.", icon="⚠️")
 
-                top_df, results = eval_top(results[0], results[1], results[2])
+            top_df, results = eval_top(results[0], results[1], results[2])
 
-                tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
-                with tab1:
-                    top_table = st.dataframe(top_df.to_pandas())
-                with tab2:
-                    ssrtable = results[0].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
-                    st.data_editor(ssrtable, hide_index=True, disabled=ssr_columns, use_container_width=True)
-                with tab3:
-                    srstable = results[1].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
-                    st.data_editor(srstable, hide_index=True, disabled=srs_columns, use_container_width=True)
-                with tab4:
-                    rmdtable = results[2].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
-                    st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns, use_container_width=True)
+            tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
+            with tab1:
+                top_table = st.dataframe(top_df.to_pandas())
+            with tab2:
+                ssrtable = results[0].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+                st.data_editor(ssrtable, hide_index=True, disabled=ssr_columns, use_container_width=True)
+            with tab3:
+                srstable = results[1].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+                st.data_editor(srstable, hide_index=True, disabled=srs_columns, use_container_width=True)
+            with tab4:
+                rmdtable = results[2].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+                st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns, use_container_width=True)
 
-                fig = bokeh_plot(results[0], results[1], results[2], seq_record)
-                with figcontainer:
-                    st.bokeh_chart(fig, use_container_width=True)
+            fig = bokeh_plot(results[0], results[1], results[2], seq_record)
+            with figcontainer:
+                st.bokeh_chart(fig, use_container_width=True)
 
     add_vertical_space(4)

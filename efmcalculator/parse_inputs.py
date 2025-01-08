@@ -1,18 +1,34 @@
 import pathlib
 import logging
 import csv
-from Bio import SeqIO, SeqRecord, Seq
+from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq
 from pathlib import Path
+
+from efmcalculator import features
 
 from .constants import FASTA_EXTS, GBK_EXTS
 
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
+class EFMSequence(SeqRecord):
+    """SeqRecord child class with equality handling and prediction methods"""
+    def __init__(self, seqrecord: SeqRecord):
+        super().__init__(seq=seqrecord.seq,
+            id=seqrecord.id,
+            name=seqrecord.name,
+            description=seqrecord.description,
+            dbxrefs = seqrecord.dbxrefs,
+            features = seqrecord.features,
+            annotations = seqrecord.annotations,
+            letter_annotations = seqrecord.letter_annotations)
+
+
 
 class BadSequenceError(ValueError):
     pass
-
 
 def parse_file(filepath: pathlib.Path, use_filename: bool = True) -> list:
     """
@@ -52,6 +68,8 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True) -> list:
             test_sequences.append(seq)
         except:
             pass
+
+    test_sequences = [EFMSequence(seq) for seq in test_sequences]
 
     return test_sequences
 
