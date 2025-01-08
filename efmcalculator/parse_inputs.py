@@ -1,34 +1,19 @@
 import pathlib
 import logging
 import csv
+import hashlib
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from pathlib import Path
-
 from efmcalculator import features
-
 from .constants import FASTA_EXTS, GBK_EXTS
+from .EFMSequence import EFMSequence
+from .bad_state_mitigation import BadSequenceError, detect_special_cases
 
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-class EFMSequence(SeqRecord):
-    """SeqRecord child class with equality handling and prediction methods"""
-    def __init__(self, seqrecord: SeqRecord):
-        super().__init__(seq=seqrecord.seq,
-            id=seqrecord.id,
-            name=seqrecord.name,
-            description=seqrecord.description,
-            dbxrefs = seqrecord.dbxrefs,
-            features = seqrecord.features,
-            annotations = seqrecord.annotations,
-            letter_annotations = seqrecord.letter_annotations)
-
-
-
-class BadSequenceError(ValueError):
-    pass
 
 def parse_file(filepath: pathlib.Path, use_filename: bool = True) -> list:
     """
@@ -57,6 +42,8 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True) -> list:
 
     # If the genbank file doesnt have a name, add it
     test_sequences = []
+    with open(filepath) as f:
+        fileinfo = f.read().encode()
     for i, seq in enumerate(sequences):
         try:
             if use_filename:
@@ -65,12 +52,11 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True) -> list:
                     seq.name = f"{filename}"
                 if not seq.description or seq.description == '':
                     seq.description = f"{filename}"
-            test_sequences.append(seq)
+            originhash = hashlib.md5(fileinfo + bytes(i)).hexdigest()
+            efmseq = EFMSequence(seq, originhash)
+            test_sequences.append(efmseq)
         except:
             pass
-
-    test_sequences = [EFMSequence(seq) for seq in test_sequences]
-
     return test_sequences
 
 
@@ -124,13 +110,3 @@ def parse_csv(path_as_string):
             formatted_entry = SeqRecord(Seq(sequence),name=name)
             sequences.append(formatted_entry)
     return sequences
-
-def detect_special_cases(sequence, circular=True):
-    def can_tile(s):
-        doubled_s = s + s
-        modified_doubled = doubled_s[1:-1]
-        return s in modified_doubled
-    if can_tile(str(sequence).lower()) and circular:
-        raise BadSequenceError("Circular sequence is an infinitely long SSR. Did you mean to use a linear strategy?")
-    if len(str(sequence).lower()) < 21 and circular:
-        raise BadSequenceError("EFM Calculator is limited to circular sequences of at least 21 bases.")

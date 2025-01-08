@@ -1,6 +1,5 @@
 import polars as pl
 
-
 def filter_ssrs(ssr_dataframe, seq_len, circular):
     ssr_dataframe = (
         ssr_dataframe.lazy()

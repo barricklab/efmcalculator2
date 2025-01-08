@@ -13,7 +13,8 @@ import polars as pl
 import os
 from ..short_seq_finder import predict
 from ..constants import VALID_EXTS
-from ..parse_inputs import parse_file, validate_sequences, BadSequenceError
+from ..parse_inputs import parse_file, validate_sequences
+from ..bad_state_mitigation import BadSequenceError
 from importlib.metadata import version
 from .bokeh_plot import bokeh_plot
 
@@ -299,10 +300,8 @@ def run_webapp():
                 )
 
         seq_record = sequence_dict[selected_sequence]
-        sequence = str(seq_record.seq.strip("\n\n").upper().replace("U", "T"))
 
         with st.spinner("Calculating..."):
-            sequence = str(seq_record.seq.strip("\n\n").upper().replace("U", "T"))
             unique_features = []
             for feature in seq_record.features:
                 name = feature.qualifiers.get("label")
@@ -310,9 +309,8 @@ def run_webapp():
                     unique_features.append(name[0])
             unique_features = sorted(unique_features)
 
-            ssr, srs, rmd = predict(sequence, strategy="pairwise", isCircular=is_circular)
-            ssr, srs, rmd = post_process(ssr, srs, rmd, seq_record, isCircular=is_circular)
-            results = [ssr, srs, rmd]
+            seq_record.call_predictions(strategy="pairwise", is_circular=is_circular)
+            results = [seq_record.ssrs, seq_record.srss, seq_record.rmds]
 
             ssr_columns = results[0].columns
             srs_columns = results[1].columns

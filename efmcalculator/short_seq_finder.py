@@ -18,7 +18,7 @@ import tempfile
 from typing import List
 from .constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE
 from .utilities import FakeBar
-from .parse_inputs import detect_special_cases
+from .bad_state_mitigation import detect_special_cases
 import streamlit as st
 
 logger = logging.getLogger(__name__)
