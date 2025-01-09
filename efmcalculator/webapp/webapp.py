@@ -288,12 +288,7 @@ def run_webapp():
                 )
 
 
-        unique_features = []
-        for feature in seq_record.features:
-            name = feature.qualifiers.get("label")
-            if name not in unique_features:
-                unique_features.append(name[0])
-        unique_features = sorted(unique_features)
+        unique_features = seq_record.unique_annotations
 
         if not seq_record.predicted:
             with st.spinner("Calculating..."):
@@ -310,9 +305,11 @@ def run_webapp():
 
         if unique_features:
             feature_filter = st.multiselect('Filter by feature annotation', unique_features)
-            if feature_filter:
-                for i, result in enumerate(results):
-                    results[i] = result.filter( pl.col('name').list.set_intersection(feature_filter).list.len() != 0)
+        else:
+            feature_filter = []
+        if feature_filter:
+            for i, result in enumerate(results):
+                results[i] = result.filter( pl.col('annotations').list.set_intersection(feature_filter).list.len() != 0)
 
         summary = rip_score(results[0], results[1], results[2], sequence_length = len(seq_record.seq))
         looks_circular = check_feats_look_circular(seq_record)
@@ -325,16 +322,27 @@ def run_webapp():
             top_table = st.dataframe(top_df.to_pandas())
         with tab2:
             ssrtable = results[0].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
-            st.data_editor(ssrtable, hide_index=True, disabled=ssr_columns, use_container_width=True)
+            st.data_editor(ssrtable,
+                          hide_index=True,
+                          disabled=ssr_columns,
+                          use_container_width=True,
+                          key="ssrchanges")
         with tab3:
             srstable = results[1].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
-            st.data_editor(srstable, hide_index=True, disabled=srs_columns, use_container_width=True)
+            st.data_editor(srstable, hide_index=True, disabled=srs_columns,
+            use_container_width=True,
+            key="srschanges")
         with tab4:
             rmdtable = results[2].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
-            st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns, use_container_width=True)
+            st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns,
+            use_container_width=True,
+            key="rmdchanges")
 
         fig = bokeh_plot(results[0], results[1], results[2], seq_record)
         with figcontainer:
             st.bokeh_chart(fig, use_container_width=True)
+
+        if st.session_state.get("testerino3", ""):
+            st.write(st.session_state.get("testerino2", ""))
 
     add_vertical_space(4)

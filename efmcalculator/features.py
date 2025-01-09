@@ -13,8 +13,8 @@ def seqfeature_hash(seqfeature: SeqFeature):
 
 def assign_features_ssr(ssrdf: DataFrame, seqobj: Seq, circular: bool):
     if ssrdf.is_empty():
-        ssrdf = ssrdf.with_columns(pl.lit(None).alias("name").cast(pl.List(pl.String)),
-            pl.lit(None).alias("object").cast(pl.List(pl.Int64)))
+        ssrdf = ssrdf.with_columns(pl.lit(None).alias("annotations").cast(pl.List(pl.String)),
+            pl.lit(None).alias("annotationobjects").cast(pl.List(pl.Int64)))
         return ssrdf
 
     # Test to see if dataframe has a position and length column
@@ -43,11 +43,11 @@ def assign_features_ssr(ssrdf: DataFrame, seqobj: Seq, circular: bool):
 
     anno = pl.concat([left_edge, right_edge, inside, wraps]).unique()
     anno = anno.group_by(["repeat", "repeat_len", "start", "count", "mutation_rate"]
-                        ).agg(pl.col('name'), pl.col('object')
+                        ).agg(pl.col('annotations'), pl.col('annotationobjects')
     )
 
     intergenic = ssrdf.join(anno.select(["repeat", "repeat_len", "start", "count"]), how="anti", on=["repeat", "repeat_len", "start", "count"]
-    ).with_columns(pl.lit([]).alias("name")).with_columns(pl.lit([]).alias("object")).select(["repeat", "repeat_len", "start", "count", "mutation_rate", "name", "object"])
+    ).with_columns(pl.lit([]).alias("annotations")).with_columns(pl.lit([]).alias("annotationobjects")).select(["repeat", "repeat_len", "start", "count", "mutation_rate", "annotations", "annotationobjects"])
 
 
     ssrdf = pl.concat([anno, intergenic])
@@ -58,8 +58,8 @@ def assign_features_ssr(ssrdf: DataFrame, seqobj: Seq, circular: bool):
 def assign_features_rmd(rmd_or_srs_df: DataFrame, seqobj: Seq, circular: bool):
 
     if rmd_or_srs_df.is_empty():
-        rmd_or_srs_df = rmd_or_srs_df.with_columns(pl.lit(None).alias("name").cast(pl.List(pl.String)),
-            pl.lit(None).alias("object").cast(pl.List(pl.Int64)))
+        rmd_or_srs_df = rmd_or_srs_df.with_columns(pl.lit(None).alias("annotations").cast(pl.List(pl.String)),
+            pl.lit(None).alias("annotationobjects").cast(pl.List(pl.Int64)))
         return rmd_or_srs_df
 
     # Test to see if a dataframe has a position left, position right, and length column
@@ -120,10 +120,10 @@ def assign_features_rmd(rmd_or_srs_df: DataFrame, seqobj: Seq, circular: bool):
 
     anno = pl.concat([left_edge, right_edge, inside, wraps]).unique()
     anno = anno.group_by(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance", "mutation_rate"]
-                        ).agg(pl.col('name'), pl.col('object'))
+                        ).agg(pl.col('annotations'), pl.col('annotationobjects'))
 
     intergenic = df.join(anno.select(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance"]), how="anti", on=["repeat", "repeat_len", "first_repeat", "second_repeat", "distance"]
-    ).with_columns(pl.lit([]).alias("name")).with_columns(pl.lit([]).alias("object")).select(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance", "mutation_rate", "name", "object"])
+    ).with_columns(pl.lit([]).alias("annotations")).with_columns(pl.lit([]).alias("annotationobjects")).select(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance", "mutation_rate", "annotations", "annotationobjects"])
 
     df = pl.concat([anno, intergenic])
 
@@ -209,7 +209,7 @@ def sequence_to_features_df(sequence, circular=True):
                         get_feature_bounds(feature.location),
                         feature.qualifiers.get("label", "")[0],
                         seqfeature_hash(feature)) for feature in features],
-        schema=['type', 'loc', 'name', 'object'],
+        schema=['type', 'loc', 'annotations', 'annotationobjects'],
         orient="row")
 
     # expand out loc
