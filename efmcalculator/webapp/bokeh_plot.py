@@ -17,8 +17,8 @@ def bokeh_plot(ssr_df, srs_df, rmd_df, seqobj):
 
     fig, depth = plot_annotations(fig, seqobj)
 
-    selected_srss = srs_df.filter(pl.col("show") == True)
-    fig = plot_srs(fig, selected_srss)
+    #selected_srss = srs_df.filter(pl.col("show") == True)
+    #fig = plot_srs(fig, selected_srss)
 
     return fig
 

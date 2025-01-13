@@ -311,8 +311,6 @@ def run_webapp():
         srs_columns = results[1].columns
         rmd_columns = results[2].columns
 
-        top_df, results = eval_top(results[0], results[1], results[2])
-
         summary = rip_score(results[0], results[1], results[2], sequence_length = len(seq_record.seq))
         looks_circular = check_feats_look_circular(seq_record)
         if looks_circular:
@@ -320,7 +318,7 @@ def run_webapp():
 
         tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
         with tab1:
-            top_table = st.dataframe(top_df.to_pandas())
+            top_table = st.dataframe(seq_record._filtered_top.to_pandas().style.format({"mutation_rate": "{:,.2e}"}))
         with tab2:
             ssrtable = results[0].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
             st.data_editor(ssrtable,
@@ -342,8 +340,5 @@ def run_webapp():
         fig = bokeh_plot(results[0], results[1], results[2], seq_record)
         with figcontainer:
             st.bokeh_chart(fig, use_container_width=True)
-
-        if st.session_state.get("testerino3", ""):
-            st.write(st.session_state.get("testerino2", ""))
 
     add_vertical_space(4)

@@ -4,6 +4,7 @@ import polars as pl
 from .short_seq_finder import predict
 from .post_process import post_process
 from .features import sequence_to_features_df
+from .webapp.vis_utils import eval_top
 
 class EFMSequence(SeqRecord):
     """SeqRecord child class with equality handling and prediction methods"""
@@ -32,7 +33,10 @@ class EFMSequence(SeqRecord):
         self._filtered_ssrs = None
         self._filtered_srss = None
         self._filtered_rmds = None
+        self._filtered_top = None
         self._last_filters = []
+
+        self._plotted_predictions = []
 
 
     @property
@@ -86,18 +90,31 @@ class EFMSequence(SeqRecord):
             )
         unique_expaned_names = self._unique_annotations.select(pl.col("annotationobjexpanded_names")).unique().rows()
         unique_expaned_names = [x[0] for x in unique_expaned_names]
+
         return sorted(unique_expaned_names)
 
     def call_predictions(self, strategy):
         seq = str(self.seq.strip("\n").upper().replace("U", "T"))
         ssr_df, srs_df, rmd_df = predict(seq, strategy, self.is_circular)
-        self._ssrs, self._srss, self._rmds = post_process(ssr_df,
+        ssr_df, srs_df, rmd_df = post_process(ssr_df,
                                                              srs_df,
                                                              rmd_df,
                                                              self,
                                                              self.is_circular)
+        self._ssrs = ssr_df.with_columns(
+            pl.concat_str(pl.col(['repeat', 'repeat_len', "start", "count", "mutation_rate"])).hash().cast(pl.String).alias('predid')
+        )
+        self._srss = srs_df.with_columns(
+            pl.concat_str(pl.col(['repeat', 'repeat_len', "first_repeat", "second_repeat", "distance", "mutation_rate"])).hash().cast(pl.String).alias('predid')
+        )
+        self._rmds = rmd_df.with_columns(
+            pl.concat_str(pl.col(['repeat', 'repeat_len', "first_repeat", "second_repeat", "distance", "mutation_rate"])).hash().cast(pl.String).alias('predid')
+        )
+        self._top = eval_top(self._ssrs, self._srss, self._rmds)
+        self._filtered_top = self._top
+        self._plotted_predictions = [x[0] for x in self._top.select(pl.col("predid")).unique().rows()]
+        self.set_filters([])
         self._predicted = True
-
 
     def set_filters(self, annotations):
         filters_changed = False
@@ -112,17 +129,44 @@ class EFMSequence(SeqRecord):
             self._filtered_ssrs = self._ssrs.filter(pl.col("annotationobjects").list.set_intersection(annotation_objects).list.len() != 0)
             self._filtered_srss = self._srss.filter(pl.col("annotationobjects").list.set_intersection(annotation_objects).list.len() != 0)
             self._filtered_rmds = self._rmds.filter(pl.col("annotationobjects").list.set_intersection(annotation_objects).list.len() != 0)
+            self._filtered_top = eval_top(self._filtered_ssrs, self._filtered_srss, self._filtered_rmds)
         else:
             self._filtered_ssrs = self._ssrs
             self._filtered_srss = self._srss
             self._filtered_rmds = self._rmds
+            self._filtered_top = self._top
+
+        self._filtered_ssrs = self._filtered_ssrs.with_columns(
+            pl.when(pl.col("predid").is_in(self._plotted_predictions))
+            .then(pl.lit(True))
+            .otherwise(pl.lit(False))
+            .alias("show")
+        ).sort(by="mutation_rate", descending=True)
+        self._filtered_srss = self._filtered_srss.with_columns(
+            pl.when(pl.col("predid").is_in(self._plotted_predictions))
+            .then(pl.lit(True))
+            .otherwise(pl.lit(False))
+            .alias("show")
+        ).sort(by="mutation_rate", descending=True)
+        self._filtered_rmds = self._filtered_rmds.with_columns(
+            pl.when(pl.col("predid").is_in(self._plotted_predictions))
+            .then(pl.lit(True))
+            .otherwise(pl.lit(False))
+            .alias("show")
+        ).sort(by="mutation_rate", descending=True)
+        self._filtered_top = self._filtered_top.with_columns(
+            pl.when(pl.col("predid").is_in(self._plotted_predictions))
+            .then(pl.lit(True))
+            .otherwise(pl.lit(False))
+            .alias("show")
+        ).sort(by="mutation_rate", descending=True)
 
 
-    def update_ssr_session(self, changes, from_top=False):
+    def update_ssr_session(self, changes):
         pass
-    def update_srs_session(self, changes, from_top=False):
+    def update_srs_session(self, changes):
         pass
-    def update_rmd_session(self, changes, from_top=False):
+    def update_rmd_session(self, changes):
         pass
 
     def same_origin(self, other):
