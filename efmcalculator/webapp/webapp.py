@@ -293,23 +293,22 @@ def run_webapp():
         if not seq_record.predicted:
             with st.spinner("Calculating..."):
                 seq_record.call_predictions(strategy="pairwise")
-                seq_record.session_dataframes = [seq_record.ssrs, seq_record.srss, seq_record.rmds]
-        results = seq_record.session_dataframes
+
+        figcontainer = st.container(height=640)
+
+        if unique_features:
+            feature_filter = st.multiselect('Filter by feature annotation', sorted(unique_features))
+        else:
+            feature_filter = []
+        seq_record.set_filters(feature_filter)
+
+        results = [seq_record._filtered_ssrs, seq_record._filtered_srss, seq_record._filtered_rmds]
+
         ssr_columns = results[0].columns
         srs_columns = results[1].columns
         rmd_columns = results[2].columns
 
         top_df, results = eval_top(results[0], results[1], results[2])
-
-        figcontainer = st.container(height=640)
-
-        if unique_features:
-            feature_filter = st.multiselect('Filter by feature annotation', unique_features)
-        else:
-            feature_filter = []
-        if feature_filter:
-            for i, result in enumerate(results):
-                results[i] = result.filter( pl.col('annotations').list.set_intersection(feature_filter).list.len() != 0)
 
         summary = rip_score(results[0], results[1], results[2], sequence_length = len(seq_record.seq))
         looks_circular = check_feats_look_circular(seq_record)

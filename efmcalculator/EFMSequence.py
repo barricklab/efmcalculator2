@@ -29,8 +29,10 @@ class EFMSequence(SeqRecord):
         self._unique_annotations = {}
         self._originhash = originhash
 
+        self._filtered_ssrs = None
+        self._filtered_srss = None
+        self._filtered_rmds = None
 
-        self.session_dataframes = []
 
     @property
     def seq(self):
@@ -76,7 +78,7 @@ class EFMSequence(SeqRecord):
     def unique_annotations(self):
         if not self.annotations:
             return None
-        if self._unique_annotations == {}:
+        if isinstance(self._unique_annotations, dict) and self._unique_annotations == {}:
             self._unique_annotations = sequence_to_features_df(self, self.is_circular)
             self._unique_annotations = self._unique_annotations.with_columns(
                 pl.concat_str([pl.col("annotations"), pl.lit(" ("), pl.col("left_bound"), pl.lit("-"), pl.col("right_bound"), pl.lit(")")]).alias("annotationobjexpanded_names")
@@ -97,8 +99,18 @@ class EFMSequence(SeqRecord):
 
 
     def set_filters(self, annotations):
-        results[i] = result.filter( pl.col('annotationobjects').list.set_intersection(feature_filter).list.len() != 0)
-        pass
+        if annotations:
+            annotation_objects = self._unique_annotations.filter(pl.col("annotationobjexpanded_names").is_in(annotations))
+            annotation_objects = annotation_objects.select(pl.col("annotationobjects")).unique().rows()
+            annotation_objects = [x[0] for x in annotation_objects]
+            self._filtered_ssrs = self._ssrs.filter(pl.col("annotationobjects").list.set_intersection(annotation_objects).list.len() != 0)
+            self._filtered_srss = self._srss.filter(pl.col("annotationobjects").list.set_intersection(annotation_objects).list.len() != 0)
+            self._filtered_rmds = self._rmds.filter(pl.col("annotationobjects").list.set_intersection(annotation_objects).list.len() != 0)
+        else:
+            self._filtered_ssrs = self._ssrs
+            self._filtered_srss = self._srss
+            self._filtered_rmds = self._rmds
+
 
     def update_ssr_session(self, changes, from_top=False):
         pass
