@@ -296,8 +296,11 @@ def run_webapp():
 
         figcontainer = st.container(height=640)
 
+
         if unique_features:
-            feature_filter = st.multiselect('Filter by feature annotation', sorted(unique_features))
+            feature_filter = st.multiselect('Filter by feature annotation',
+                                            sorted(unique_features),
+                                            default=seq_record._last_filters)
         else:
             feature_filter = []
         seq_record.set_filters(feature_filter)
@@ -314,7 +317,6 @@ def run_webapp():
         looks_circular = check_feats_look_circular(seq_record)
         if looks_circular:
             st.warning("You deselected the circular option, but your file looks circular.", icon="⚠️")
-
 
         tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
         with tab1:

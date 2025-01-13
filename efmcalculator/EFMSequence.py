@@ -32,6 +32,7 @@ class EFMSequence(SeqRecord):
         self._filtered_ssrs = None
         self._filtered_srss = None
         self._filtered_rmds = None
+        self._last_filters = []
 
 
     @property
@@ -99,6 +100,11 @@ class EFMSequence(SeqRecord):
 
 
     def set_filters(self, annotations):
+        filters_changed = False
+        if self._last_filters != annotations:
+            filters_changed = True
+            self._last_filters = annotations
+
         if annotations:
             annotation_objects = self._unique_annotations.filter(pl.col("annotationobjexpanded_names").is_in(annotations))
             annotation_objects = annotation_objects.select(pl.col("annotationobjects")).unique().rows()
