@@ -24,6 +24,7 @@ class StateMachine:
         validate_sequences(self.user_sequences.values(), max_len=MAX_SIZE)
 
         # Update sequence names
+        self.named_sequences = {}
         for i, seqhash in enumerate(self.user_sequences):
             seq = self.user_sequences[seqhash]
             if seq.description:
