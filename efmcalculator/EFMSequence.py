@@ -5,6 +5,7 @@ from .short_seq_finder import predict
 from .post_process import post_process
 from .features import sequence_to_features_df
 from .webapp.vis_utils import eval_top
+import streamlit as st
 
 class EFMSequence(SeqRecord):
     """SeqRecord child class with equality handling and prediction methods"""
@@ -161,13 +162,42 @@ class EFMSequence(SeqRecord):
             .alias("show")
         ).sort(by="mutation_rate", descending=True)
 
-
-    def update_ssr_session(self, changes):
-        pass
-    def update_srs_session(self, changes):
-        pass
-    def update_rmd_session(self, changes):
-        pass
+    def upate_top_session(self):
+        changes = st.session_state["topchanges"]['edited_rows']
+        for change in changes:
+            new_state = changes[change]['show']
+            changed_id = self._filtered_top[change]['predid'][0]
+            if new_state:
+                self._plotted_predictions.append(changed_id)
+            else:
+                self._plotted_predictions.remove(changed_id)
+    def update_ssr_session(self):
+        changes = st.session_state["ssrchanges"]['edited_rows']
+        for change in changes:
+            new_state = changes[change]['show']
+            changed_id = self._filtered_ssrs[change]['predid'][0]
+            if new_state:
+                self._plotted_predictions.append(changed_id)
+            else:
+                self._plotted_predictions.remove(changed_id)
+    def update_srs_session(self):
+        changes = st.session_state["srschanges"]['edited_rows']
+        for change in changes:
+            new_state = changes[change]['show']
+            changed_id = self._filtered_srss[change]['predid'][0]
+            if new_state:
+                self._plotted_predictions.append(changed_id)
+            else:
+                self._plotted_predictions.remove(changed_id)
+    def update_rmd_session(self):
+        changes = st.session_state["rmdchanges"]['edited_rows']
+        for change in changes:
+            new_state = changes[change]['show']
+            changed_id = self._filtered_rmds[change]['predid'][0]
+            if new_state:
+                self._plotted_predictions.append(changed_id)
+            else:
+                self._plotted_predictions.remove(changed_id)
 
     def same_origin(self, other):
         if not self._originhash or not other._filehash:
