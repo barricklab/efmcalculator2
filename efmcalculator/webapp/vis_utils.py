@@ -36,6 +36,5 @@ def eval_top(ssr_df=None, srs_df=None, rmd_df=None, num_report: int = 10):
 
     merged_df = pl.concat(valid_dataframes)
     merged_df = merged_df.sort(by="mutation_rate", descending=True).head(num_report)
-    print(merged_df)
 
     return merged_df

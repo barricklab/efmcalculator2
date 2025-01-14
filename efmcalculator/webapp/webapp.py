@@ -206,7 +206,6 @@ def run_webapp():
 
                     for sequence in sequences:
                         filename = original_filename
-                        print(filename)
                         if not sequence.name:
                             sequence.name = f"{filename}"
                         if not sequence.description or sequence.description == '':
@@ -349,7 +348,7 @@ def run_webapp():
             key="rmdchanges",
             on_change = seq_record.update_rmd_session)
 
-        fig = bokeh_plot(results[0], results[1], results[2], seq_record)
+        fig = bokeh_plot(seq_record)
         with figcontainer:
             st.bokeh_chart(fig, use_container_width=True)
 

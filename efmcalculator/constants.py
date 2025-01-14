@@ -11,6 +11,7 @@ VALID_EXTS = FASTA_EXTS + GBK_EXTS + CSV_EXTS
 SUB_RATE = float(2.2 * 10 ** (-10))
 THRESHOLD = 2.2*10e-10 # Minimum mutation rate for a reported hotspot
 MAX_SIZE = 50000
+MARKER_HEIGHT = 500
 
 COLORS = {
     "ori": "#4e7fff",

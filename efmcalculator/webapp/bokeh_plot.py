@@ -1,3 +1,4 @@
+from subprocess import run
 import bokeh as bk
 import copy
 from Bio import SeqFeature
@@ -5,8 +6,14 @@ from bokeh.plotting import figure
 from bokeh.models import HoverTool
 from typing import List
 import polars as pl
+from ..constants import MARKER_HEIGHT
+from copy import deepcopy
 
-def bokeh_plot(ssr_df, srs_df, rmd_df, seqobj):
+OUTLINE_PADDING_X = 25
+OUTLINE_PADDING_Y = 25
+INNER_HEIGHT = MARKER_HEIGHT-OUTLINE_PADDING_Y*2
+
+def bokeh_plot(seqobj):
     fig = figure(plot_height=600)
     fig.line(x=[0, len(seqobj.seq)], y=[0, 0], line_color="black", line_width=2)
     fig.xaxis.axis_label = "Position"
@@ -17,8 +24,8 @@ def bokeh_plot(ssr_df, srs_df, rmd_df, seqobj):
 
     fig, depth = plot_annotations(fig, seqobj)
 
-    #selected_srss = srs_df.filter(pl.col("show") == True)
-    #fig = plot_srs(fig, selected_srss)
+    selected_srss = seqobj._filtered_srss.filter(pl.col("show") == True)
+    fig = plot_srs(fig, selected_srss)
 
     return fig
 
@@ -76,7 +83,7 @@ def plot_annotations(fig, seqobj):
     xmax = len(seqobj.seq)
 
     annotation_depth = -750
-    lowest_annotation_y = -500
+    lowest_annotation_y = -MARKER_HEIGHT
     genbank_dictionary = {
             "x": [],
             "y": [],
@@ -114,11 +121,11 @@ def plot_annotations(fig, seqobj):
                 scaled_end - arrow_depth,
             ]
             ys = [
-                annotation_base_y + 500,
-                annotation_base_y - 500,
-                annotation_base_y - 500,
+                annotation_base_y + MARKER_HEIGHT,
+                annotation_base_y - MARKER_HEIGHT,
+                annotation_base_y - MARKER_HEIGHT,
                 annotation_base_y,
-                annotation_base_y + 500,
+                annotation_base_y + MARKER_HEIGHT,
             ]
         elif genbank_annotation.location.strand == -1:
             xs = [
@@ -129,24 +136,24 @@ def plot_annotations(fig, seqobj):
                 scaled_start + arrow_depth,
             ]
             ys = [
-                annotation_base_y - 500,
-                annotation_base_y + 500,
-                annotation_base_y + 500,
+                annotation_base_y - MARKER_HEIGHT,
+                annotation_base_y + MARKER_HEIGHT,
+                annotation_base_y + MARKER_HEIGHT,
                 annotation_base_y,
-                annotation_base_y - 500,
+                annotation_base_y - MARKER_HEIGHT,
             ]
         else:
             xs = [scaled_start, scaled_start, scaled_end, scaled_end]
             ys = [
-                annotation_base_y - 500,
-                annotation_base_y + 500,
-                annotation_base_y + 500,
-                annotation_base_y - 500,
+                annotation_base_y - MARKER_HEIGHT,
+                annotation_base_y + MARKER_HEIGHT,
+                annotation_base_y + MARKER_HEIGHT,
+                annotation_base_y - MARKER_HEIGHT,
             ]
 
         # Update lowest annotation y
-        if annotation_base_y - 500 < lowest_annotation_y:
-            lowest_annotation_y = annotation_base_y - 500
+        if annotation_base_y - MARKER_HEIGHT < lowest_annotation_y:
+            lowest_annotation_y = annotation_base_y - MARKER_HEIGHT
 
         # Define the color
         color = get_feature_color(genbank_annotation)
@@ -179,7 +186,7 @@ def plot_annotations(fig, seqobj):
 
     # Draw a line below the annotations
 
-    lowest_annotation_y -= 250
+    lowest_annotation_y -= MARKER_HEIGHT/2
     fig.line(
         [0, xmax],
         [lowest_annotation_y, lowest_annotation_y],
@@ -204,8 +211,7 @@ def plot_ssr(fig, plotted_ssrs):
     }
     ssr_outlines = copy.deepcopy(ssr_source)
 
-    ssr_shape = [[0, 0], [1, 0], [1, 1000], [0, 1000], [0, 0]]
-    outline_ssr_shape = [[0, 0], [1, 0], [1, 500], [1, 1000], [0, 1000], [0, 500], [0, 0]]
+    ssr_shape = [[0, 0], [1, 0], [1, INNER_HEIGHT], [0, INNER_HEIGHT], [0, 0]]
 
     ssr_glyphs = fig.patches(
         "x",
@@ -241,11 +247,8 @@ def plot_ssr(fig, plotted_ssrs):
 
 def plot_srs(fig, ssr_df):
     height = 1
-    rmd_shape = [[0, 0], [1, 0], [1, 1000], [0, 1000], [0, 0]]
-    color = "yellow"
-
-    outline_padding_x = 25
-    outline_padding_y = 250
+    rmd_shape = [[0, 0], [1, 0], [1, INNER_HEIGHT], [0, INNER_HEIGHT], [0, 0]]
+    color = "orange"
 
     # Logic for exact position
     srs_source = {
@@ -263,12 +266,11 @@ def plot_srs(fig, ssr_df):
     }
 
     for row in ssr_df.rows(named=True):
-        # rmd_shape = [[0, 0], [1, 0], [1, 1000], [0, 1000], [0, 0]]
         left_pos = row["first_repeat"]
         right_pos = row["second_repeat"]
         repeat_len = row["repeat_len"]
-        left_glyph = [[point[0]+left_pos, point[1]*repeat_len+left_pos] for point in rmd_shape]
-        right_glyph = [[point[0]+right_pos, point[1]*repeat_len+right_pos] for point in rmd_shape]
+        left_glyph = [[point[0]+left_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
+        right_glyph = [[point[0]+right_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
 
         srs_source["x"].append([x for x, _ in left_glyph])
         srs_source["y"].append([y for _, y in left_glyph])
@@ -297,8 +299,9 @@ def plot_srs(fig, ssr_df):
 
 
     # Logic for highlighting
-    outline_shape_left = [[0, 0], [1, 0], [1, 500], [1, 1000], [0, 1000], [0, 0]]
-    outline_shape_right = [[0, 0], [1, 0], [1, 1000], [0, 1000], [0,500], [0, 0]]
+    outline_shape_left = [[0, 0], [1, 0], [1, MARKER_HEIGHT/2], [1, MARKER_HEIGHT], [0, MARKER_HEIGHT], [0, 0]]
+    outline_shape_right = [[0, 0], [1, 0], [1, MARKER_HEIGHT], [0, MARKER_HEIGHT], [0, MARKER_HEIGHT/2], [0, 0]]
+    line_shape = [[1, MARKER_HEIGHT/2], [1,MARKER_HEIGHT/2]]
     srs_outline_source = {
         "x": [],
         "y": [],
@@ -312,70 +315,85 @@ def plot_srs(fig, ssr_df):
         "sequence": [],
         "distance": [],
     }
+    srs_line_source = {
+        "x": [],
+        "y": [],
+        "color": [],
+    }
     for row in ssr_df.rows(named=True):
         left_pos = row["first_repeat"]
         right_pos = row["second_repeat"]
         repeat_len = row["repeat_len"]
-        if row["distance"] > outline_padding_x*2: # Distant SRSs
-            left_outline = [[point[0]+left_pos, point[1]*repeat_len+left_pos] for point in outline_shape_left]
-            left_outline_mods = [[-outline_padding_x/2, -outline_padding_y],
-                                 [outline_padding_x/2, -outline_padding_y],
-                                 [outline_padding_x, 0],
-                                 [outline_padding_x/2, outline_padding_y],
-                                 [-outline_padding_x/2, outline_padding_y],
-                                 [-outline_padding_x/2, -outline_padding_y]]
+        if row["distance"] > OUTLINE_PADDING_X*4: # Distant SRSs
+            left_outline = [[point[0]+left_pos, point[1]+OUTLINE_PADDING_Y] for point in outline_shape_left]
+            left_outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                                 [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                                 [OUTLINE_PADDING_X*2, 0],
+                                 [OUTLINE_PADDING_X, 0],
+                                 [-OUTLINE_PADDING_X, 0],
+                                 [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
             for i in range(len(left_outline)):
                 left_outline[i][0] = left_outline[i][0] + left_outline_mods[i][0]
                 left_outline[i][1] = left_outline[i][1] + left_outline_mods[i][1]
 
-            right_outline = [[point[0]+right_pos, point[1]*repeat_len+right_pos] for point in outline_shape_right]
-            right_mods = [[-outline_padding_x/2, -outline_padding_y],
-                          [outline_padding_x/2, -outline_padding_y],
-                          [outline_padding_x, outline_padding_y],
-                          [-outline_padding_x/2, outline_padding_y],
-                          [-outline_padding_x/2, 0],
-                          [-outline_padding_x/2, -outline_padding_y]]
+            right_outline = [[point[0]+right_pos, point[1]+OUTLINE_PADDING_Y] for point in outline_shape_right]
+            right_outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                                 [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                                 [OUTLINE_PADDING_X, 0],
+                                 [-OUTLINE_PADDING_X, 0],
+                                 [-OUTLINE_PADDING_X*2, 0],
+                                 [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
             for i in range(len(right_outline)):
-                right_outline[i][0] = right_outline[i][0] + right_mods[i][0]
-                right_outline[i][1] = right_outline[i][1] + right_mods[i][1]
+                right_outline[i][0] = right_outline[i][0] + right_outline_mods[i][0]
+                right_outline[i][1] = right_outline[i][1] + right_outline_mods[i][1]
 
             srs_outline_source["x"].append([x for x, _ in left_outline])
             srs_outline_source["y"].append([y for _, y in left_outline])
             srs_outline_source["x"].append([x for x, _ in right_outline])
             srs_outline_source["y"].append([y for _, y in right_outline])
             for _ in range(2):
-                srs_outline_source["color"].append("black")
+                srs_outline_source["color"].append(None)
                 srs_outline_source["name"].append("srs")
                 srs_outline_source['first_repeat'].append(left_pos)
                 srs_outline_source['second_repeat'].append(right_pos)
                 srs_outline_source["mutation_rate"].append(row["mutation_rate"])
-                srs_outline_source["line_width"].append(1)
-                srs_outline_source["line_color"].append("black")
+                srs_outline_source["line_width"].append(2)
+                srs_outline_source["line_color"].append(color)
                 srs_outline_source["sequence"].append(row["repeat"])
                 srs_outline_source["distance"].append(row["distance"])
+
+
+            line = deepcopy(line_shape)
+            line[0][0] = left_outline[2][0]
+            line[1][0] = right_outline[4][0]
+            srs_line_source["x"].append([x for x, _ in line])
+            srs_line_source["y"].append([y+OUTLINE_PADDING_Y for _, y in line])
+            srs_line_source["color"].append(color)
+
         else: # Near SRSs
-            outline = [[point[0]+left_pos, point[1]*repeat_len+left_pos] for point in rmd_shape]
-            outline_mods = [[-outline_padding_x/2, -outline_padding_y],
-                            [outline_padding_x/2, -outline_padding_y],
-                            [outline_padding_x/2, outline_padding_y],
-                            [-outline_padding_x/2, outline_padding_y],
-                            [-outline_padding_x/2, -outline_padding_y]]
+            l = [[point[0]+left_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
+            r = [[point[0]+right_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
+            outline = [l[0], r[1], r[2], l[3], l[4]]
+            outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                            [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                            [OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
+                            [-OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
+                            [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
             for i in range(len(outline)):
                 outline[i][0] = outline[i][0] + outline_mods[i][0]
                 outline[i][1] = outline[i][1] + outline_mods[i][1]
 
             srs_outline_source["x"].append([x for x, _ in outline])
             srs_outline_source["y"].append([y for _, y in outline])
-            srs_outline_source["color"].append("black")
+            srs_outline_source["color"].append(None)
             srs_outline_source["name"].append("SRS")
             srs_outline_source['first_repeat'].append(left_pos)
             srs_outline_source['second_repeat'].append(right_pos)
             srs_outline_source["mutation_rate"].append(row["mutation_rate"])
-            srs_outline_source["line_width"].append(1)
-            srs_outline_source["line_color"].append("black")
+            srs_outline_source["line_width"].append(3)
+            srs_outline_source["line_color"].append(color)
             srs_outline_source["sequence"].append(row["repeat"])
             srs_outline_source["distance"].append(row["distance"])
-
 
     rmd_glyphs_outline = fig.patches(
         "x",
@@ -387,6 +405,15 @@ def plot_srs(fig, ssr_df):
         line_width="line_width",
     )
 
+    print(srs_line_source)
+    rmd_lines = fig.multi_line(
+        xs="x",
+        ys="y",
+        source=srs_line_source,
+        alpha=0.5,
+        color="color",
+        line_width=3,
+    )
 
     rmd_glyphs_hover = HoverTool(
         renderers=[rmd_glyphs_outline],
@@ -399,6 +426,8 @@ def plot_srs(fig, ssr_df):
             ("Mutation Rate", "@mutation_rate"),
         ],
     )
+
+
     fig.add_tools(rmd_glyphs_hover)
 
     return fig

@@ -165,39 +165,51 @@ class EFMSequence(SeqRecord):
     def upate_top_session(self):
         changes = st.session_state["topchanges"]['edited_rows']
         for change in changes:
-            new_state = changes[change]['show']
-            changed_id = self._filtered_top[change]['predid'][0]
-            if new_state:
-                self._plotted_predictions.append(changed_id)
-            else:
-                self._plotted_predictions.remove(changed_id)
+            try:
+                new_state = changes[change]['show']
+                changed_id = self._filtered_top[change]['predid'][0]
+                if new_state:
+                    self._plotted_predictions.append(changed_id)
+                else:
+                    self._plotted_predictions.remove(changed_id)
+            except ValueError:
+                pass
     def update_ssr_session(self):
         changes = st.session_state["ssrchanges"]['edited_rows']
         for change in changes:
-            new_state = changes[change]['show']
-            changed_id = self._filtered_ssrs[change]['predid'][0]
-            if new_state:
-                self._plotted_predictions.append(changed_id)
-            else:
-                self._plotted_predictions.remove(changed_id)
+            try:
+                new_state = changes[change]['show']
+                changed_id = self._filtered_ssrs[change]['predid'][0]
+                if new_state:
+                    self._plotted_predictions.append(changed_id)
+                else:
+                    self._plotted_predictions.remove(changed_id)
+            except ValueError:
+                pass
     def update_srs_session(self):
         changes = st.session_state["srschanges"]['edited_rows']
         for change in changes:
-            new_state = changes[change]['show']
-            changed_id = self._filtered_srss[change]['predid'][0]
-            if new_state:
-                self._plotted_predictions.append(changed_id)
-            else:
-                self._plotted_predictions.remove(changed_id)
+            try:
+                new_state = changes[change]['show']
+                changed_id = self._filtered_srss[change]['predid'][0]
+                if new_state:
+                    self._plotted_predictions.append(changed_id)
+                else:
+                    self._plotted_predictions.remove(changed_id)
+            except ValueError:
+                pass
     def update_rmd_session(self):
         changes = st.session_state["rmdchanges"]['edited_rows']
         for change in changes:
-            new_state = changes[change]['show']
-            changed_id = self._filtered_rmds[change]['predid'][0]
-            if new_state:
-                self._plotted_predictions.append(changed_id)
-            else:
-                self._plotted_predictions.remove(changed_id)
+            try:
+                new_state = changes[change]['show']
+                changed_id = self._filtered_rmds[change]['predid'][0]
+                if new_state:
+                    self._plotted_predictions.append(changed_id)
+                else:
+                    self._plotted_predictions.remove(changed_id)
+            except ValueError:
+                pass
 
     def same_origin(self, other):
         if not self._originhash or not other._filehash:
