@@ -14,6 +14,7 @@ OUTLINE_PADDING_Y = 25
 INNER_HEIGHT = MARKER_HEIGHT-OUTLINE_PADDING_Y*2
 
 def bokeh_plot(seqobj):
+    # Figure boilerplate
     fig = figure(plot_height=600)
     fig.line(x=[0, len(seqobj.seq)], y=[0, 0], line_color="black", line_width=2)
     fig.xaxis.axis_label = "Position"
@@ -21,10 +22,76 @@ def bokeh_plot(seqobj):
     fig.ygrid.visible = False
     fig.xgrid.visible = False
     fig.toolbar.logo = None
-
     fig, depth = plot_annotations(fig, seqobj)
 
+    # Calculate vertical stagger to prevent overlapping annotations
+    selected_ssrs = seqobj._filtered_ssrs.filter(pl.col("show") == True)
     selected_srss = seqobj._filtered_srss.filter(pl.col("show") == True)
+    selected_rmds = seqobj._filtered_rmds.filter(pl.col("show") == True)
+
+    stagger_database = {
+        0: []
+    }
+    stagger_ssrs = selected_ssrs.with_columns(
+        (pl.col("repeat_len")*pl.col("count")-1).alias("end").cast(pl.Int32),
+        pl.lit("SSR").alias("type"),
+        pl.col("start").alias("first_repeat"),
+        pl.lit(None).cast(pl.Int32).alias("second_repeat"),
+    )
+    stagger_srss = selected_srss.with_columns(
+        (pl.col("second_repeat") + pl.col("repeat_len")).alias("end").cast(pl.Int32),
+        pl.col("first_repeat").alias("start"),
+        pl.lit("SRS").alias("type"),
+    )
+    stagger_rmds = selected_rmds.with_columns(
+        (pl.col("second_repeat") + pl.col("repeat_len")).alias("end").cast(pl.Int32),
+        pl.col("first_repeat").alias("start"),
+        pl.lit("RMD").alias("type"),
+    )
+
+    joint_table = pl.concat([stagger_ssrs,
+                             stagger_srss,
+                             stagger_rmds],
+                             how="diagonal").with_columns(
+        (pl.col('end') - pl.col('start') + pl.lit(1)).alias("size")
+                             ).select(["start", "end", "size", "predid"]).with_columns(
+        pl.lit(0).alias("level")
+                             )
+
+    highest_level = 0
+    for i, row in enumerate(joint_table.rows(named=True)):
+        assigned = False
+        for level in stagger_database:
+            for occupied_area in stagger_database[level]:
+                if occupied_area[0] <= row['start'] and occupied_area[1] >= row['end']:
+                    # Entirely inside
+                    break
+                elif occupied_area[0] <= row['start'] and row['start'] <= occupied_area[1] <= row['end']:
+                    # Left edge
+                    break
+                elif  row['start'] <= occupied_area[0] <= row['end'] and occupied_area[1] >= row['end']:
+                    # Right edge
+                    break
+            else:
+                # Outside all areas
+                stagger_database[level].append([row['start'], row['end']])
+                joint_table[i, 'level'] = level
+                assigned = True
+                break
+        else:
+            # All existing levels are full
+            highest_level += 1
+            stagger_database[highest_level] = [[row['start'], row['end']]]
+            joint_table[i, 'level'] = highest_level
+            assigned = True
+
+    joint_table = joint_table.select(["predid", "level"])
+    stagger_ssrs = stagger_ssrs.join(joint_table, on=["predid"], how="left")
+    stagger_srss = stagger_srss.join(joint_table, on=["predid"], how="left")
+    stagger_rmds = stagger_rmds.join(joint_table, on=["predid"], how="left")
+
+    print(stagger_srss)
+
     fig = plot_srs(fig, selected_srss)
 
     return fig
@@ -405,7 +472,6 @@ def plot_srs(fig, ssr_df):
         line_width="line_width",
     )
 
-    print(srs_line_source)
     rmd_lines = fig.multi_line(
         xs="x",
         ys="y",
