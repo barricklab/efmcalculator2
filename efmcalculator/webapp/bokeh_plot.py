@@ -74,14 +74,14 @@ def bokeh_plot(seqobj):
                     break
             else:
                 # Outside all areas
-                stagger_database[level].append([row['start'], row['end']])
+                stagger_database[level].append([row['start']-OUTLINE_PADDING_X*2, row['end']+OUTLINE_PADDING_X*2])
                 joint_table[i, 'level'] = level
                 assigned = True
                 break
         else:
             # All existing levels are full
             highest_level += 1
-            stagger_database[highest_level] = [[row['start'], row['end']]]
+            stagger_database[highest_level] = [[row['start']-OUTLINE_PADDING_X*2, row['end']+OUTLINE_PADDING_X*2]]
             joint_table[i, 'level'] = highest_level
             assigned = True
 
@@ -90,9 +90,7 @@ def bokeh_plot(seqobj):
     stagger_srss = stagger_srss.join(joint_table, on=["predid"], how="left")
     stagger_rmds = stagger_rmds.join(joint_table, on=["predid"], how="left")
 
-    print(stagger_srss)
-
-    fig = plot_srs(fig, selected_srss)
+    fig = plot_srs(fig, stagger_srss)
 
     return fig
 
@@ -336,13 +334,14 @@ def plot_srs(fig, ssr_df):
         left_pos = row["first_repeat"]
         right_pos = row["second_repeat"]
         repeat_len = row["repeat_len"]
+        y_height = row["level"]*MARKER_HEIGHT*1.5
         left_glyph = [[point[0]+left_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
         right_glyph = [[point[0]+right_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
 
         srs_source["x"].append([x for x, _ in left_glyph])
-        srs_source["y"].append([y for _, y in left_glyph])
+        srs_source["y"].append([y+y_height+MARKER_HEIGHT*0.5 for _, y in left_glyph])
         srs_source["x"].append([x for x, _ in right_glyph])
-        srs_source["y"].append([y for _, y in right_glyph])
+        srs_source["y"].append([y+y_height+ MARKER_HEIGHT*0.5 for _, y in right_glyph])
         for _ in range(2):
             srs_source["color"].append("black")
             srs_source["name"].append("srs")
@@ -391,6 +390,7 @@ def plot_srs(fig, ssr_df):
         left_pos = row["first_repeat"]
         right_pos = row["second_repeat"]
         repeat_len = row["repeat_len"]
+        y_height = row["level"]*MARKER_HEIGHT*1.5
         if row["distance"] > OUTLINE_PADDING_X*4: # Distant SRSs
             left_outline = [[point[0]+left_pos, point[1]+OUTLINE_PADDING_Y] for point in outline_shape_left]
             left_outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
@@ -401,7 +401,7 @@ def plot_srs(fig, ssr_df):
                                  [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
             for i in range(len(left_outline)):
                 left_outline[i][0] = left_outline[i][0] + left_outline_mods[i][0]
-                left_outline[i][1] = left_outline[i][1] + left_outline_mods[i][1]
+                left_outline[i][1] = left_outline[i][1] + left_outline_mods[i][1] + y_height + MARKER_HEIGHT*0.5
 
             right_outline = [[point[0]+right_pos, point[1]+OUTLINE_PADDING_Y] for point in outline_shape_right]
             right_outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
@@ -412,7 +412,7 @@ def plot_srs(fig, ssr_df):
                                  [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
             for i in range(len(right_outline)):
                 right_outline[i][0] = right_outline[i][0] + right_outline_mods[i][0]
-                right_outline[i][1] = right_outline[i][1] + right_outline_mods[i][1]
+                right_outline[i][1] = right_outline[i][1] + right_outline_mods[i][1] + y_height + MARKER_HEIGHT*0.5
 
             srs_outline_source["x"].append([x for x, _ in left_outline])
             srs_outline_source["y"].append([y for _, y in left_outline])
@@ -434,12 +434,13 @@ def plot_srs(fig, ssr_df):
             line[0][0] = left_outline[2][0]
             line[1][0] = right_outline[4][0]
             srs_line_source["x"].append([x for x, _ in line])
-            srs_line_source["y"].append([y+OUTLINE_PADDING_Y for _, y in line])
+            srs_line_source["y"].append([y+OUTLINE_PADDING_Y+ y_height + MARKER_HEIGHT*0.5 for _, y in line])
             srs_line_source["color"].append(color)
 
         else: # Near SRSs
             l = [[point[0]+left_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
             r = [[point[0]+right_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
+
             outline = [l[0], r[1], r[2], l[3], l[4]]
             outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
                             [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
@@ -448,8 +449,7 @@ def plot_srs(fig, ssr_df):
                             [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
             for i in range(len(outline)):
                 outline[i][0] = outline[i][0] + outline_mods[i][0]
-                outline[i][1] = outline[i][1] + outline_mods[i][1]
-
+                outline[i][1] = outline[i][1] + outline_mods[i][1] + y_height + MARKER_HEIGHT*0.5
             srs_outline_source["x"].append([x for x, _ in outline])
             srs_outline_source["y"].append([y for _, y in outline])
             srs_outline_source["color"].append(None)
@@ -462,7 +462,7 @@ def plot_srs(fig, ssr_df):
             srs_outline_source["sequence"].append(row["repeat"])
             srs_outline_source["distance"].append(row["distance"])
 
-    rmd_glyphs_outline = fig.patches(
+    srs_glyphs_outline = fig.patches(
         "x",
         "y",
         color="color",
@@ -472,7 +472,7 @@ def plot_srs(fig, ssr_df):
         line_width="line_width",
     )
 
-    rmd_lines = fig.multi_line(
+    srs_lines = fig.multi_line(
         xs="x",
         ys="y",
         source=srs_line_source,
@@ -481,8 +481,8 @@ def plot_srs(fig, ssr_df):
         line_width=3,
     )
 
-    rmd_glyphs_hover = HoverTool(
-        renderers=[rmd_glyphs_outline],
+    srs_glyphs_hover = HoverTool(
+        renderers=[srs_glyphs_outline],
         tooltips=[
             ("Type", "@name"),
             ("Sequence", "@sequence"),
@@ -494,6 +494,6 @@ def plot_srs(fig, ssr_df):
     )
 
 
-    fig.add_tools(rmd_glyphs_hover)
+    fig.add_tools(srs_glyphs_hover)
 
     return fig
