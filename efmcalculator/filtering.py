@@ -12,42 +12,92 @@ def filter_ssrs(ssr_dataframe, seq_len, circular):
         )   #! EFM1 is bugged with repeat_ len>= 3 and <= 2 bp
     ).collect()
 
-    # Keep SSR with lowest length that start at same position
     ssr_dataframe = (
-        ssr_dataframe.sort("repeat_len")
-        .group_by(pl.col("start"))
-        .head(1)
-    )
-
-    # Delete SSR within other more important SSRs ("CACACA" will have SSR of "CA" and "AC")
-    ssr_dataframe = (
-    ssr_dataframe.sort(pl.col("start"))
+    ssr_dataframe.sort([pl.col("start"), pl.col("repeat_len")], descending=[False, True])
         .with_columns(
+            # end is the last base pair of the SSR
+            (pl.col("start") + (pl.col("repeat_len")*pl.col("count"))-1).alias("end")
+        )
+        .with_columns(
+            # if circular, creates modified start and stop positions
             pl.when(circular)
             .then(
-                pl.when((pl.col("start") + (pl.col("count") * pl.col("repeat_len"))) >= seq_len)
-                .then(pl.col("start")-seq_len)
-                .otherwise(pl.col("start"))
+                pl.when((pl.col("end")) >= seq_len)
+                .then((pl.col("start")-seq_len).alias("modified_start"))
+                .otherwise(pl.col("start").alias("modified_start"))
                 )
-        .otherwise(pl.col("start"))
+            .otherwise(pl.col("start").alias("modified_start")),
+            pl.when(circular)
+            .then(
+                pl.when((pl.col("end")) >= seq_len)
+                .then((pl.col("end")-seq_len).alias("modified_end"))
+                .otherwise(pl.col("end").alias("modified_end"))
+                )
+            .otherwise(pl.col("end").alias("modified_end"))
         )
-        .with_columns(
-        pl.col("start").shift(1).alias("last_start"),
-        pl.col("count").shift(1).alias("last_count"),
+        .with_row_index()
+        )
+    
+    joined = ssr_dataframe.join(ssr_dataframe, how="cross")
+
+    # remove rows compared to itself
+    joined = joined.filter(pl.col("index") != pl.col("index_right"))
+    if(not circular):
+        joined = (
+        joined.filter(
+                # these repeats are fully contained in another repeat, and has less count
+                (
+                    (pl.col("start") >= pl.col("start_right")) &
+                    (pl.col("end") <= pl.col("end_right")) &
+                    (pl.col("count") <= pl.col("count_right"))
+                ) |
+                # these repeats are alternate versions of other SSRs
+                (
+                    (pl.col("start") - pl.col("start_right") == pl.col("end") - pl.col("end_right")) &
+                    ((pl.col("start") - pl.col("start_right")).abs() < pl.col("repeat_len")) &
+                    # want to keep the first version 
+                    (pl.col("start") > pl.col("start_right"))
+                )
+            )
+        )
+    else:
+        joined = (
+        joined.filter(
+                # these repeats are fully contained in another repeat, and has less count
+                (
+                    (
+                        # use either modified start or modified end for repeats that wrap around
+                        ((pl.col("start") >= pl.col("start_right")) &
+                        (pl.col("end") <= pl.col("end_right"))
+                        ) |
+                        ((pl.col("start") >= pl.col("modified_start_right")) &
+                        (pl.col("end") <= pl.col("modified_end_right"))
+                        ) |
+                        ((pl.col("modified_start") >= pl.col("start_right")) &
+                        (pl.col("modified_end") <= pl.col("end_right"))
+                        ) |
+                        ((pl.col("modified_start") >= pl.col("modified_start_right")) &
+                        (pl.col("modified_end") <= pl.col("modified_end_right"))
+                        )
+                    ) &
+                    (pl.col("count") <= pl.col("count_right"))
+                ) |
+                # these repeats are alternate versions of other SSRs
+                (
+                    (pl.col("start") - pl.col("start_right") == pl.col("end") - pl.col("end_right")) &
+                    ((pl.col("start") - pl.col("start_right")).abs() < pl.col("repeat_len")) &
+                    # want to keep the first version 
+                    (pl.col("start") > pl.col("start_right"))
+                )
+            )
         )
 
+    removed_indices = joined["index"].unique()
+
+    ssr_dataframe = (
+        ssr_dataframe
         .filter(
-            # gets rid only if starts 1 bp after last SSR, and has lower or equal count
-            (
-                (pl.col("last_start").is_null()) |
-                (pl.col("start") != pl.col("last_start") + 1) |
-                (pl.col("count") > pl.col("last_count"))
-            ) &
-            # keep SSR with lowest length when not starting from same position
-            (
-                (pl.col("last_start").is_null()) |
-                (pl.col("last_start") + pl.col("repeat_len") != pl.col("start"))
-            )
+            ~(pl.col("index").is_in(removed_indices))
         )
     .select(["repeat", "repeat_len", "start", "count"])
     # fix start values
