@@ -34,7 +34,7 @@ def bokeh_plot(seqobj):
         0: []
     }
     stagger_ssrs = selected_ssrs.with_columns(
-        (pl.col("repeat_len")*pl.col("count")-1).alias("end").cast(pl.Int32),
+        (pl.col("repeat_len")*pl.col("count")+pl.col("start")-1).alias("end").cast(pl.Int32),
         pl.lit("SSR").alias("type"),
         pl.col("start").alias("first_repeat"),
         pl.lit(None).cast(pl.Int32).alias("second_repeat"),
@@ -55,9 +55,10 @@ def bokeh_plot(seqobj):
                              stagger_rmds],
                              how="diagonal").with_columns(
         (pl.col('end') - pl.col('start') + pl.lit(1)).alias("size")
-                             ).select(["start", "end", "size", "predid"]).with_columns(
+                             ).select(["start", "end", "size", "predid", "type"]).with_columns(
         pl.lit(0).alias("level")
                              )
+    joint_table = joint_table.sort(by=["size"], descending=True)
 
     highest_level = 0
     for i, row in enumerate(joint_table.rows(named=True)):
@@ -76,6 +77,7 @@ def bokeh_plot(seqobj):
             else:
                 # Outside all areas
                 stagger_database[level].append([row['start']-OUTLINE_PADDING_X*2, row['end']+OUTLINE_PADDING_X*2])
+                print(f"Adding {level} in area {row['start']}-{row['end']}")
                 joint_table[i, 'level'] = level
                 assigned = True
                 break
@@ -85,6 +87,7 @@ def bokeh_plot(seqobj):
             stagger_database[highest_level] = [[row['start']-OUTLINE_PADDING_X*2, row['end']+OUTLINE_PADDING_X*2]]
             joint_table[i, 'level'] = highest_level
             assigned = True
+    print(joint_table)
 
     joint_table = joint_table.select(["predid", "level"])
     stagger_ssrs = stagger_ssrs.join(joint_table, on=["predid"], how="left")
@@ -293,9 +296,8 @@ def plot_ssr(fig, ssr_df):
         "mutation_rate": [],
         "line_width": [],
         "sequence": [],
+        "count": [],
     }
-
-
 
     for row in ssr_df.rows(named=True):
         left_pos = row["start"]
@@ -333,6 +335,7 @@ def plot_ssr(fig, ssr_df):
         ssr_outline_source["line_width"].append(3)
         ssr_outline_source["line_color"].append(color)
         ssr_outline_source["sequence"].append(row["repeat"])
+        ssr_outline_source['count'].append(row["repeat_len"])
 
     ssr_glyphs = fig.patches(
         "x",
@@ -344,7 +347,7 @@ def plot_ssr(fig, ssr_df):
         line_width="line_width",
     )
 
-    srs_glyphs_outline = fig.patches(
+    ssr_glyphs_outline = fig.patches(
         "x",
         "y",
         color="color",
@@ -353,6 +356,19 @@ def plot_ssr(fig, ssr_df):
         line_color="line_color",
         line_width="line_width",
     )
+
+    ssr_glyphs_hover = HoverTool(
+        renderers=[ssr_glyphs_outline],
+        tooltips=[
+            ("Type", "@name"),
+            ("Sequence", "@sequence"),
+            ("Repeat Start", "@first_repeat"),
+            ("Num. Repeats", "@count"),
+            ("Mutation Rate", "@mutation_rate"),
+        ],
+    )
+
+    fig.add_tools(ssr_glyphs_hover)
 
     return fig
 
