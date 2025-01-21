@@ -8,7 +8,6 @@ from typing import List
 import polars as pl
 from ..constants import MARKER_HEIGHT
 from copy import deepcopy
-from rich import print
 
 OUTLINE_PADDING_X = 25
 OUTLINE_PADDING_Y = 25
@@ -77,7 +76,6 @@ def bokeh_plot(seqobj):
             else:
                 # Outside all areas
                 stagger_database[level].append([row['start']-OUTLINE_PADDING_X*2, row['end']+OUTLINE_PADDING_X*2])
-                print(f"Adding {level} in area {row['start']}-{row['end']}")
                 joint_table[i, 'level'] = level
                 assigned = True
                 break
@@ -87,7 +85,6 @@ def bokeh_plot(seqobj):
             stagger_database[highest_level] = [[row['start']-OUTLINE_PADDING_X*2, row['end']+OUTLINE_PADDING_X*2]]
             joint_table[i, 'level'] = highest_level
             assigned = True
-    print(joint_table)
 
     joint_table = joint_table.select(["predid", "level"])
     stagger_ssrs = stagger_ssrs.join(joint_table, on=["predid"], how="left")
