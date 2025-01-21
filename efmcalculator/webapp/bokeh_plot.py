@@ -8,6 +8,7 @@ from typing import List
 import polars as pl
 from ..constants import MARKER_HEIGHT
 from copy import deepcopy
+from rich import print
 
 OUTLINE_PADDING_X = 25
 OUTLINE_PADDING_Y = 25
@@ -90,7 +91,10 @@ def bokeh_plot(seqobj):
     stagger_srss = stagger_srss.join(joint_table, on=["predid"], how="left")
     stagger_rmds = stagger_rmds.join(joint_table, on=["predid"], how="left")
 
+    fig = plot_rmd(fig, stagger_rmds)
     fig = plot_srs(fig, stagger_srss)
+    fig = plot_ssr(fig, stagger_ssrs)
+
 
     return fig
 
@@ -261,22 +265,74 @@ def plot_annotations(fig, seqobj):
 
     return fig, lowest_annotation_y
 
-def plot_ssr(fig, plotted_ssrs):
-    columns = plotted_ssrs.columns
+def plot_ssr(fig, ssr_df):
+    height = 1
+    ssr_shape = [[0, 0], [1, 0], [1, INNER_HEIGHT], [0, INNER_HEIGHT], [0, 0]]
+    color = "green"
+
     ssr_source = {
         "x": [],
         "y": [],
         "color": [],
+        "line_color": [],
         "name": [],
-        "position": [],
-        "sequence": [],
+        "first_repeat": [],
         "mutation_rate": [],
         "line_width": [],
-        "line_color": [],
+        "sequence": [],
     }
-    ssr_outlines = copy.deepcopy(ssr_source)
 
-    ssr_shape = [[0, 0], [1, 0], [1, INNER_HEIGHT], [0, INNER_HEIGHT], [0, 0]]
+    outline_shape_left = [[0, 0], [1, 0],  [1, MARKER_HEIGHT], [0, MARKER_HEIGHT], [0, 0]]
+    ssr_outline_source = {
+        "x": [],
+        "y": [],
+        "color": [],
+        "line_color": [],
+        "name": [],
+        "first_repeat": [],
+        "mutation_rate": [],
+        "line_width": [],
+        "sequence": [],
+    }
+
+
+
+    for row in ssr_df.rows(named=True):
+        left_pos = row["start"]
+        repeat_len = row["repeat_len"]
+        y_height = row["level"]*MARKER_HEIGHT*1.5
+        glyph = [[point[0]*repeat_len+left_pos, point[1]+OUTLINE_PADDING_Y] for point in ssr_shape]
+
+        ssr_source["x"].append([x for x, _ in glyph])
+        ssr_source["y"].append([y+y_height+MARKER_HEIGHT*0.5 for _, y in glyph])
+        ssr_source["color"].append("black")
+        ssr_source["name"].append("ssr")
+        ssr_source['first_repeat'].append(left_pos)
+        ssr_source["mutation_rate"].append(row["mutation_rate"])
+        ssr_source["line_width"].append(2)
+        ssr_source["line_color"].append("black")
+        ssr_source["sequence"].append(row["repeat"]*repeat_len)
+
+        # Outline
+        outline = [[point[0]*repeat_len+left_pos, point[1]+OUTLINE_PADDING_Y] for point in ssr_shape]
+
+        outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                        [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                        [OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
+                        [-OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
+                        [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
+        for i in range(len(outline)):
+            outline[i][0] = outline[i][0] + outline_mods[i][0]
+            outline[i][1] = outline[i][1] + outline_mods[i][1] + y_height + MARKER_HEIGHT*0.5
+        ssr_outline_source["x"].append([x for x, _ in outline])
+        ssr_outline_source["y"].append([y for _, y in outline])
+        ssr_outline_source["color"].append(None)
+        ssr_outline_source["name"].append("SSR")
+        ssr_outline_source['first_repeat'].append(left_pos)
+        ssr_outline_source["mutation_rate"].append(row["mutation_rate"])
+        ssr_outline_source["line_width"].append(3)
+        ssr_outline_source["line_color"].append(color)
+        ssr_outline_source["sequence"].append(row["repeat"])
 
     ssr_glyphs = fig.patches(
         "x",
@@ -284,31 +340,22 @@ def plot_ssr(fig, plotted_ssrs):
         color="color",
         source=ssr_source,
         alpha=0.5,
-        line_color="black",
-        line_width="line_width",
-    )
-    ssr_outlines = fig.patches(
-        "x",
-        "y",
-        source=ssr_source,
-        alpha=0.5,
-        color="color",
         line_color="line_color",
         line_width="line_width",
     )
 
-    ssr_outlines_hover = HoverTool(
-        renderers=[ssr_outlines],
-        tooltips=[
-            ("Type", "@name"),
-            ("Sequence", "@sequence"),
-            ("Position", "@position"),
-            ("Mutation Rate", "@mutation_rate"),
-        ],
+    srs_glyphs_outline = fig.patches(
+        "x",
+        "y",
+        color="color",
+        source=ssr_outline_source,
+        alpha=0.5,
+        line_color="line_color",
+        line_width="line_width",
     )
-    fig.add_tools(ssr_outlines_hover)
 
     return fig
+
 
 def plot_srs(fig, ssr_df):
     height = 1
@@ -335,8 +382,8 @@ def plot_srs(fig, ssr_df):
         right_pos = row["second_repeat"]
         repeat_len = row["repeat_len"]
         y_height = row["level"]*MARKER_HEIGHT*1.5
-        left_glyph = [[point[0]+left_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
-        right_glyph = [[point[0]+right_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
+        left_glyph = [[point[0]*repeat_len+left_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
+        right_glyph = [[point[0]*repeat_len+right_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
 
         srs_source["x"].append([x for x, _ in left_glyph])
         srs_source["y"].append([y+y_height+MARKER_HEIGHT*0.5 for _, y in left_glyph])
@@ -348,7 +395,7 @@ def plot_srs(fig, ssr_df):
             srs_source['first_repeat'].append(left_pos)
             srs_source['second_repeat'].append(right_pos)
             srs_source["mutation_rate"].append(row["mutation_rate"])
-            srs_source["line_width"].append(1)
+            srs_source["line_width"].append(2)
             srs_source["line_color"].append("black")
             srs_source["sequence"].append(row["repeat"])
             srs_source["distance"].append(row["distance"])
@@ -424,7 +471,7 @@ def plot_srs(fig, ssr_df):
                 srs_outline_source['first_repeat'].append(left_pos)
                 srs_outline_source['second_repeat'].append(right_pos)
                 srs_outline_source["mutation_rate"].append(row["mutation_rate"])
-                srs_outline_source["line_width"].append(2)
+                srs_outline_source["line_width"].append(3)
                 srs_outline_source["line_color"].append(color)
                 srs_outline_source["sequence"].append(row["repeat"])
                 srs_outline_source["distance"].append(row["distance"])
@@ -493,7 +540,193 @@ def plot_srs(fig, ssr_df):
         ],
     )
 
-
     fig.add_tools(srs_glyphs_hover)
+
+    return fig
+
+def plot_rmd(fig, rmd_df):
+    height = 1
+    rmd_shape = [[0, 0], [1, 0], [1, INNER_HEIGHT], [0, INNER_HEIGHT], [0, 0]]
+    color = "red"
+
+    # Logic for exact position
+    rmd_source = {
+        "x": [],
+        "y": [],
+        "color": [],
+        "line_color": [],
+        "name": [],
+        "first_repeat": [],
+        "second_repeat": [],
+        "mutation_rate": [],
+        "line_width": [],
+        "sequence": [],
+        "distance": [],
+    }
+
+    for row in rmd_df.rows(named=True):
+        left_pos = row["first_repeat"]
+        right_pos = row["second_repeat"]
+        repeat_len = row["repeat_len"]
+        y_height = row["level"]*MARKER_HEIGHT*1.5
+        left_glyph = [[point[0]*repeat_len+left_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
+        right_glyph = [[point[0]*repeat_len+right_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
+
+        rmd_source["x"].append([x for x, _ in left_glyph])
+        rmd_source["y"].append([y+y_height+MARKER_HEIGHT*0.5 for _, y in left_glyph])
+        rmd_source["x"].append([x for x, _ in right_glyph])
+        rmd_source["y"].append([y+y_height+ MARKER_HEIGHT*0.5 for _, y in right_glyph])
+        for _ in range(2):
+            rmd_source["color"].append("black")
+            rmd_source["name"].append("rmd")
+            rmd_source['first_repeat'].append(left_pos)
+            rmd_source['second_repeat'].append(right_pos)
+            rmd_source["mutation_rate"].append(row["mutation_rate"])
+            rmd_source["line_width"].append(2)
+            rmd_source["line_color"].append("black")
+            rmd_source["sequence"].append(row["repeat"])
+            rmd_source["distance"].append(row["distance"])
+
+    rmd_glyphs = fig.patches(
+        "x",
+        "y",
+        color="color",
+        source=rmd_source,
+        alpha=0.5,
+        line_color="line_color",
+        line_width="line_width",
+    )
+
+
+    # Logic for highlighting
+    outline_shape_left = [[0, 0], [1, 0], [1, MARKER_HEIGHT/2], [1, MARKER_HEIGHT], [0, MARKER_HEIGHT], [0, 0]]
+    outline_shape_right = [[0, 0], [1, 0], [1, MARKER_HEIGHT], [0, MARKER_HEIGHT], [0, MARKER_HEIGHT/2], [0, 0]]
+    line_shape = [[1, MARKER_HEIGHT/2], [1,MARKER_HEIGHT/2]]
+    rmd_outline_source = {
+        "x": [],
+        "y": [],
+        "color": [],
+        "line_color": [],
+        "name": [],
+        "first_repeat": [],
+        "second_repeat": [],
+        "mutation_rate": [],
+        "line_width": [],
+        "sequence": [],
+        "distance": [],
+    }
+    rmd_line_source = {
+        "x": [],
+        "y": [],
+        "color": [],
+    }
+    for row in rmd_df.rows(named=True):
+        left_pos = row["first_repeat"]
+        right_pos = row["second_repeat"]
+        repeat_len = row["repeat_len"]
+        y_height = row["level"]*MARKER_HEIGHT*1.5
+        if row["distance"] > OUTLINE_PADDING_X*4: # Distant rmds
+            left_outline = [[point[0]+left_pos, point[1]+OUTLINE_PADDING_Y] for point in outline_shape_left]
+            left_outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                                 [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                                 [OUTLINE_PADDING_X*2, 0],
+                                 [OUTLINE_PADDING_X, 0],
+                                 [-OUTLINE_PADDING_X, 0],
+                                 [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
+            for i in range(len(left_outline)):
+                left_outline[i][0] = left_outline[i][0] + left_outline_mods[i][0]
+                left_outline[i][1] = left_outline[i][1] + left_outline_mods[i][1] + y_height + MARKER_HEIGHT*0.5
+
+            right_outline = [[point[0]+right_pos, point[1]+OUTLINE_PADDING_Y] for point in outline_shape_right]
+            right_outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                                 [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                                 [OUTLINE_PADDING_X, 0],
+                                 [-OUTLINE_PADDING_X, 0],
+                                 [-OUTLINE_PADDING_X*2, 0],
+                                 [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
+            for i in range(len(right_outline)):
+                right_outline[i][0] = right_outline[i][0] + right_outline_mods[i][0]
+                right_outline[i][1] = right_outline[i][1] + right_outline_mods[i][1] + y_height + MARKER_HEIGHT*0.5
+
+            rmd_outline_source["x"].append([x for x, _ in left_outline])
+            rmd_outline_source["y"].append([y for _, y in left_outline])
+            rmd_outline_source["x"].append([x for x, _ in right_outline])
+            rmd_outline_source["y"].append([y for _, y in right_outline])
+            for _ in range(2):
+                rmd_outline_source["color"].append(None)
+                rmd_outline_source["name"].append("rmd")
+                rmd_outline_source['first_repeat'].append(left_pos)
+                rmd_outline_source['second_repeat'].append(right_pos)
+                rmd_outline_source["mutation_rate"].append(row["mutation_rate"])
+                rmd_outline_source["line_width"].append(3)
+                rmd_outline_source["line_color"].append(color)
+                rmd_outline_source["sequence"].append(row["repeat"])
+                rmd_outline_source["distance"].append(row["distance"])
+
+
+            line = deepcopy(line_shape)
+            line[0][0] = left_outline[2][0]
+            line[1][0] = right_outline[4][0]
+            rmd_line_source["x"].append([x for x, _ in line])
+            rmd_line_source["y"].append([y+OUTLINE_PADDING_Y+ y_height + MARKER_HEIGHT*0.5 for _, y in line])
+            rmd_line_source["color"].append(color)
+
+        else: # Near rmds
+            l = [[point[0]+left_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
+            r = [[point[0]+right_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
+
+            outline = [l[0], r[1], r[2], l[3], l[4]]
+            outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                            [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                            [OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
+                            [-OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
+                            [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
+            for i in range(len(outline)):
+                outline[i][0] = outline[i][0] + outline_mods[i][0]
+                outline[i][1] = outline[i][1] + outline_mods[i][1] + y_height + MARKER_HEIGHT*0.5
+            rmd_outline_source["x"].append([x for x, _ in outline])
+            rmd_outline_source["y"].append([y for _, y in outline])
+            rmd_outline_source["color"].append(None)
+            rmd_outline_source["name"].append("rmd")
+            rmd_outline_source['first_repeat'].append(left_pos)
+            rmd_outline_source['second_repeat'].append(right_pos)
+            rmd_outline_source["mutation_rate"].append(row["mutation_rate"])
+            rmd_outline_source["line_width"].append(3)
+            rmd_outline_source["line_color"].append(color)
+            rmd_outline_source["sequence"].append(row["repeat"])
+            rmd_outline_source["distance"].append(row["distance"])
+
+    rmd_glyphs_outline = fig.patches(
+        "x",
+        "y",
+        color="color",
+        source=rmd_outline_source,
+        alpha=0.5,
+        line_color="line_color",
+        line_width="line_width",
+    )
+
+    rmd_lines = fig.multi_line(
+        xs="x",
+        ys="y",
+        source=rmd_line_source,
+        alpha=0.5,
+        color="color",
+        line_width=3,
+    )
+
+    rmd_glyphs_hover = HoverTool(
+        renderers=[rmd_glyphs_outline],
+        tooltips=[
+            ("Type", "@name"),
+            ("Sequence", "@sequence"),
+            ("First Repeat (left)", "@first_repeat"),
+            ("Second Repeat (right)", "@second_repeat"),
+            ("Distance", "@distance"),
+            ("Mutation Rate", "@mutation_rate"),
+        ],
+    )
+
+    fig.add_tools(rmd_glyphs_hover)
 
     return fig
