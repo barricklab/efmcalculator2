@@ -1,20 +1,20 @@
 import pathlib
 import logging
 import csv
-from Bio import SeqIO, SeqRecord, Seq
+import hashlib
+from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq
 from pathlib import Path
-
+from efmcalculator import features
 from .constants import FASTA_EXTS, GBK_EXTS
+from .EFMSequence import EFMSequence
+from .bad_state_mitigation import BadSequenceError, detect_special_cases
 
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-
-class BadSequenceError(ValueError):
-    pass
-
-
-def parse_file(filepath: pathlib.Path, use_filename: bool = True) -> list:
+def parse_file(filepath: pathlib.Path, use_filename: bool = True, iscircular = False) -> list:
     """
     parses the inputted files and returns a list of sequences found in each file
 
@@ -41,6 +41,8 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True) -> list:
 
     # If the genbank file doesnt have a name, add it
     test_sequences = []
+    with open(filepath) as f:
+        fileinfo = f.read().encode()
     for i, seq in enumerate(sequences):
         try:
             if use_filename:
@@ -49,10 +51,11 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True) -> list:
                     seq.name = f"{filename}"
                 if not seq.description or seq.description == '':
                     seq.description = f"{filename}"
-            test_sequences.append(seq)
+            originhash = hashlib.md5(fileinfo + bytes(i) + str(iscircular).encode()).hexdigest()
+            efmseq = EFMSequence(seq, iscircular, originhash)
+            test_sequences.append(efmseq)
         except:
             pass
-
     return test_sequences
 
 
@@ -64,9 +67,9 @@ def validate_sequences(sequences, circular=True, max_len=None):
             raise BadSequenceError(
                 f"Input sequence(s) is too long. Max length is {max_len} bases."
             )
-        validate_sequence(seq, circular=circular)
+        validate_sequence(seq)
 
-def validate_sequence(seq, circular=True):
+def validate_sequence(seq):
     IUPAC_BASES = set("ACGTURYSWKMBDHVNacgturyswkmbdhvn")
     sequence = str(seq.seq)
     seq_set = set(sequence.upper().replace(" ", ""))
@@ -82,7 +85,7 @@ def validate_sequence(seq, circular=True):
         raise BadSequenceError(
             f"EFM Calculator cannot currently handle IUPAC ambiguity codes."
         )
-    detect_special_cases(seq, circular=circular)
+    detect_special_cases(seq)
 
 def parse_csv(path_as_string):
     with open(path_as_string, "r") as csvfile:
@@ -106,13 +109,3 @@ def parse_csv(path_as_string):
             formatted_entry = SeqRecord(Seq(sequence),name=name)
             sequences.append(formatted_entry)
     return sequences
-
-def detect_special_cases(sequence, circular=True):
-    def can_tile(s):
-        doubled_s = s + s
-        modified_doubled = doubled_s[1:-1]
-        return s in modified_doubled
-    if can_tile(str(sequence).lower()) and circular:
-        raise BadSequenceError("Circular sequence is an infinitely long SSR. Did you mean to use a linear strategy?")
-    if len(str(sequence).lower()) < 21 and circular:
-        raise BadSequenceError("EFM Calculator is limited to circular sequences of at least 21 bases.")

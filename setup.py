@@ -12,13 +12,12 @@ setup(
         "statsmodels",
         "rich",
         "pyarrow",
-        "bokeh",
-        "streamlit",
-        "streamlit-extras"
+        "bokeh==2.4.3",
+        "numpy<2",
+        "streamlit-extras",
     ],
     entry_points={
         "console_scripts": [
-            "efmcalculator=efmcalculator.efmcalculator:_main",
             "efmcalculator-webapp=efmcalculator.webapp.bootstrap_streamlit:bootstrap_streamlit",
         ],
     },

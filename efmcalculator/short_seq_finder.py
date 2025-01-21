@@ -18,7 +18,6 @@ import tempfile
 from typing import List
 from .constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE
 from .utilities import FakeBar
-from .parse_inputs import detect_special_cases
 import streamlit as st
 
 logger = logging.getLogger(__name__)
@@ -184,8 +183,6 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
             f"Invalid strategy: {strategy}. Must be one of {valid_strategies}"
         )
 
-    detect_special_cases(seq, circular=isCircular)
-
     # Curate target sequences
 
     repeat_df = collect_subsequences(seq, isCircular)
@@ -244,8 +241,8 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
             .with_columns(
                 pl.col("pairings").list.to_struct(
                     fields=[
-                        "position_left",
-                        "position_right",
+                        "first_repeat",
+                        "second_repeat",
                     ]
                 )
             )
@@ -255,18 +252,18 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
         schema = {
             "repeat": pl.Utf8,
             "repeat_len": pl.Int32,
-            "position_left": pl.Int32,
-            "position_right": pl.Int32,
+            "first_repeat": pl.Int32,
+            "second_repeat": pl.Int32,
             "distance": pl.Int32,
             "category": pl.Categorical,
         }
         repeat_df = pl.DataFrame(schema=schema)
 
     srs_df = repeat_df.filter(pl.col("category") == "SRS").select(
-        pl.col(["repeat", "repeat_len", "position_left", "position_right", "distance"])
+        pl.col(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance"])
     )
     rmd_df = repeat_df.filter(pl.col("category") == "RMD").select(
-        pl.col(["repeat", "repeat_len", "position_left", "position_right", "distance"])
+        pl.col(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance"])
     )
 
     return [ssr_df, srs_df, rmd_df]

@@ -9,14 +9,14 @@ from Bio.Seq import Seq
 import base64
 import zipfile
 import hmac
-
+import polars as pl
 import os
 from ..short_seq_finder import predict
-from ..visualization.graph import make_plot
-from ..visualization.make_webpage import assemble
-from ..constants import VALID_EXTS
-from ..parse_inputs import parse_file, validate_sequences, BadSequenceError
+from ..constants import VALID_EXTS, MAX_SIZE
+from ..parse_inputs import parse_file, validate_sequences
+from ..bad_state_mitigation import BadSequenceError
 from importlib.metadata import version
+from .bokeh_plot import bokeh_plot
 
 from ..efmcalculator import post_process
 from bokeh.embed import file_html
@@ -25,18 +25,22 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 from streamlit_extras.stylable_container import stylable_container
 from streamlit_extras.add_vertical_space import add_vertical_space
-from ..efmcalculator import bulk_output, predict_many
+from ..efmcalculator import predict_many
 from ..mutation_rates import rip_score
+from .vis_utils import eval_top
+from .state_machine import StateMachine
+from ..EFMSequence import EFMSequence
+
+import hashlib
 
 ASSET_LOCATION = os.path.join(os.path.dirname(__file__), "../visualization/assets")
-MAX_SIZE = 50000
 
 def check_password():
     """Returns `True` if the user had the correct password."""
 
     def password_entered():
         """Checks whether a password entered by the user is correct."""
-        if hmac.compare_digest(st.session_state["password"], st.secrets["password"]):
+        if hmac.compare_digest(st.session_state.get("password", ""), st.secrets["password"]):
             st.session_state["password_correct"] = True
             del st.session_state["password"]  # Don't store the password.
         else:
@@ -130,6 +134,13 @@ def run_webapp():
         unsafe_allow_html=True
     )
 
+    st.markdown("""
+    <style>
+        * {
+           overflow-anchor: none !important;
+           }
+    </style>""", unsafe_allow_html=True)
+
     collogo,_,colbadge = st.columns([2,1,2], vertical_alignment="bottom")
     with collogo:
         st.markdown(
@@ -144,7 +155,7 @@ def run_webapp():
         st.text(f"Version {version('efmcalculator')}")
 
     with colbadge:
-        st.html(r'<a href="https://github.com/barricklab/efm-calculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/ostir?style=social&label=barricklab%2FOSTIR"></a>')
+        st.html(r'<a href="https://github.com/barricklab/efm-calculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/efm-calculator2?style=social&label=barricklab%2Fefm-calculator2"></a>')
 
 
     col1,col2,col3 = st.columns([2,1,2])
@@ -166,6 +177,11 @@ def run_webapp():
         st.write("Jack, B. R., Leonard, S. P., Mishler, D. M., Renda, B. A., Leon, D., Suárez, G. A., & Barrick, J. E. (2015). Predicting the Genetic Stability of Engineered DNA Sequences with the EFM Calculator. ACS Synthetic Biology, 4(8), 939–943. https://doi.org/10.1021/acssynbio.5b00068")
 
 
+    # Initialize session state
+    if not st.session_state.get("statemachine", False):
+        st.session_state["statemachine"] = StateMachine()
+    statemachine = st.session_state["statemachine"]
+
     with TemporaryDirectory() as tempdir:
         is_circular = False
         if option == upload_option:
@@ -185,12 +201,11 @@ def run_webapp():
                     )
                     with open(filename, "wb") as f:
                         f.write(uploaded_file.getbuffer())
-                    sequences = parse_file(filename, use_filename=False)
+                    sequences = parse_file(filename, use_filename=False, iscircular = is_circular)
                     file_sequences = []
 
                     for sequence in sequences:
                         filename = original_filename
-                        print(filename)
                         if not sequence.name:
                             sequence.name = f"{filename}"
                         if not sequence.description or sequence.description == '':
@@ -198,8 +213,6 @@ def run_webapp():
                         file_sequences.append(sequence)
 
                     inSeq.extend(file_sequences)
-
-
 
                 st.success("Files uploaded.")
 
@@ -215,6 +228,8 @@ def run_webapp():
             field = field.replace(" ", "")
             field = "".join([i for i in field if not i.isdigit()])
             if field:
+                record = SeqRecord(Seq(field), id="sequence")
+                record = EFMSequence(record, is_circular, originhash = hashlib.md5(("string" + field).encode()))
                 inSeq = [SeqRecord(Seq(field), id="sequence")]
 
         elif option == example_option:
@@ -230,79 +245,111 @@ def run_webapp():
 
                 is_circular = True
 
-
         if not inSeq:
             st.stop()
+        else:
+            pass
 
+        statemachine.import_sequences(inSeq)
 
-        elif inSeq:
-            validate_sequences(inSeq, circular=is_circular, max_len=MAX_SIZE)
-            with st.spinner("Calculating..."):
-                results = predict_many(
-                    sequences = inSeq,
-                    strategy = "pairwise",
-                    isCircular = is_circular,
+        if len(inSeq) == 1:
+            disable_dropdown = True
+        else:
+            disable_dropdown = False
+
+        col4,col5,col6 = st.columns([2,1,2])
+
+        with col4:
+            selected_sequence = st.selectbox(
+                "Sample:", statemachine.named_sequences.keys(),
+                disabled = disable_dropdown
+            )
+            selectedhash = statemachine.named_sequences[selected_sequence]
+            seq_record = statemachine.user_sequences[selectedhash]
+
+        with col6:
+            st.write("\n")
+            with TemporaryDirectory() as tempdir:
+                #bulk_output(results, inSeq, tempdir, skip_vis = True)
+
+                filestream=io.BytesIO() # https://stackoverflow.com/questions/75304410/streamlit-download-button-not-working-when-trying-to-download-files-as-zip
+                with zipfile.ZipFile(filestream, mode='w', compression=zipfile.ZIP_DEFLATED) as zipf:
+                    for root, dirs, files in os.walk(tempdir):
+                            for file in files:
+                                zipf.write(os.path.join(root, file),
+                                            os.path.relpath(os.path.join(root, file),
+                                                            os.path.join(tempdir, '..')))
+                st.download_button(
+                    label="Download results (zip)",
+                    data=filestream,
+                    file_name="results.zip",
+                    mime="application/zip", type="primary"
                 )
 
 
-            sequence_dict = {}
-            sequence_names = []
+        unique_features = seq_record.unique_annotations
 
-            for i, seq in enumerate(inSeq):
-                if seq.description:
-                    sequence_name = f"{i+1}_{seq.description}"
-                else:
-                    sequence_name = f"{i+1}_Sequence"
-                sequence_names.append(sequence_name)
-                sequence_dict[sequence_name] = seq
-
-
-            if len(inSeq) == 1:
-                disable_dropdown = True
-            else:
-                disable_dropdown = False
-
-            col4,col5,col6 = st.columns([2,1,2])
-
-            with col4:
-                selected_sequence = st.selectbox(
-                    "Sample:", sequence_names,
-                    disabled = disable_dropdown
-                )
-
-            with col6:
-                st.write("\n")
-                with TemporaryDirectory() as tempdir:
-                    bulk_output(results, inSeq, tempdir, skip_vis = True)
-
-                    filestream=io.BytesIO() # https://stackoverflow.com/questions/75304410/streamlit-download-button-not-working-when-trying-to-download-files-as-zip
-                    with zipfile.ZipFile(filestream, mode='w', compression=zipfile.ZIP_DEFLATED) as zipf:
-                        for root, dirs, files in os.walk(tempdir):
-                                for file in files:
-                                    zipf.write(os.path.join(root, file),
-                                                os.path.relpath(os.path.join(root, file),
-                                                                os.path.join(tempdir, '..')))
-                    st.download_button(
-                        label="Download results (zip)",
-                        data=filestream,
-                        file_name="results.zip",
-                        mime="application/zip", type="primary"
-                    )
-
-            seq_record = sequence_dict[selected_sequence]
-            sequence = str(seq_record.seq.strip("\n\n").upper().replace("U", "T"))
-
+        if not seq_record.predicted:
             with st.spinner("Calculating..."):
-                sequence = str(seq_record.seq.strip("\n\n").upper().replace("U", "T"))
-                ssr, srs, rmd = predict(sequence, strategy="pairwise", isCircular=is_circular)
-                ssr, srs, rmd = post_process(ssr, srs, rmd, seq_record, isCircular=is_circular)
-                result = [ssr, srs, rmd]
+                seq_record.call_predictions(strategy="pairwise")
 
-                fig, tables = make_plot(seq_record, ssr=result[0], srs=result[1], rmd=result[2])
-                summary = rip_score(result[0], result[1], result[2], sequence_length = len(seq_record.seq))
-                layout = assemble(fig, summary, tables)
-                looks_circular = check_feats_look_circular(seq_record)
-                if looks_circular:
-                    st.warning("You deselected the circular option, but your file looks circular.", icon="⚠️")
-                shown_result = components.html(file_html(layout, "cdn"), height=650)
+        figcontainer = st.container(height=640)
+
+
+        if unique_features:
+            feature_filter = st.multiselect('Filter by feature annotation',
+                                            sorted(unique_features),
+                                            default=seq_record._last_filters)
+        else:
+            feature_filter = []
+        seq_record.set_filters(feature_filter)
+
+        results = [seq_record._filtered_ssrs, seq_record._filtered_srss, seq_record._filtered_rmds]
+
+        ssr_columns = results[0].columns
+        srs_columns = results[1].columns
+        rmd_columns = results[2].columns
+        top_columns = seq_record._filtered_top.columns
+        del(top_columns[top_columns.index("show")])
+        del(ssr_columns[ssr_columns.index("show")])
+        del(srs_columns[srs_columns.index("show")])
+        del(rmd_columns[rmd_columns.index("show")])
+
+        summary = rip_score(results[0], results[1], results[2], sequence_length = len(seq_record.seq))
+        looks_circular = check_feats_look_circular(seq_record)
+        if looks_circular:
+            st.warning("You deselected the circular option, but your file looks circular.", icon="⚠️")
+
+        tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
+        with tab1:
+            top_table = st.data_editor(seq_record._filtered_top.to_pandas().style.format({"mutation_rate": "{:,.2e}"}),
+                                       disabled=top_columns,
+                                       hide_index=True,
+                                       on_change = seq_record.upate_top_session,
+                                       key="topchanges")
+        with tab2:
+            ssrtable = results[0].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+            st.data_editor(ssrtable,
+                          hide_index=True,
+                          disabled=ssr_columns,
+                          use_container_width=True,
+                          key="ssrchanges",
+                          on_change = seq_record.update_ssr_session)
+        with tab3:
+            srstable = results[1].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+            st.data_editor(srstable, hide_index=True, disabled=srs_columns,
+            use_container_width=True,
+            key="srschanges",
+            on_change = seq_record.update_srs_session)
+        with tab4:
+            rmdtable = results[2].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+            st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns,
+            use_container_width=True,
+            key="rmdchanges",
+            on_change = seq_record.update_rmd_session)
+
+        fig = bokeh_plot(seq_record)
+        with figcontainer:
+            st.bokeh_chart(fig, use_container_width=True)
+
     add_vertical_space(4)
