@@ -314,6 +314,13 @@ def run_webapp():
         del(ssr_columns[ssr_columns.index("show")])
         del(srs_columns[srs_columns.index("show")])
         del(rmd_columns[rmd_columns.index("show")])
+        ssr_order = ["show"] + ssr_columns
+        srs_order = ["show"] + srs_columns
+        rmd_order = ["show"] + rmd_columns
+        top_order = ["show"] + top_columns
+
+        column_config = {"predid": None,
+            "annotationobjects": None,}
 
         summary = rip_score(results[0], results[1], results[2], sequence_length = len(seq_record.seq))
         looks_circular = check_feats_look_circular(seq_record)
@@ -326,7 +333,10 @@ def run_webapp():
                                        disabled=top_columns,
                                        hide_index=True,
                                        on_change = seq_record.upate_top_session,
-                                       key="topchanges")
+                                       key="topchanges",
+                                       column_config=column_config,
+                                       column_order=top_order,
+                                       use_container_width=True)
         with tab2:
             ssrtable = results[0].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
             st.data_editor(ssrtable,
@@ -334,19 +344,25 @@ def run_webapp():
                           disabled=ssr_columns,
                           use_container_width=True,
                           key="ssrchanges",
-                          on_change = seq_record.update_ssr_session)
+                          on_change = seq_record.update_ssr_session,
+                          column_config=column_config,
+                          column_order=ssr_order)
         with tab3:
             srstable = results[1].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
             st.data_editor(srstable, hide_index=True, disabled=srs_columns,
             use_container_width=True,
             key="srschanges",
-            on_change = seq_record.update_srs_session)
+            on_change = seq_record.update_srs_session,
+            column_config=column_config,
+            column_order=srs_order)
         with tab4:
             rmdtable = results[2].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
             st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns,
             use_container_width=True,
             key="rmdchanges",
-            on_change = seq_record.update_rmd_session)
+            on_change = seq_record.update_rmd_session,
+            column_config=column_config,
+            column_order=rmd_order)
 
         fig = bokeh_plot(seq_record)
         with figcontainer:

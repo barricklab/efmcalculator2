@@ -297,6 +297,7 @@ def plot_ssr(fig, ssr_df):
         "line_width": [],
         "sequence": [],
         "count": [],
+        "monomer": [],
     }
 
     for row in ssr_df.rows(named=True):
@@ -334,8 +335,9 @@ def plot_ssr(fig, ssr_df):
         ssr_outline_source["mutation_rate"].append(row["mutation_rate"])
         ssr_outline_source["line_width"].append(3)
         ssr_outline_source["line_color"].append(color)
-        ssr_outline_source["sequence"].append(row["repeat"])
-        ssr_outline_source['count'].append(row["repeat_len"])
+        ssr_outline_source["sequence"].append(row["repeat"]*row["count"])
+        ssr_outline_source["monomer"].append(row["repeat"])
+        ssr_outline_source['count'].append(row["count"])
 
     ssr_glyphs = fig.patches(
         "x",
@@ -363,6 +365,7 @@ def plot_ssr(fig, ssr_df):
             ("Type", "@name"),
             ("Sequence", "@sequence"),
             ("Repeat Start", "@first_repeat"),
+            ("Monomer", "@monomer"),
             ("Num. Repeats", "@count"),
             ("Mutation Rate", "@mutation_rate"),
         ],
