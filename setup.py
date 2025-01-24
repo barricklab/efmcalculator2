@@ -3,7 +3,6 @@ from setuptools import setup, find_packages
 setup(
     name="efmcalculator",
     version="2.1.0",
-    packages=find_packages(),
     python_requires=[3.12],
     install_requires=[
         "pandas",
@@ -30,4 +29,7 @@ setup(
         "Programming Language :: Python :: 3",
     ],
     include_package_data=True,
+    packages=find_packages(where="efmcalculator"),
+    package_dir={"": "efmcalculator"},
+    package_data={"efmcalculator": ["visualization/assets/*"]},
 )
