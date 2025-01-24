@@ -229,8 +229,9 @@ def run_webapp():
             field = "".join([i for i in field if not i.isdigit()])
             if field:
                 record = SeqRecord(Seq(field), id="sequence")
-                record = EFMSequence(record, is_circular, originhash = hashlib.md5(("string" + field).encode()))
-                inSeq = [SeqRecord(Seq(field), id="sequence")]
+                originhash = hashlib.md5(("string" + field).encode())
+                record = EFMSequence(record, is_circular, originhash)
+                inSeq = [record]
 
         elif option == example_option:
             with col1:
