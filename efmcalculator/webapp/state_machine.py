@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 from ..parse_inputs import validate_sequences
 from ..constants import MAX_SIZE
 
@@ -33,5 +34,23 @@ class StateMachine:
                 sequence_name = f"{i+1}_Sequence"
             self.named_sequences[sequence_name] = seqhash
 
-    def download_results(self):
-        pass
+    def save_results(self, folderpath, prediction_style = None):
+        for i, seqname in enumerate(self.named_sequences):
+            seqhash = self.named_sequences[seqname]
+            seqobj = self.user_sequences[seqhash]
+            if not seqobj.predicted:
+                if not prediction_style:
+                    raise ValueError("Must specify prediction style to save results")
+                elif prediction_style not in ['linear', 'pairwise']:
+                    raise ValueError("Invalid prediction style: linear or pairwise")
+                seqobj.call_predictions(prediction_style)
+            top = seqobj.top
+            ssrs = seqobj.ssrs
+            srss = seqobj.srss
+            rmds = seqobj.rmds
+            folder = os.path.join(folderpath, f"{seqname}")
+            os.mkdir(folder)
+            top.write_parquet(os.path.join(folder, "top.tsv"))
+            ssrs.write_parquet(os.path.join(folder, "ssrs.tsv"))
+            srss.write_parquet(os.path.join(folder, "srss.tsv"))
+            rmds.write_parquet(os.path.join(folder, "rmds.tsv"))

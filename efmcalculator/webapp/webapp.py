@@ -35,6 +35,43 @@ import hashlib
 
 ASSET_LOCATION = os.path.join(os.path.dirname(__file__), "../visualization/assets")
 
+import pandas as pd
+import base64
+import json
+
+
+
+def download_data(): # https://gist.github.com/snehankekre/2dcce9fb42b2f7e1742de7431326b263
+    with TemporaryDirectory() as tempdir:
+        outputdir = tempdir + "/results"
+        os.mkdir(outputdir)
+        statemachine = st.session_state["statemachine"]
+        statemachine.save_results(outputdir)
+        filestream=io.BytesIO() # https://stackoverflow.com/questions/75304410/streamlit-download-button-not-working-when-trying-to-download-files-as-zip
+        with zipfile.ZipFile(filestream, mode='w', compression=zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(outputdir):
+                    for file in files:
+                        zipf.write(os.path.join(root, file),
+                                    os.path.relpath(os.path.join(root, file),
+                                                    os.path.join(outputdir, '..')))
+        b64 = base64.b64encode(filestream.getvalue()).decode()
+
+    dl_link = f"""
+    <html>
+    <head>
+    <title>Start Auto Download file</title>
+    <script src="http://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script>
+    $('<a href="data:application/zip;base64,{b64}" download="results.zip">')[0].click()
+    </script>
+    </head>
+    </html>
+    """
+    components.html(
+        dl_link,
+        height=0,
+    )
+
 def check_password():
     """Returns `True` if the user had the correct password."""
 
@@ -80,7 +117,6 @@ def check_feats_look_circular(seq):
 def run_webapp():
     if not check_password():
         st.stop()  # Do not continue if check_password is not True.
-
 
     st._config.set_option(f"theme.base", "light")
     st.set_page_config(
@@ -271,21 +307,7 @@ def run_webapp():
         with col6:
             st.write("\n")
             with TemporaryDirectory() as tempdir:
-                #bulk_output(results, inSeq, tempdir, skip_vis = True)
-
-                filestream=io.BytesIO() # https://stackoverflow.com/questions/75304410/streamlit-download-button-not-working-when-trying-to-download-files-as-zip
-                with zipfile.ZipFile(filestream, mode='w', compression=zipfile.ZIP_DEFLATED) as zipf:
-                    for root, dirs, files in os.walk(tempdir):
-                            for file in files:
-                                zipf.write(os.path.join(root, file),
-                                            os.path.relpath(os.path.join(root, file),
-                                                            os.path.join(tempdir, '..')))
-                st.download_button(
-                    label="Download results (zip)",
-                    data=filestream,
-                    file_name="results.zip",
-                    mime="application/zip", type="primary"
-                )
+                submit = st.button("Download results", on_click=download_data)
 
 
         unique_features = seq_record.unique_annotations
