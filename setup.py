@@ -29,7 +29,5 @@ setup(
         "Programming Language :: Python :: 3",
     ],
     include_package_data=True,
-    packages=find_packages(where="efmcalculator"),
-    package_dir={"": "efmcalculator"},
-    package_data={"efmcalculator": ["visualization/assets/*"]},
+    packages=find_packages(),
 )
