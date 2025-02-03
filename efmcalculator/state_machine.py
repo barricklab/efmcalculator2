@@ -1,7 +1,8 @@
 import streamlit as st
+import pathlib
 import os
-from ..parse_inputs import validate_sequences
-from ..constants import MAX_SIZE
+from .parse_inputs import validate_sequences
+from .constants import MAX_SIZE
 
 class StateMachine:
     """Class for recording user session state between streamlit interactions to prevent rerunning analysis and make
@@ -35,7 +36,7 @@ class StateMachine:
             self.named_sequences[sequence_name] = seqhash
 
     def save_results(self, folderpath, prediction_style = None):
-        for i, seqname in enumerate(self.named_sequences):
+        for seqname in self.named_sequences:
             seqhash = self.named_sequences[seqname]
             seqobj = self.user_sequences[seqhash]
             if not seqobj.predicted:
@@ -49,7 +50,8 @@ class StateMachine:
             srss = seqobj.srss
             rmds = seqobj.rmds
             folder = os.path.join(folderpath, f"{seqname}")
-            os.mkdir(folder)
+            path = pathlib.Path(folder)
+            path.mkdir(parents=True)
             top.write_parquet(os.path.join(folder, "top.tsv"))
             ssrs.write_parquet(os.path.join(folder, "ssrs.tsv"))
             srss.write_parquet(os.path.join(folder, "srss.tsv"))

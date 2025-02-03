@@ -28,7 +28,7 @@ from streamlit_extras.add_vertical_space import add_vertical_space
 from ..efmcalculator import predict_many
 from ..mutation_rates import rip_score
 from .vis_utils import eval_top
-from .state_machine import StateMachine
+from ..state_machine import StateMachine
 from ..EFMSequence import EFMSequence
 
 import hashlib
