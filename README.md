@@ -18,7 +18,6 @@ Run pip install efmcalculator
 - -s: strategy. Either “linear” or “pairwise”
 - -c: circular
 - -v: verbose. 0 (silent), 1 (basic information), 2 (debug)
-- --no-vis: skip visualization
 
 Print efmcalculator help:
 ```
@@ -30,22 +29,7 @@ Run efmcalculator on all sequences in a FASTA file using the pairwise strategy a
 efmcalculator -i “input.fasta” -o “output_folder”
 ```
 
-Run efmcalculator on all circular sequences in a FASTA file using the pairwise strategy and print output to csv files within an output folder:
+Run efmcalculator on all sequences in a FASTA file, outputing to the folder output_folder, while treating the input as circular, searching with a linear pattern, and printing debug information:
 ```
-efmcalculator -i “input.fasta” -o “output_folder” -c
-```
-
-Run efmcalculator on all sequences in a FASTA file using the linear strategy and print output to csv files within an output folder:
-```
-efmcalculator -i “input.fasta” -o “output_folder” -s “linear”
-```
-
-Run efmcalculator on all sequences in a FASTA file using the pairwise strategy and print output to csv files within an output folder without any visualization:
-```
-efmcalculator -i “input.fasta” -o “output_folder” --no-vis
-```
-
-Run efmcalculator on all sequences in a FASTA file using the pairwise strategy and print output to csv files within an output folder in debugging mode:
-```
-efmcalculator -i “input.fasta” -o “output_folder” -v 2
+efmcalculator -i “input.fasta” -o “output_folder” -c -s “linear” -v 2
 ```

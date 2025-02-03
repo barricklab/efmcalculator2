@@ -18,6 +18,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
+            "efmcalculator=efmcalculator.cli:main",
             "efmcalculator-webapp=efmcalculator.webapp.bootstrap_streamlit:bootstrap_streamlit",
         ],
     },
