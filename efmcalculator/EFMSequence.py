@@ -162,6 +162,30 @@ class EFMSequence(SeqRecord):
             .alias("show")
         ).sort(by="mutation_rate", descending=True)
 
+    def annotation_coverage(self, annotations):
+        annotation_objects = self._unique_annotations.filter(pl.col("annotationobjexpanded_names").is_in(annotations))
+        annotation_objects = annotation_objects.select(["left_bound", "right_bound"])
+
+        coverage = []
+        for row in annotation_objects.iter_rows(named=True):
+            for i, occupied_area in enumerate(coverage):
+                if occupied_area[0] <= row['left_bound'] and occupied_area[1] >= row['right_bound']:
+                    # Entirely inside
+                    break
+                elif occupied_area[0] <= row['left_bound'] and row['left_bound'] <= occupied_area[1] <= row['right_bound']:
+                    coverage[i][0] = row['left_bound']
+                    break
+                elif  row['left_bound'] <= occupied_area[0] <= row['right_bound'] and occupied_area[1] >= row['right_bound']:
+                    coverage[i][1] = row['right_bound']
+                    break
+            else:
+                # entirely outside
+                coverage.append((row['left_bound'], row['right_bound']))
+        base_coverage = 0
+        for region in coverage:
+            base_coverage += region[1] - region[0] + 1
+        return base_coverage
+
     def upate_top_session(self):
         changes = st.session_state["topchanges"]['edited_rows']
         for change in changes:

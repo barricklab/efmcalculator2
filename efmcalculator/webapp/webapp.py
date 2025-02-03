@@ -345,10 +345,35 @@ def run_webapp():
         column_config = {"predid": None,
             "annotationobjects": None,}
 
-        summary = rip_score(results[0], results[1], results[2], sequence_length = len(seq_record.seq))
+        if feature_filter:
+            sequence_of_interest = seq_record.annotation_coverage(feature_filter)
+        else:
+            sequence_of_interest  = len(seq_record.seq)
+
+        summary = rip_score(results[0], results[1], results[2], sequence_length = sequence_of_interest)
         looks_circular = check_feats_look_circular(seq_record)
         if looks_circular:
             st.warning("You deselected the circular option, but your file looks circular.", icon="⚠️")
+        col7, col8 = st.columns(2)
+        with col7:
+            st.markdown(f"<div style='text-align: center;'>RIP score: {summary['rip']:.2f}</div>", unsafe_allow_html=True)
+        with col8:
+            if summary['ssr_sum'] > 0:
+                st.markdown(f"<div style='text-align: center;'>SSRs: {summary['ssr_sum']:.2e}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div style='text-align: center;'>SSRs: 0</div>", unsafe_allow_html=True)
+            if summary['srs_sum'] > 0:
+                st.markdown(f"<div style='text-align: center;'>SRSs: {summary['srs_sum']:.2e}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div style='text-align: center;'>SRSs: 0</div>", unsafe_allow_html=True)
+            if summary['rmd_sum'] > 0:
+                st.markdown(f"<div style='text-align: center;'>RMDs: {summary['rmd_sum']:.2e}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div style='text-align: center;'>RMDs: 0</div>", unsafe_allow_html=True)
+            if summary['bps_sum'] > 0:
+                st.markdown(f"<div style='text-align: center;'>Basal mutation rate: {summary['bps_sum']:.2e}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div style='text-align: center;'>Basal mutation rate: 0</div>", unsafe_allow_html=True)
 
         tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
         with tab1:
