@@ -46,7 +46,8 @@ def download_data(): # https://gist.github.com/snehankekre/2dcce9fb42b2f7e1742de
         outputdir = tempdir + "/results"
         os.mkdir(outputdir)
         statemachine = st.session_state["statemachine"]
-        statemachine.save_results(outputdir)
+        filetype = st.session_state["dlft"]
+        statemachine.save_results(outputdir, filetype=filetype)
         filestream=io.BytesIO() # https://stackoverflow.com/questions/75304410/streamlit-download-button-not-working-when-trying-to-download-files-as-zip
         with zipfile.ZipFile(filestream, mode='w', compression=zipfile.ZIP_DEFLATED) as zipf:
             for root, dirs, files in os.walk(outputdir):
@@ -305,10 +306,13 @@ def run_webapp():
             seq_record = statemachine.user_sequences[selectedhash]
 
         with col6:
-            st.write("\n")
-            with TemporaryDirectory() as tempdir:
-                submit = st.button("Download results", on_click=download_data)
-
+                with TemporaryDirectory() as tempdir:
+                    submit = st.button("Download results",
+                                       on_click=download_data,
+                                       use_container_width=True,
+                                       type="primary")
+                st.selectbox("Download File Format",["csv", "parquet"], key="dlft",
+                    help="CSV files are easily usable in most spreadsheat programs but lack annotation information. Parquet files require specialized tooling but include annotation metadata")
 
         unique_features = seq_record.unique_annotations
 

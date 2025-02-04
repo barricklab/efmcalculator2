@@ -19,7 +19,7 @@ from .parse_inputs import (
     validate_sequences,
 )
 
-from .constants import VALID_STRATEGIES
+from .constants import VALID_STRATEGIES, VALID_FILETYPES
 from .state_machine import StateMachine
 
 
@@ -75,6 +75,14 @@ def main():
         help="Is circular?",
     )
     parser.add_argument(
+        "-f",
+        "--filetype",
+        dest="filetype",
+        action="store",
+        required=False,
+        help="csv | parquet",
+    )
+    parser.add_argument(
         "-v",
         "--verbosity",
         action="store",
@@ -113,6 +121,11 @@ def main():
         parser.print_help()
         exit(1)
 
+    if args.filetype not in VALID_FILETYPES:
+        logger.error(f"Invalid value for filetype flag '{args.filetype}'")
+        parser.print_help()
+        exit(1)
+
     if not is_pathname_valid(args.inpath):
         logger.error(f"File {args.inpath} is not a valid path.")
         exit(1)
@@ -122,6 +135,7 @@ def main():
     elif not is_path_creatable(args.outpath):
         logger.error(f"Cannot write to {args.outpath}")
         exit(1)
+
 
     # Set up circular ------------
 
@@ -156,7 +170,7 @@ def main():
     for seqobject in statemachine.user_sequences.values():
         seqobject.call_predictions(strategy=args.strategy)
 
-    statemachine.save_results(args.outpath)
+    statemachine.save_results(args.outpath, filetype=args.filetype)
 
     # Done ------------------------------
 

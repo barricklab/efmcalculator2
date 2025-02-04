@@ -3,6 +3,7 @@ import pathlib
 import os
 from .parse_inputs import validate_sequences
 from .constants import MAX_SIZE
+import polars as pl
 
 class StateMachine:
     """Class for recording user session state between streamlit interactions to prevent rerunning analysis and make
@@ -35,7 +36,7 @@ class StateMachine:
                 sequence_name = f"{i+1}_Sequence"
             self.named_sequences[sequence_name] = seqhash
 
-    def save_results(self, folderpath, prediction_style = None):
+    def save_results(self, folderpath, prediction_style = None, filetype = "parquet"):
         for seqname in self.named_sequences:
             seqhash = self.named_sequences[seqname]
             seqobj = self.user_sequences[seqhash]
@@ -45,14 +46,23 @@ class StateMachine:
                 elif prediction_style not in ['linear', 'pairwise']:
                     raise ValueError("Invalid prediction style: linear or pairwise")
                 seqobj.call_predictions(prediction_style)
-            top = seqobj.top
-            ssrs = seqobj.ssrs
-            srss = seqobj.srss
-            rmds = seqobj.rmds
+            top = seqobj.top.select(pl.exclude("predid"))
+            ssrs = seqobj.ssrs.select(pl.exclude(["predid", "annotationobjects"]))
+            srss = seqobj.srss.select(pl.exclude(["predid", "annotationobjects"]))
+            rmds = seqobj.rmds.select(pl.exclude(["predid", "annotationobjects"]))
+
             folder = os.path.join(folderpath, f"{seqname}")
             path = pathlib.Path(folder)
             path.mkdir(parents=True)
-            top.write_parquet(os.path.join(folder, "top.tsv"))
-            ssrs.write_parquet(os.path.join(folder, "ssrs.tsv"))
-            srss.write_parquet(os.path.join(folder, "srss.tsv"))
-            rmds.write_parquet(os.path.join(folder, "rmds.tsv"))
+            if filetype == "parquet":
+                top.write_parquet(os.path.join(folder, "top.parquet"))
+                ssrs.write_parquet(os.path.join(folder, "ssrs.parquet"))
+                srss.write_parquet(os.path.join(folder, "srss.parquet"))
+                rmds.write_parquet(os.path.join(folder, "rmds.parquet"))
+            elif filetype == "csv":
+                top.select(pl.exclude("annotations")).write_csv(os.path.join(folder, "top.csv"))
+                ssrs.select(pl.exclude("annotations")).write_csv(os.path.join(folder, "ssrs.csv"))
+                srss.select(pl.exclude("annotations")).write_csv(os.path.join(folder, "srss.csv"))
+                rmds.select(pl.exclude("annotations")).write_csv(os.path.join(folder, "rmds.csv"))
+            else:
+                raise ValueError("Invalid filetype")
