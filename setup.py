@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="efmcalculator",
     version="2.1.0",
-    python_requires=[3.12],
+    python_requires=">=3.12",
     install_requires=[
         "pandas",
         "polars==1.19",
