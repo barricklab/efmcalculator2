@@ -7,6 +7,8 @@ from importlib.metadata import version, PackageNotFoundError
 
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+from .EFMSequence import EFMSequence
+from .bad_state_mitigation import BadSequenceError
 
 from .utilities import (
     is_path_creatable,
@@ -121,10 +123,12 @@ def main():
         parser.print_help()
         exit(1)
 
-    if args.filetype not in VALID_FILETYPES:
+    if args.filetype and args.filetype not in VALID_FILETYPES:
         logger.error(f"Invalid value for filetype flag '{args.filetype}'")
         parser.print_help()
         exit(1)
+    else:
+        args.filetype = "csv"
 
     if not is_pathname_valid(args.inpath):
         logger.error(f"File {args.inpath} is not a valid path.")
@@ -149,8 +153,8 @@ def main():
         exit(1)
     except OSError as e:
         try:
-            validate_sequence(SeqRecord(Seq(args.inpath), id="text input", name="text input"), circular=args.circular)
-            sequences = [SeqRecord(Seq(args.inpath), id="text input", name="text input")]
+            validate_sequence(EFMSequence(SeqRecord(Seq(args.inpath), id="text input", name="text input"), is_circular=args.circular))
+            sequences = [EFMSequence(SeqRecord(Seq(args.inpath), id="text input", name="text input"), is_circular=args.circular)]
         except:
             logger.error("Input is not an existing file or valid sequence")
             exit(1)
