@@ -148,72 +148,82 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
                 (pl.col("right_end") < pl.col("left_end"))
             )
         )
-        .sort(["repeat_len", "first_repeat"], descending=[True, False])
-        .group_by(pl.col("repeat"))
+        .sort(["first_repeat", "repeat_len"], descending=[False, True])
+        .group_by(pl.col("first_repeat"), pl.col("repeat"))
         .agg(
-            pl.first("repeat_len"),
-            pl.col("first_repeat"),
-            pl.col("second_repeat"),
-            pl.col("distance"),
-            pl.first("type")
-            )
-        .with_columns(
-            pl.concat_list(["first_repeat", "second_repeat"]).alias("positions")
-        )
-        # removes smaller RMDs that have the exact same positions as larger RMDs
-        .sort(["repeat_len"], descending=True)
-        .with_columns(
-            pl.col("positions").list.eval(pl.element().unique()).alias("positions")
-        )
-        .group_by(pl.col("positions"))
-        .agg(pl.col("repeat"),
-             pl.first("repeat_len"),
-             pl.first("first_repeat"),
-             pl.first("second_repeat"),
-             pl.first("distance"),
-             pl.first("type")
-             )
-        .explode(pl.col("repeat"))
-        .group_by(pl.col("first_repeat"))
-        .head(1)
-
-        #removes shorter versions of the same repeat that start at different positions
-        .with_columns(
-            pl.col("positions").list.len().alias("count")
-        )
-        .explode(pl.col(["first_repeat", "second_repeat", "distance"]))
-        .sort(["count", "first_repeat", "repeat_len"], descending=[True, False, True])
-        .group_by(pl.col("repeat"), maintain_order=True)
-        .agg(
-            pl.col("first_repeat"),
             pl.col("second_repeat"),
             pl.first("repeat_len"),
             pl.col("distance"),
-            pl.first("count"),
-            pl.col("type"),
-            (pl.col("second_repeat") - seq_len).alias("negative_start")
+            pl.col("type")
         )
-
+        .sort(["first_repeat", "repeat_len"], descending=[False, True])
         .with_columns(
-            pl.col("first_repeat").shift(1).list.unique().alias("last_first_repeat"),
-            pl.col("first_repeat").list.eval(pl.element() -1).list.unique().alias("adjusted_start"),
+            pl.col("first_repeat").shift(1).alias("last_first_repeat"),
+            pl.col("second_repeat").shift(1).list.unique().alias("last_second_repeat"),
             pl.col("repeat_len").shift(1).alias("last_len")
         )
-    # delete if (last_pos == adjusted start or last_neg == adjusted start) AND last_len - len == 1
-        .filter(
-            (pl.col("last_first_repeat").is_null()) |
-            (pl.col("adjusted_start") != pl.col("last_first_repeat")) |
-            (pl.col("repeat_len") + 1 != pl.col("last_len"))
-        )
+        .explode(["second_repeat", "distance", "type"])
+        .with_row_index()
     )
 
-    filtered_df = (
-    combined_dataframe
-        .select(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance", "type"])
-        .explode(["first_repeat", "second_repeat", "distance", "type"])
-        .sort(["repeat_len"], descending=True)
-        .group_by(pl.col("first_repeat"), pl.col("second_repeat"))
-        .head(1)
+
+    # Create a list of indices that should be deleted
+    # Delete instances of smaller repeats that are in bigger repeats (ex. 2 copies of "AAGTCAT" and 3 copies of "AAGTCA". Delete the instance of "AAGTCA" that 
+    # corresponds to the "AAGTCAT" repeat and keep the other 2 pairwise repeats)
+    filter_out = (
+        combined_dataframe
+        .filter(
+            (pl.col("first_repeat") == pl.col("last_first_repeat")) &
+            (pl.col("last_second_repeat").list.contains(pl.col("second_repeat"))) &
+            (pl.col("repeat_len") < pl.col("last_len"))
+            )
+        .select("index").to_series().to_list()
+    )
+    
+
+    # Create another list of indices that should be deleted
+    # Delete shorter versions of the same repeat that start at different positions
+    filter_out_2 = (
+        combined_dataframe
+        .group_by("first_repeat", maintain_order=True)
+        .agg(
+            pl.col("repeat"),
+            pl.col("second_repeat"),
+            pl.first("repeat_len"),
+            pl.col("distance"),
+            pl.col("type"), 
+            pl.first("last_first_repeat"), 
+            pl.first("last_second_repeat"),
+            pl.first("last_len"), 
+            pl.col("index")
+        )
+        .with_columns(
+            pl.col("first_repeat").shift(1).alias("last_first_repeat"),
+            pl.col("second_repeat").shift(1).list.unique().alias("last_second_repeat"),
+            pl.col("repeat_len").shift(1).alias("last_len")
+        )
+        .explode(["repeat", "second_repeat", "distance", "type", "index"])
+        .with_columns(
+            (pl.col("first_repeat") - pl.col("last_first_repeat")).alias("difference")
+        )
+        .with_columns(
+            (pl.col("first_repeat") - pl.col("difference")).alias("adjusted_first_repeat"),
+            (pl.col("second_repeat") - pl.col("difference")).alias("adjusted_second_repeat")
+        )
+        .filter(
+            (pl.col("adjusted_first_repeat") == pl.col("last_first_repeat")) &
+            (pl.col("last_second_repeat").list.contains(pl.col("adjusted_second_repeat"))) &
+            (pl.col("repeat_len") <= pl.col("last_len"))
+        )
+        .select("index").to_series().to_list()
+        )
+
+    # Filter out repetas with indices in either of the lists
+    filtered_df = combined_dataframe.filter(
+        ~(
+            (pl.col("index").is_in(filter_out)) |
+            (pl.col("index").is_in(filter_out_2))
+        )
     )
 
 
