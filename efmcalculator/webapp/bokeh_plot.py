@@ -6,7 +6,7 @@ from bokeh.plotting import figure
 from bokeh.models import HoverTool
 from typing import List
 import polars as pl
-from ..constants import MARKER_HEIGHT
+from ..constants import MARKER_HEIGHT, COLORS
 from copy import deepcopy
 
 OUTLINE_PADDING_X = 25
