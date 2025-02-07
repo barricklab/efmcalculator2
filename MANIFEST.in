@@ -1,2 +1,2 @@
-include efmcalculator/visualization/assets/*
+include efmcalculator/webapp/assets/*
 include efmcalculator/data/gam_df.csv

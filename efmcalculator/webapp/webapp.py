@@ -11,25 +11,22 @@ import zipfile
 import hmac
 import polars as pl
 import os
-from ..short_seq_finder import predict
 from ..constants import VALID_EXTS, MAX_SIZE
-from ..parse_inputs import parse_file, validate_sequences
-from ..bad_state_mitigation import BadSequenceError
 from importlib.metadata import version
 from .bokeh_plot import bokeh_plot
+from ..pipeline.primary_pipeline import predict
+from ..ingest import parse_file, validate_sequences, BadSequenceError
 
-from ..efmcalculator import post_process
 from bokeh.embed import file_html
 import streamlit.components.v1 as components
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from streamlit_extras.stylable_container import stylable_container
 from streamlit_extras.add_vertical_space import add_vertical_space
-from ..efmcalculator import predict_many
-from ..mutation_rates import rip_score
+from ..pipeline.mutation_rates import rip_score
 from .vis_utils import eval_top
-from ..state_machine import StateMachine
-from ..EFMSequence import EFMSequence
+from ..StateMachine import StateMachine
+from ..ingest import EFMSequence
 
 import hashlib
 

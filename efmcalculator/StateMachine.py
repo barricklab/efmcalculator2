@@ -1,7 +1,7 @@
 import streamlit as st
 import pathlib
 import os
-from .parse_inputs import validate_sequences
+from .ingest.parse_inputs import validate_sequences
 from .constants import MAX_SIZE
 import polars as pl
 

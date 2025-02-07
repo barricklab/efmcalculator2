@@ -7,23 +7,21 @@ from importlib.metadata import version, PackageNotFoundError
 
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from .EFMSequence import EFMSequence
-from .bad_state_mitigation import BadSequenceError
 
 from .utilities import (
     is_path_creatable,
     is_pathname_valid,
 )
-
-from .parse_inputs import (
+from .ingest.EFMSequence import EFMSequence
+from .ingest.bad_state_mitigation import BadSequenceError
+from .ingest.parse_inputs import (
     parse_file,
     validate_sequence,
     validate_sequences,
 )
 
 from .constants import VALID_STRATEGIES, VALID_FILETYPES
-from .state_machine import StateMachine
-
+from .StateMachine import StateMachine
 
 import logging
 from rich.logging import RichHandler

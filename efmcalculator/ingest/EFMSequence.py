@@ -1,11 +1,15 @@
 from Bio.SeqRecord import SeqRecord
+from Bio.SeqFeature import SimpleLocation, CompoundLocation, SeqFeature
 
 import polars as pl
-from .short_seq_finder import predict
-from .post_process import post_process
-from .features import sequence_to_features_df
-from .webapp.vis_utils import eval_top
+from ..webapp.vis_utils import eval_top
 import streamlit as st
+
+from ..pipeline.features import seqfeature_hash, sequence_to_features_df
+
+from ..pipeline.primary_pipeline import predict
+from ..pipeline.post_process import post_process
+from ..pipeline.features import sequence_to_features_df
 
 class EFMSequence(SeqRecord):
     """SeqRecord child class with equality handling and prediction methods"""
@@ -242,3 +246,79 @@ class EFMSequence(SeqRecord):
             return False
         else:
             return True
+
+def sequence_to_features_df(sequence, circular=True):
+    """Takes genbank annotations and turns them into a polars dataframe"""
+    features = sequence.features
+    seqlen = len(sequence)
+
+    def get_feature_bounds(feature_location):
+        if isinstance(feature_location, SimpleLocation):
+            return feature_location.start, feature_location.end
+        elif isinstance(feature_location, CompoundLocation):
+            if feature_location.parts[-1].end < feature_location.parts[0].start:
+                end = len(sequence) + feature_location.parts[-1].end
+            else:
+                end = feature_location.parts[-1].end
+            return feature_location.parts[0].start, end
+
+    if not circular:
+        # Look for compound wraparounds and break them into simple features
+        newfeatures = []
+        deletedfeatures = []
+        for feature in features:
+            if not isinstance(feature.location, CompoundLocation):
+                continue
+
+            # Check whether the compound feature is actually a wraparound
+            wraparound_part_index = None
+            last_part_start = None
+            rightmost_part = None
+            for i, part in enumerate(feature.location.parts):
+                if rightmost_part != None and part.start < last_part_start:
+                    wraparound_part_index = i
+                if rightmost_part == None:
+                    rightmost_part = i
+                    last_part_start = part.start
+            if wraparound_part_index is None:
+                continue
+
+            # If it is a wraparound, break it into two features
+            leftsplit_locations = feature.location.parts[:wraparound_part_index]
+            if len(leftsplit_locations) > 1:
+                leftsplit_locations = CompoundLocation(leftsplit_locations)
+            else:
+                leftsplit_locations = leftsplit_locations[0]
+            newleftfeature = SeqFeature(leftsplit_locations, feature.type, qualifiers=feature.qualifiers)
+
+
+            rightsplit_locations = feature.location.parts[wraparound_part_index:]
+            if len(rightsplit_locations) > 1:
+                rightsplit_locations = CompoundLocation(rightsplit_locations)
+            else:
+                rightsplit_locations = rightsplit_locations[0]
+            newrightfeature = SeqFeature(rightsplit_locations, feature.type, qualifiers=feature.qualifiers)
+
+            newfeatures.append(newleftfeature)
+            newfeatures.append(newrightfeature)
+            deletedfeatures.append(feature)
+
+        for feature in deletedfeatures:
+            features.remove(feature)
+        features.extend(newfeatures)
+
+    df = pl.DataFrame([(feature.type,
+                        get_feature_bounds(feature.location),
+                        feature.qualifiers.get("label", "")[0],
+                        seqfeature_hash(feature)) for feature in features],
+        schema=['type', 'loc', 'annotations', 'annotationobjects'],
+        orient="row")
+
+    # expand out loc
+    df = df.with_columns(pl.col("loc").list.to_struct(fields=['left_bound', 'right_bound'])).unnest("loc")
+    df = df.with_columns(
+        pl.col("left_bound").cast(pl.Int32),
+        pl.col("right_bound").cast(pl.Int32)
+    )
+
+    return df

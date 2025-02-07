@@ -6,8 +6,7 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from pathlib import Path
-from efmcalculator import features
-from .constants import FASTA_EXTS, GBK_EXTS
+from ..constants import FASTA_EXTS, GBK_EXTS
 from .EFMSequence import EFMSequence
 from .bad_state_mitigation import BadSequenceError, detect_special_cases
 
