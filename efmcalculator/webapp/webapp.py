@@ -344,7 +344,20 @@ def run_webapp():
         top_order = ["show"] + top_columns
 
         column_config = {"predid": None,
-            "annotationobjects": None,}
+            "annotationobjects": None,
+            "show": st.column_config.CheckboxColumn("Show", help="Show/hide this prediction"),
+            "repeat": st.column_config.TextColumn("Sequence", help="One monomer of the repeated sequence"),
+            "source": st.column_config.TextColumn("Classification", help="Is the repeat an SSR, SRS, or RMD?"),
+            "repeat_len": st.column_config.NumberColumn("Repeat Length", help="The length of a monomer of the repeat"),
+            "start": st.column_config.NumberColumn("Start", help="The start position of the repeat"),
+            "count": st.column_config.NumberColumn("Count", help="The number of monomers in the repeat"),
+            "first_repeat": st.column_config.NumberColumn("First Repeat", help="The first repeat in the sequence"),
+            "second_repeat": st.column_config.NumberColumn("Second Repeat", help="The second repeat in the sequence"),
+            "distance": st.column_config.NumberColumn("Distance", help="The distance between the repeats"),
+            "mutation_rate": st.column_config.NumberColumn(
+                "Mutation Rate", format="%.2e"
+            ),
+            "annotations": st.column_config.ListColumn("Annotations", help="The anotations a deletion might truncate or remove.")}
 
         if feature_filter:
             sequence_of_interest = seq_record.annotation_coverage(feature_filter)
@@ -378,7 +391,7 @@ def run_webapp():
 
         tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
         with tab1:
-            top_table = st.data_editor(seq_record._filtered_top.to_pandas().style.format({"mutation_rate": "{:,.2e}"}),
+            top_table = st.data_editor(seq_record._filtered_top,
                                        disabled=top_columns,
                                        hide_index=True,
                                        on_change = seq_record.upate_top_session,
@@ -387,7 +400,7 @@ def run_webapp():
                                        column_order=top_order,
                                        use_container_width=True)
         with tab2:
-            ssrtable = results[0].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+            ssrtable = results[0]
             st.data_editor(ssrtable,
                           hide_index=True,
                           disabled=ssr_columns,
@@ -397,7 +410,7 @@ def run_webapp():
                           column_config=column_config,
                           column_order=ssr_order)
         with tab3:
-            srstable = results[1].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+            srstable = results[1]
             st.data_editor(srstable, hide_index=True, disabled=srs_columns,
             use_container_width=True,
             key="srschanges",
@@ -405,7 +418,7 @@ def run_webapp():
             column_config=column_config,
             column_order=srs_order)
         with tab4:
-            rmdtable = results[2].to_pandas().style.format({"mutation_rate": "{:,.2e}"})
+            rmdtable = results[2]
             st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns,
             use_container_width=True,
             key="rmdchanges",
