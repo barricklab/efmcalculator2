@@ -12,10 +12,10 @@ import hmac
 import polars as pl
 import os
 from ..constants import VALID_EXTS, MAX_SIZE
-from importlib.metadata import version
 from .bokeh_plot import bokeh_plot
 from ..pipeline.primary_pipeline import predict
 from ..ingest import parse_file, validate_sequences, BadSequenceError
+from .._version import version_tuple
 
 from bokeh.embed import file_html
 import streamlit.components.v1 as components
@@ -186,7 +186,7 @@ def run_webapp():
             """,
             unsafe_allow_html=True
         )
-        st.text(f"Version {version('efmcalculator')}")
+        st.markdown(f"Version {version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]} ([{str(version_tuple[4])[1:8]}](https://www.github.com/barricklab/efm-calculator2/commit/{str(version_tuple[4]).split('.')[0][1:8]}))")
 
     with colbadge:
         st.html(r'<a href="https://github.com/barricklab/efm-calculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/efm-calculator2?style=social&label=barricklab%2Fefm-calculator2"></a>')

@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "EFMCalculator"
+authors = [
+    {name = "TBD", email = "tbd@example.utexas.edu"},
+]
+maintainers = [
+    {name = "Cameron Roots", email = "croots@utexas.edu"}
+]
+description = "A webapp and command line utility for identifying mutational hotspots"
+# version = Managed by setuptools-scm
+dynamic = ["version"]
+requires-python = ">=3.12"
+readme = "README.md"
+keywords = ["science", "biology", "evolution", "synthetic biology", "synbio", "bioinformatics", "bioengineering"]
+dependencies = [
+        "pandas",
+        "polars==1.19",
+        "progress",
+        "biopython",
+        "statsmodels",
+        "rich",
+        "pyarrow",
+        "bokeh==2.4.3",
+        "numpy<2",
+        "streamlit-extras",
+    ]
+license = {text = "GPL-3.0"}
+
+classifiers = [
+    "Development Status :: 3 - Beta",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+[project.urls]
+Homepage = "https://github.com/barricklab/efmcalculator2"
+Documentation = "https://github.com/barricklab/efmcalculator2"
+Issues = "https://github.com/barricklab/efmcalculator2/issues"
+
+[project.scripts]
+efmcalculator = "efmcalculator.cli:main"
+efmcalculator-webapp = "efmcalculator.webapp.bootstrap_streamlit:bootstrap_streamlit"
+
+[tool.setuptools]
+packages = ["efmcalculator"]
+
+[tool.setuptools_scm]
+version_file = "efmcalculator/_version.py"
