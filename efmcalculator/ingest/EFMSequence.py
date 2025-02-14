@@ -1,5 +1,6 @@
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SimpleLocation, CompoundLocation, SeqFeature
+from types import NoneType
 
 import polars as pl
 from ..webapp.vis_utils import eval_top
@@ -118,53 +119,44 @@ class EFMSequence(SeqRecord):
         self._top = eval_top(self._ssrs, self._srss, self._rmds)
         self._filtered_top = self._top
         self._plotted_predictions = [x[0] for x in self._top.select(pl.col("predid")).unique().rows()]
-        self.set_filters([])
+        self._webapp_ssrs = self._ssrs.with_columns(pl.lit(False).alias("show")).sort(by="mutation_rate", descending=True)
+        self._webapp_srss = self._srss.with_columns(pl.lit(False).alias("show")).sort(by="mutation_rate", descending=True)
+        self._webapp_rmds = self._rmds.with_columns(pl.lit(False).alias("show")).sort(by="mutation_rate", descending=True)
+        self._webapp_top = self._top.with_columns(pl.lit(False).alias("show")).sort(by="mutation_rate", descending=True)
+
+        self._filtered_ssrs = self._webapp_ssrs
+        self._filtered_srss = self._webapp_srss
+        self._filtered_rmds = self._webapp_rmds
+        self._filtered_top = self._webapp_top
+
         self._predicted = True
 
-    def set_filters(self, annotations):
-        filters_changed = False
-        if self._last_filters != annotations:
-            filters_changed = True
-            self._last_filters = annotations
-
+    def set_filters(self, annotations):  # Responsible for double inputs
+        def update_show(df):
+            """Polars doesnt have an easy in-place API, so we have to do this piecemeal"""
+            new_columns = df.with_columns(
+                pl.when(pl.col("predid").is_in(self._plotted_predictions))
+                .then(pl.lit(True))
+                .otherwise(pl.lit(False))
+                .alias("show")
+            )
+            for row in range(len(df)):
+                df[row, "show"] = new_columns[row, "show"]
+            return df
         if annotations:
             annotation_objects = self._unique_annotations.filter(pl.col("annotationobjexpanded_names").is_in(annotations))
             annotation_objects = annotation_objects.select(pl.col("annotationobjects")).unique().rows()
             annotation_objects = [x[0] for x in annotation_objects]
-            self._filtered_ssrs = self._ssrs.filter(pl.col("annotationobjects").list.set_intersection(annotation_objects).list.len() != 0)
-            self._filtered_srss = self._srss.filter(pl.col("annotationobjects").list.set_intersection(annotation_objects).list.len() != 0)
-            self._filtered_rmds = self._rmds.filter(pl.col("annotationobjects").list.set_intersection(annotation_objects).list.len() != 0)
-            self._filtered_top = eval_top(self._filtered_ssrs, self._filtered_srss, self._filtered_rmds)
+            self._filtered_ssrs = update_show(self._webapp_ssrs.filter(pl.col("annotationobjects").list.set_intersection(annotation_objects).list.len() != 0))
+            self._filtered_srss = update_show(self._webapp_srss.filter(pl.col("annotationobjects").list.set_intersection(annotation_objects).list.len() != 0))
+            self._filtered_rmds = update_show(self._webapp_rmds.filter(pl.col("annotationobjects").list.set_intersection(annotation_objects).list.len() != 0))
+            self._filtered_top = update_show(eval_top(self._filtered_ssrs, self._filtered_srss, self._filtered_rmds).with_columns(pl.lit(False).alias("show")).sort(by="mutation_rate", descending=True))
         else:
-            self._filtered_ssrs = self._ssrs
-            self._filtered_srss = self._srss
-            self._filtered_rmds = self._rmds
-            self._filtered_top = self._top
+            self._filtered_ssrs = update_show(self._webapp_ssrs)
+            self._filtered_srss = update_show(self._webapp_srss)
+            self._filtered_rmds = update_show(self._webapp_rmds)
+            self._filtered_top = update_show(self._webapp_top)
 
-        self._filtered_ssrs = self._filtered_ssrs.with_columns(
-            pl.when(pl.col("predid").is_in(self._plotted_predictions))
-            .then(pl.lit(True))
-            .otherwise(pl.lit(False))
-            .alias("show")
-        ).sort(by="mutation_rate", descending=True)
-        self._filtered_srss = self._filtered_srss.with_columns(
-            pl.when(pl.col("predid").is_in(self._plotted_predictions))
-            .then(pl.lit(True))
-            .otherwise(pl.lit(False))
-            .alias("show")
-        ).sort(by="mutation_rate", descending=True)
-        self._filtered_rmds = self._filtered_rmds.with_columns(
-            pl.when(pl.col("predid").is_in(self._plotted_predictions))
-            .then(pl.lit(True))
-            .otherwise(pl.lit(False))
-            .alias("show")
-        ).sort(by="mutation_rate", descending=True)
-        self._filtered_top = self._filtered_top.with_columns(
-            pl.when(pl.col("predid").is_in(self._plotted_predictions))
-            .then(pl.lit(True))
-            .otherwise(pl.lit(False))
-            .alias("show")
-        ).sort(by="mutation_rate", descending=True)
 
     def annotation_coverage(self, annotations):
         annotation_objects = self._unique_annotations.filter(pl.col("annotationobjexpanded_names").is_in(annotations))

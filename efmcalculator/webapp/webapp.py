@@ -282,8 +282,6 @@ def run_webapp():
 
         if not inSeq:
             st.stop()
-        else:
-            pass
 
         statemachine.import_sequences(inSeq)
 
@@ -318,7 +316,6 @@ def run_webapp():
                 seq_record.call_predictions(strategy="pairwise")
 
         figcontainer = st.container(height=640)
-
 
         if unique_features:
             feature_filter = st.multiselect('Filter by feature annotation',
