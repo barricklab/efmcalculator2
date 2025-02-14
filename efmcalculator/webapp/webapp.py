@@ -114,8 +114,10 @@ def check_feats_look_circular(seq):
         return False
 
 def run_webapp():
+
     if not check_password():
         st.stop()  # Do not continue if check_password is not True.
+        pass
 
     st._config.set_option(f"theme.base", "light")
     st.set_page_config(
@@ -313,8 +315,7 @@ def run_webapp():
         unique_features = seq_record.unique_annotations
 
         if not seq_record.predicted:
-            with st.spinner("Calculating..."):
-                seq_record.call_predictions(strategy="pairwise")
+            seq_record.call_predictions(strategy="pairwise")
 
         figcontainer = st.container(height=640)
 

@@ -131,7 +131,7 @@ class EFMSequence(SeqRecord):
 
         self._predicted = True
 
-    def set_filters(self, annotations):  # Responsible for double inputs
+    def set_filters(self, annotations):
         def update_show(df):
             """Polars doesnt have an easy in-place API, so we have to do this piecemeal"""
             new_columns = df.with_columns(
