@@ -64,15 +64,16 @@ def assign_features_rmd(rmd_or_srs_df: DataFrame, seqobj: Seq, circular: bool):
 
     # Test to see if a dataframe has a position left, position right, and length column
     features = sequence_to_features_df(seqobj, circular)
+    pl.Config.set_tbl_rows(100)
     sequence_length = len(seqobj)
     df = (rmd_or_srs_df
             .with_columns(pl.when(
-            pl.col("distance") > sequence_length
+            pl.col("second_repeat")-pl.col("first_repeat")-pl.col("repeat_len") != pl.col("distance")
             ).then(pl.lit(True)
             ).otherwise(pl.lit(False)
-            ).alias("wraps"))
+            ).alias("wraps")))
 
-            .with_columns(pl.when(
+    df =    (df.with_columns(pl.when(
             pl.col("wraps") == False
             ).then(pl.col("first_repeat"))
             .otherwise(pl.col("second_repeat")).alias("start")
@@ -83,8 +84,6 @@ def assign_features_rmd(rmd_or_srs_df: DataFrame, seqobj: Seq, circular: bool):
             ).then(pl.col("second_repeat") + pl.col("repeat_len"))
             .otherwise(pl.col("first_repeat") + pl.col("repeat_len")).alias("end")
             ))
-
-    # ----- Non-wrapping examples
 
     # Annotation on Left edge
     left_edge = df.filter(pl.col("wraps") == False).join_where(features, ((pl.col("left_bound") <= pl.col("start")))
@@ -114,9 +113,7 @@ def assign_features_rmd(rmd_or_srs_df: DataFrame, seqobj: Seq, circular: bool):
 
     # Annotation wraps
     wraps = df.filter(pl.col("wraps") == False).join_where(features, (pl.col("start") >= pl.col("left_bound")) & (pl.col("end") <= pl.col("right_bound")))
-    wraps_wraps_a = df.filter(pl.col("wraps") == True).join_where(features, (pl.col("start") >= pl.col("left_bound")))
-    wraps_wraps_b = df.filter(pl.col("wraps") == True).join_where(features, (pl.col("end") <= pl.col("right_bound")))
-    wraps = pl.concat([wraps, wraps_wraps_a, wraps_wraps_b]).with_columns(pl.lit("wraps").alias("featureclass"))
+    wraps = pl.concat([wraps]).with_columns(pl.lit("wraps").alias("featureclass"))
 
     anno = pl.concat([left_edge, right_edge, inside, wraps]).unique()
     anno = anno.group_by(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance", "mutation_rate"]

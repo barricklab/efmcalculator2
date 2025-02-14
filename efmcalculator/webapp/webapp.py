@@ -72,7 +72,6 @@ def download_data(): # https://gist.github.com/snehankekre/2dcce9fb42b2f7e1742de
 
 def check_password():
     """Returns `True` if the user had the correct password."""
-
     def password_entered():
         """Checks whether a password entered by the user is correct."""
         if hmac.compare_digest(st.session_state.get("password", ""), st.secrets["password"]):
@@ -222,7 +221,7 @@ def run_webapp():
     statemachine = st.session_state["statemachine"]
 
     with TemporaryDirectory() as tempdir:
-        is_circular = False
+        is_circular = True
         if option == upload_option:
             with col1:
                 is_circular = st.checkbox(label="Circular Prediction", value=True)
@@ -281,9 +280,8 @@ def run_webapp():
                 exampleFile = st.radio("Choose example file:", gbs)
                 filepath = Path(examples_path + f"{exampleFile}")
                 if filepath:
-                    inSeq = parse_file(filepath)
+                    inSeq = parse_file(filepath, iscircular = True)
 
-                is_circular = True
 
         if not inSeq:
             st.stop()
