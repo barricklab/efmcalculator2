@@ -94,8 +94,9 @@ def main():
     )
 
     try:
-        pkgversion = version("efmcalculator")
-    except PackageNotFoundError:
+        from ._version import version_tuple
+        pkgversion = f"{version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]}"
+    except:
         pkgversion = "unknown"
 
     logger.info("EFM Calculator {}".format(pkgversion))
