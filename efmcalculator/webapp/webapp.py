@@ -27,6 +27,7 @@ from ..pipeline.mutation_rates import rip_score
 from .vis_utils import eval_top
 from ..StateMachine import StateMachine
 from ..ingest import EFMSequence
+from time import sleep
 
 import hashlib
 
@@ -423,8 +424,9 @@ def run_webapp():
             column_config=column_config,
             column_order=rmd_order)
 
-        fig = bokeh_plot(seq_record)
         with figcontainer:
+            fig = bokeh_plot(seq_record)
+            sleep(0.1) # Helps to avoid two plots displayed
             st.bokeh_chart(fig, use_container_width=True)
 
     add_vertical_space(4)
