@@ -317,8 +317,8 @@ def plot_ssr(fig, ssr_df):
         outline = [[point[0]*repeat_len+left_pos, point[1]+OUTLINE_PADDING_Y] for point in ssr_shape]
 
         outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                        [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                        [OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
+                        [OUTLINE_PADDING_X+repeat_len, -OUTLINE_PADDING_Y],
+                        [OUTLINE_PADDING_X+repeat_len, OUTLINE_PADDING_Y],
                         [-OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
                         [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
         for i in range(len(outline)):
@@ -457,9 +457,9 @@ def plot_srs(fig, ssr_df):
         if row["distance"] > OUTLINE_PADDING_X*4: # Distant SRSs
             left_outline = [[point[0]+left_pos, point[1]+OUTLINE_PADDING_Y] for point in outline_shape_left]
             left_outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                                 [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                                 [OUTLINE_PADDING_X*2, 0],
-                                 [OUTLINE_PADDING_X, 0],
+                                 [OUTLINE_PADDING_X+repeat_len, -OUTLINE_PADDING_Y],
+                                 [OUTLINE_PADDING_X*2+repeat_len, 0],
+                                 [OUTLINE_PADDING_X+repeat_len, 0],
                                  [-OUTLINE_PADDING_X, 0],
                                  [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
             for i in range(len(left_outline)):
@@ -468,9 +468,9 @@ def plot_srs(fig, ssr_df):
 
             right_outline = [[point[0]+right_pos, point[1]+OUTLINE_PADDING_Y] for point in outline_shape_right]
             right_outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                                 [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                                 [OUTLINE_PADDING_X, 0],
-                                 [-OUTLINE_PADDING_X, 0],
+                                 [OUTLINE_PADDING_X+repeat_len, -OUTLINE_PADDING_Y],
+                                 [OUTLINE_PADDING_X+repeat_len, 0],
+                                 [-OUTLINE_PADDING_X+repeat_len, 0],
                                  [-OUTLINE_PADDING_X*2, 0],
                                  [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
             for i in range(len(right_outline)):
@@ -506,8 +506,8 @@ def plot_srs(fig, ssr_df):
 
             outline = [l[0], r[1], r[2], l[3], l[4]]
             outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                            [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                            [OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
+                            [OUTLINE_PADDING_X+repeat_len, -OUTLINE_PADDING_Y],
+                            [OUTLINE_PADDING_X+repeat_len, OUTLINE_PADDING_Y],
                             [-OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
                             [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
             for i in range(len(outline)):
@@ -644,9 +644,9 @@ def plot_rmd(fig, rmd_df):
         if row["distance"] > OUTLINE_PADDING_X*4: # Distant rmds
             left_outline = [[point[0]+left_pos, point[1]+OUTLINE_PADDING_Y] for point in outline_shape_left]
             left_outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                                 [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                                 [OUTLINE_PADDING_X*2, 0],
-                                 [OUTLINE_PADDING_X, 0],
+                                 [OUTLINE_PADDING_X+repeat_len, -OUTLINE_PADDING_Y],
+                                 [OUTLINE_PADDING_X*2+repeat_len, 0],
+                                 [OUTLINE_PADDING_X+repeat_len, 0],
                                  [-OUTLINE_PADDING_X, 0],
                                  [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
             for i in range(len(left_outline)):
@@ -655,8 +655,8 @@ def plot_rmd(fig, rmd_df):
 
             right_outline = [[point[0]+right_pos, point[1]+OUTLINE_PADDING_Y] for point in outline_shape_right]
             right_outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                                 [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                                 [OUTLINE_PADDING_X, 0],
+                                 [OUTLINE_PADDING_X+repeat_len, -OUTLINE_PADDING_Y],
+                                 [OUTLINE_PADDING_X+repeat_len, 0],
                                  [-OUTLINE_PADDING_X, 0],
                                  [-OUTLINE_PADDING_X*2, 0],
                                  [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
@@ -693,8 +693,8 @@ def plot_rmd(fig, rmd_df):
 
             outline = [l[0], r[1], r[2], l[3], l[4]]
             outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                            [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                            [OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
+                            [OUTLINE_PADDING_X+repeat_len, -OUTLINE_PADDING_Y],
+                            [OUTLINE_PADDING_X+repeat_len, OUTLINE_PADDING_Y],
                             [-OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
                             [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
             for i in range(len(outline)):
