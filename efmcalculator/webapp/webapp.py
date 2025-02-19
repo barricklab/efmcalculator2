@@ -28,6 +28,8 @@ from ..StateMachine import StateMachine
 from ..ingest import EFMSequence
 from time import sleep
 
+from st_aggrid import AgGrid, GridOptionsBuilder
+
 import hashlib
 
 ASSET_LOCATION = os.path.join(os.path.dirname(__file__), "../visualization/assets")
@@ -400,30 +402,89 @@ def run_webapp():
                                        use_container_width=True)
         with tab2:
             ssrtable = results[0]
-            st.data_editor(ssrtable,
-                          hide_index=True,
-                          disabled=ssr_columns,
-                          use_container_width=True,
-                          key="ssrchanges",
-                          on_change = seq_record.update_ssr_session,
-                          column_config=column_config,
-                          column_order=ssr_order)
+            #st.data_editor(ssrtable,
+            #              hide_index=True,
+            #              disabled=ssr_columns,
+            #              use_container_width=True,
+            #              key="ssrchanges",
+            #              on_change = seq_record.update_ssr_session,
+            #              column_config=column_config,
+            #             column_order=ssr_order)
+            pdssrtable = ssrtable.to_pandas()
+            print(ssrtable)
+            print(pdssrtable)
+            pdssrtable["repeat"] = pdssrtable["repeat"].astype(str)
+            pdssrtable["annotations"] = pdssrtable["annotations"].astype(str)
+            
+            builder = GridOptionsBuilder.from_dataframe(pdssrtable)
+            
+            builder.configure_column("show", header_name="Show", cellEditor="agCheckboxCellEditor", editable=True)
+            builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
+            builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
+            builder.configure_column("start", header_name="Start", type=["numericColumn"])
+            builder.configure_column("count", header_name="Count", type=["numericColumn"])
+            builder.configure_column("mutation_rate", header_name="Mutation Rate",
+                        type=["numericColumn"], valueFormatter="x.toExponential(2)")
+            builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
+
+            grid_options = builder.build()
+            AgGrid(pdssrtable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True)
+
         with tab3:
             srstable = results[1]
-            st.data_editor(srstable, hide_index=True, disabled=srs_columns,
-            use_container_width=True,
-            key="srschanges",
-            on_change = seq_record.update_srs_session,
-            column_config=column_config,
-            column_order=srs_order)
+            #st.data_editor(srstable, hide_index=True, disabled=srs_columns,
+            #use_container_width=True,
+            #key="srschanges",
+            #on_change = seq_record.update_srs_session,
+            #column_config=column_config,
+            #column_order=srs_order)
+            pdsrstable = srstable.to_pandas()
+            print(pdsrstable)
+            print(pdsrstable)
+            pdsrstable["repeat"] = pdsrstable["repeat"].astype(str)
+            pdsrstable["annotations"] = pdsrstable["annotations"].astype(str)
+            
+            builder = GridOptionsBuilder.from_dataframe(pdsrstable)
+            
+            builder.configure_column("show", header_name="Show", cellEditor="agCheckboxCellEditor", editable=True)
+            builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
+            builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
+            builder.configure_column("start", header_name="Start", type=["numericColumn"])
+            builder.configure_column("count", header_name="Count", type=["numericColumn"])
+            builder.configure_column("mutation_rate", header_name="Mutation Rate",
+                        type=["numericColumn"], valueFormatter="x.toExponential(2)")
+            builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
+
+            grid_options = builder.build()
+            AgGrid(pdsrstable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True)
+        
         with tab4:
             rmdtable = results[2]
-            st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns,
-            use_container_width=True,
-            key="rmdchanges",
-            on_change = seq_record.update_rmd_session,
-            column_config=column_config,
-            column_order=rmd_order)
+            #st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns,
+            #use_container_width=True,
+            #key="rmdchanges",
+            #on_change = seq_record.update_rmd_session,
+            #column_config=column_config,
+            #column_order=rmd_order)
+            pdrmdtable = rmdtable.to_pandas()
+            print(pdrmdtable)
+            print(pdrmdtable)
+            pdrmdtable["repeat"] = pdrmdtable["repeat"].astype(str)
+            pdrmdtable["annotations"] = pdrmdtable["annotations"].astype(str)
+            
+            builder = GridOptionsBuilder.from_dataframe(pdrmdtable)
+            
+            builder.configure_column("show", header_name="Show", cellEditor="agCheckboxCellEditor", editable=True)
+            builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
+            builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
+            builder.configure_column("start", header_name="Start", type=["numericColumn"])
+            builder.configure_column("count", header_name="Count", type=["numericColumn"])
+            builder.configure_column("mutation_rate", header_name="Mutation Rate",
+                        type=["numericColumn"], valueFormatter="x.toExponential(2)")
+            builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
+
+            grid_options = builder.build()
+            AgGrid(pdrmdtable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True)
 
         with figcontainer:
             fig = bokeh_plot(seq_record)
