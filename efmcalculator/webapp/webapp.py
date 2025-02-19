@@ -411,10 +411,10 @@ def run_webapp():
             #              column_config=column_config,
             #             column_order=ssr_order)
             pdssrtable = ssrtable.to_pandas()
-            print(ssrtable)
-            print(pdssrtable)
-            pdssrtable["repeat"] = pdssrtable["repeat"].astype(str)
-            pdssrtable["annotations"] = pdssrtable["annotations"].astype(str)
+            #print(ssrtable)
+            #print(pdssrtable)
+            #pdssrtable["repeat"] = pdssrtable["repeat"].astype(str)
+            #pdssrtable["annotations"] = pdssrtable["annotations"].astype(str)
             
             builder = GridOptionsBuilder.from_dataframe(pdssrtable)
             
@@ -433,10 +433,11 @@ def run_webapp():
 
             if response:
                 updated_df = response["data"]
-                if not pdsrstable.equals(updated_df):
-                    seq_record.update_srs_session
-                    print("updated srs")
-            #might have potential issue since dataframe is not updated
+                if not pdssrtable.equals(updated_df):
+                    #converting pandas back to polars to see if it works, a more elegant solution probably exists
+                    ssrtable = pl.from_pandas(updated_df)
+                    seq_record.update_ssr_session()
+                    print("updated ssr table")
 
 
 
@@ -477,7 +478,6 @@ def run_webapp():
             #column_config=column_config,
             #column_order=rmd_order)
             pdrmdtable = rmdtable.to_pandas()
-            print(pdrmdtable)
             print(pdrmdtable)
             pdrmdtable["repeat"] = pdrmdtable["repeat"].astype(str)
             pdrmdtable["annotations"] = pdrmdtable["annotations"].astype(str)
