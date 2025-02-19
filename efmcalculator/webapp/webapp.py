@@ -428,7 +428,17 @@ def run_webapp():
             builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
 
             grid_options = builder.build()
-            AgGrid(pdssrtable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True)
+            response = AgGrid(pdssrtable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True, return_edited_values=True,
+            data_return_mode='AS_INPUT', update_mode=GridUpdateMode.VALUE_CHANGED)
+
+            if response:
+                updated_df = response["data"]
+                if not pdsrstable.equals(updated_df):
+                    seq_record.update_srs_session
+                    print("updated srs")
+            #might have potential issue since dataframe is not updated
+
+
 
         with tab3:
             srstable = results[1]
