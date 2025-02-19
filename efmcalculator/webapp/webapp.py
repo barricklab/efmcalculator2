@@ -317,7 +317,7 @@ def run_webapp():
         if not seq_record.predicted:
             seq_record.call_predictions(strategy="pairwise")
 
-        figcontainer = st.container(height=640)
+        figcontainer = st.container(height=340)
 
         if unique_features:
             feature_filter = st.multiselect('Filter by feature annotation',
