@@ -28,7 +28,7 @@ from ..StateMachine import StateMachine
 from ..ingest import EFMSequence
 from time import sleep
 
-from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 import hashlib
 
@@ -429,7 +429,7 @@ def run_webapp():
 
             grid_options = builder.build()
             response = AgGrid(pdssrtable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True, return_edited_values=True,
-            data_return_mode='AS_INPUT', update_mode=GridUpdateMode.VALUE_CHANGED)
+            data_return_mode='AS_INPUT', update_mode=GridUpdateMode.VALUE_CHANGED, key = "ssrchanges")
 
             if response:
                 updated_df = response["data"]
