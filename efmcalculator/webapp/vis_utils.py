@@ -34,7 +34,11 @@ def eval_top(ssr_df=None, srs_df=None, rmd_df=None, num_report: int = 10):
         )
         valid_dataframes.append(rmd_df_top)
 
-    merged_df = pl.concat(valid_dataframes)
-    merged_df = merged_df.sort(by="mutation_rate", descending=True).head(num_report)
+    if len(valid_dataframes) > 0:
+        merged_df = pl.concat(valid_dataframes)
+        merged_df = merged_df.sort(by="mutation_rate", descending=True).head(num_report)
+    # If no SSR, SRS, or RMD are found
+    else:
+        merged_df = srs_df
 
     return merged_df
