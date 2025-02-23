@@ -6,9 +6,12 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from pathlib import Path
-from ..constants import FASTA_EXTS, GBK_EXTS
+from ..constants import FASTA_EXTS, GBK_EXTS, CSV_EXTS
 from .EFMSequence import EFMSequence
 from .bad_state_mitigation import BadSequenceError, detect_special_cases
+
+from progress.bar import Bar
+
 
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -31,7 +34,7 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True, iscircular = F
         sequences = SeqIO.parse(path_as_string, "fasta")
     elif filepath.suffix in GBK_EXTS:
         sequences = SeqIO.parse(path_as_string, "genbank")
-    elif filepath.suffix in GBK_EXTS:
+    elif filepath.suffix in CSV_EXTS:
         sequences = parse_csv(path_as_string)
     else:
         raise ValueError(
@@ -40,9 +43,12 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True, iscircular = F
 
     # If the genbank file doesnt have a name, add it
     test_sequences = []
+    bar = Bar("parsing", max=len(list(sequences)))
+    sequences = SeqIO.parse(path_as_string, "fasta")
     with open(filepath) as f:
         fileinfo = f.read().encode()
     for i, seq in enumerate(sequences):
+        bar.next()
         try:
             if use_filename:
                 filename = Path(filepath).stem
@@ -60,13 +66,15 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True, iscircular = F
 
 def validate_sequences(sequences, circular=True, max_len=None):
     cumulative_length = 0
-    for seq in sequences:
-        cumulative_length += len(seq)
-        if max_len and cumulative_length > max_len:
-            raise BadSequenceError(
-                f"Input sequence(s) is too long. Max length is {max_len} bases."
-            )
-        validate_sequence(seq)
+    #bar = Bar("Validating", max=len(sequences))
+    #for seq in sequences:
+        #cumulative_length += len(seq)
+        #if max_len and cumulative_length > max_len:
+        #    raise BadSequenceError(
+        #        f"Input sequence(s) is too long. Max length is {max_len} bases."
+        #    )
+        #validate_sequence(seq)
+        #bar.next()
 
 def validate_sequence(seq):
     IUPAC_BASES = set("ACGTURYSWKMBDHVNacgturyswkmbdhvn")

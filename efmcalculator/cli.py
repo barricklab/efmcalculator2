@@ -26,6 +26,8 @@ from .StateMachine import StateMachine
 import logging
 from rich.logging import RichHandler
 
+from progress.bar import Bar
+
 FORMAT = "%(message)s"
 logging.basicConfig(
     level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
@@ -152,28 +154,33 @@ def main():
         exit(1)
     except OSError as e:
         try:
-            validate_sequence(EFMSequence(SeqRecord(Seq(args.inpath), id="text input", name="text input"), is_circular=args.circular))
+           # validate_sequence(EFMSequence(SeqRecord(Seq(args.inpath), id="text input", name="text input"), is_circular=args.circular))
             sequences = [EFMSequence(SeqRecord(Seq(args.inpath), id="text input", name="text input"), is_circular=args.circular)]
         except:
             logger.error("Input is not an existing file or valid sequence")
             exit(1)
 
-    try:
-        validate_sequences(sequences, circular=args.circular)
-    except BadSequenceError as e:
-        logger.error(e)
-        exit(1)
+    #try:
+        #validate_sequences(sequences, circular=args.circular)
+    #except BadSequenceError as e:
+    #    logger.error(e)
+    #    exit(1)
 
     # Unpack sequences into list ---------
+    print("unpacking")
     sequences = list(sequences)
-
+    print("unpacked")
     # Run EFM Calculator ----------------
     statemachine = StateMachine()
     statemachine.import_sequences(sequences)
+    bar = Bar("Scanning", max=len(statemachine.user_sequences.values()))
+
     for seqobject in statemachine.user_sequences.values():
         seqobject.call_predictions(strategy=args.strategy)
+        bar.next()
 
-    statemachine.save_results(args.outpath, filetype=args.filetype)
+    output = statemachine.save_results(args.outpath, filetype=args.filetype)
+    output.write_csv("igem_5_rip_efm2.csv")
 
     # Done ------------------------------
 
