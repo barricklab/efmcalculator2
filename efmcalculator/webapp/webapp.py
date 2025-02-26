@@ -28,7 +28,9 @@ from ..StateMachine import StateMachine
 from ..ingest import EFMSequence
 from time import sleep
 
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode
+
+from streamlit_javascript import st_javascript
 
 import hashlib
 
@@ -402,21 +404,45 @@ def run_webapp():
                                        use_container_width=True)
         with tab2:
             ssrtable = results[0]
-            #st.data_editor(ssrtable,
-            #              hide_index=True,
-            #              disabled=ssr_columns,
-            #              use_container_width=True,
-            #              key="ssrchanges",
-            #              on_change = seq_record.update_ssr_session,
-            #              column_config=column_config,
-            #             column_order=ssr_order)
             pdssrtable = ssrtable.to_pandas()
-            #print(ssrtable)
-            #print(pdssrtable)
-            #pdssrtable["repeat"] = pdssrtable["repeat"].astype(str)
-            #pdssrtable["annotations"] = pdssrtable["annotations"].astype(str)
+            
+            cell_hover_handler = JsCode("""
+            function(params) {
+                // debug
+                const clickedColumn = params.column.colId;
+                const clickedRowIndex = params.rowIndex;
+                const clickedValue = params.node.data[clickedColumn];
+                
+                const predidValue = params.node.data["predid"];
+                
+                // Display information about the click
+                const message = `You hovered on row ${clickedRowIndex}, column ${clickedColumn}, value is ${predidValue}`;
+                alert(message);
+                
+                window.parent.postMessage(
+                    {type: 'cellMouseOver', predid: predidValue}, '*'
+                    );
+
+            }
+            """)
+            
+            js_hover_handler = """
+            return new Promise((resolve) => {
+                window.addEventListener("message", (event) => {
+                    if (event.data.type === "cellMouseOver") {
+                        resolve(event.data.predid);
+                    }
+                });
+            });
+            """
             
             builder = GridOptionsBuilder.from_dataframe(pdssrtable)
+            
+            # Add a virtual column to store click timestamps
+            builder.configure_column("clicked", "Clicked Timestamp")
+
+            # Configure the grid with the click handler
+            builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
             
             builder.configure_column("show", header_name="Show", cellEditor="agCheckboxCellEditor", editable=True)
             builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
@@ -427,17 +453,26 @@ def run_webapp():
                         type=["numericColumn"], valueFormatter="x.toExponential(2)")
             builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
 
-            grid_options = builder.build()
+            grid_options = builder.build() 
             response = AgGrid(pdssrtable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True, return_edited_values=True,
-            data_return_mode='AS_INPUT', update_mode=GridUpdateMode.VALUE_CHANGED, key = "ssrchanges")
+            data_return_mode='AS_INPUT', update_mode=GridUpdateMode.VALUE_CHANGED, key = "ssrchanges", allow_unsafe_jscode = True)
 
-            if response:
-                updated_df = response["data"]
-                if not pdssrtable.equals(updated_df):
+
+            #issue in sending data back
+            hovered_predid = st_javascript(js_hover_handler)
+            if hovered_predid:
+                st.session_state["hovered_predid"] = hovered_predid
+            
+            #need to fix this
+            #if response:
+            #    updated_df = response["data"]
+            #    edited_rows = updated_df[pdssrtable[pdssrtable.ne(updated_df).any(axis=1)]]
+            #    if not pdssrtable.equals(updated_df):
                     #converting pandas back to polars to see if it works, a more elegant solution probably exists
-                    ssrtable = pl.from_pandas(updated_df)
-                    seq_record.update_ssr_session()
-                    print("updated ssr table")
+            #        ssrtable = pl.from_pandas(updated_df)
+            #        st.session_state["ssrchanges"]["edited_rows"] = edited_rows
+            #        seq_record.update_ssr_session()
+            #        print("updated ssr table")
 
 
 
@@ -450,8 +485,8 @@ def run_webapp():
             #column_config=column_config,
             #column_order=srs_order)
             pdsrstable = srstable.to_pandas()
-            print(pdsrstable)
-            print(pdsrstable)
+            #print(pdsrstable)
+            #print(pdsrstable)
             pdsrstable["repeat"] = pdsrstable["repeat"].astype(str)
             pdsrstable["annotations"] = pdsrstable["annotations"].astype(str)
             
@@ -478,7 +513,7 @@ def run_webapp():
             #column_config=column_config,
             #column_order=rmd_order)
             pdrmdtable = rmdtable.to_pandas()
-            print(pdrmdtable)
+            #print(pdrmdtable)
             pdrmdtable["repeat"] = pdrmdtable["repeat"].astype(str)
             pdrmdtable["annotations"] = pdrmdtable["annotations"].astype(str)
             
