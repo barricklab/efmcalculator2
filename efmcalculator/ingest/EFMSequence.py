@@ -182,7 +182,7 @@ class EFMSequence(SeqRecord):
             base_coverage += region[1] - region[0] + 1
         return base_coverage
 
-    def upate_top_session(self):
+    def update_top_session(self):
         changes = st.session_state["topchanges"]['edited_rows']
         for change in changes:
             try:

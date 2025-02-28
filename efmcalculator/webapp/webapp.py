@@ -321,7 +321,7 @@ def run_webapp():
         if not seq_record.predicted:
             seq_record.call_predictions(strategy="pairwise")
 
-        figcontainer = st.container(height=640)
+        figcontainer = st.container(height=340)
 
         if unique_features:
             feature_filter = st.multiselect('Filter by feature annotation',
@@ -397,7 +397,7 @@ def run_webapp():
             top_table = st.data_editor(seq_record._filtered_top,
                                        disabled=top_columns,
                                        hide_index=True,
-                                       on_change = seq_record.upate_top_session,
+                                       on_change = seq_record.update_top_session,
                                        key="topchanges",
                                        column_config=column_config,
                                        column_order=top_order,
@@ -417,7 +417,7 @@ def run_webapp():
                 
                 // Display information about the click
                 const message = `You hovered on row ${clickedRowIndex}, column ${clickedColumn}, value is ${predidValue}`;
-                alert(message);
+                console.log(message);
                 
                 window.parent.postMessage(
                     {type: 'cellMouseOver', predid: predidValue}, '*'
@@ -427,13 +427,11 @@ def run_webapp():
             """)
             
             js_hover_handler = """
-            return new Promise((resolve) => {
                 window.addEventListener("message", (event) => {
                     if (event.data.type === "cellMouseOver") {
                         resolve(event.data.predid);
                     }
                 });
-            });
             """
             
             builder = GridOptionsBuilder.from_dataframe(pdssrtable)
@@ -457,11 +455,14 @@ def run_webapp():
             response = AgGrid(pdssrtable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True, return_edited_values=True,
             data_return_mode='AS_INPUT', update_mode=GridUpdateMode.VALUE_CHANGED, key = "ssrchanges", allow_unsafe_jscode = True)
 
-
+            if response:
+                print(response)
+           
             #issue in sending data back
-            hovered_predid = st_javascript(js_hover_handler)
-            if hovered_predid:
-                st.session_state["hovered_predid"] = hovered_predid
+            #hovered_predid = st_javascript(js_hover_handler)
+            #if hovered_predid:
+            #    st.session_state["hovered_predid"] = hovered_predid
+            #    print(hovered_predid)
             
             #need to fix this
             #if response:
@@ -487,10 +488,33 @@ def run_webapp():
             pdsrstable = srstable.to_pandas()
             #print(pdsrstable)
             #print(pdsrstable)
+            
+            cell_hover_handler = JsCode("""
+            function(params) {
+                // debug
+                const clickedColumn = params.column.colId;
+                const clickedRowIndex = params.rowIndex;
+                const clickedValue = params.node.data[clickedColumn];
+                
+                const predidValue = params.node.data["predid"];
+                
+                // Display information about the click
+                const message = `You hovered on row ${clickedRowIndex}, column ${clickedColumn}, value is ${predidValue}`;
+                console.log(message);
+                
+                window.parent.postMessage(
+                    {type: 'cellMouseOver', predid: predidValue}, '*'
+                    );
+
+            }
+            """)
+            
             pdsrstable["repeat"] = pdsrstable["repeat"].astype(str)
             pdsrstable["annotations"] = pdsrstable["annotations"].astype(str)
             
             builder = GridOptionsBuilder.from_dataframe(pdsrstable)
+            
+            builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
             
             builder.configure_column("show", header_name="Show", cellEditor="agCheckboxCellEditor", editable=True)
             builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
@@ -502,7 +526,7 @@ def run_webapp():
             builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
 
             grid_options = builder.build()
-            AgGrid(pdsrstable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True)
+            AgGrid(pdsrstable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True, allow_unsafe_jscode = True)
         
         with tab4:
             rmdtable = results[2]
@@ -517,7 +541,29 @@ def run_webapp():
             pdrmdtable["repeat"] = pdrmdtable["repeat"].astype(str)
             pdrmdtable["annotations"] = pdrmdtable["annotations"].astype(str)
             
+            cell_hover_handler = JsCode("""
+            function(params) {
+                // debug
+                const clickedColumn = params.column.colId;
+                const clickedRowIndex = params.rowIndex;
+                const clickedValue = params.node.data[clickedColumn];
+                
+                const predidValue = params.node.data["predid"];
+                
+                // Display information about the click
+                const message = `You hovered on row ${clickedRowIndex}, column ${clickedColumn}, value is ${predidValue}`;
+                console.log(message);
+                
+                window.parent.postMessage(
+                    {type: 'cellMouseOver', predid: predidValue}, '*'
+                    );
+
+            }
+            """)
+            
             builder = GridOptionsBuilder.from_dataframe(pdrmdtable)
+            
+            builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
             
             builder.configure_column("show", header_name="Show", cellEditor="agCheckboxCellEditor", editable=True)
             builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")

@@ -3,7 +3,7 @@ import bokeh as bk
 import copy
 from Bio import SeqFeature
 from bokeh.plotting import figure
-from bokeh.models import HoverTool
+from bokeh.models import HoverTool, CustomJS
 from typing import List
 import polars as pl
 from ..constants import MARKER_HEIGHT, COLORS
@@ -12,10 +12,11 @@ from copy import deepcopy
 OUTLINE_PADDING_X = 25
 OUTLINE_PADDING_Y = 25
 INNER_HEIGHT = MARKER_HEIGHT-OUTLINE_PADDING_Y*2
+ANNOTATION_HEIGHT = MARKER_HEIGHT/2
 
 def bokeh_plot(seqobj):
     # Figure boilerplate
-    fig = figure(plot_height=600)
+    fig = figure(plot_height=300)
     fig.line(x=[0, len(seqobj.seq)], y=[0, 0], line_color="black", line_width=2)
     fig.xaxis.axis_label = "Position"
     fig.yaxis.visible = False
@@ -151,8 +152,8 @@ def plot_annotations(fig, seqobj):
     seqobj.features = assign_feature_levels(seqobj.features)
     xmax = len(seqobj.seq)
 
-    annotation_depth = -750
-    lowest_annotation_y = -MARKER_HEIGHT
+    annotation_depth = -500
+    lowest_annotation_y = -ANNOTATION_HEIGHT
     genbank_dictionary = {
             "x": [],
             "y": [],
@@ -177,7 +178,7 @@ def plot_annotations(fig, seqobj):
                 genbank_annotation.location.end - genbank_annotation.location.start
             )
         annotation_base_y = (
-            -1250.0 * genbank_annotation.qualifiers.get("nest_level", 0)
+            -650.0 * genbank_annotation.qualifiers.get("nest_level", 0)
             + annotation_depth
         )
 
@@ -190,11 +191,11 @@ def plot_annotations(fig, seqobj):
                 scaled_end - arrow_depth,
             ]
             ys = [
-                annotation_base_y + MARKER_HEIGHT,
-                annotation_base_y - MARKER_HEIGHT,
-                annotation_base_y - MARKER_HEIGHT,
+                annotation_base_y + ANNOTATION_HEIGHT,
+                annotation_base_y - ANNOTATION_HEIGHT,
+                annotation_base_y - ANNOTATION_HEIGHT,
                 annotation_base_y,
-                annotation_base_y + MARKER_HEIGHT,
+                annotation_base_y + ANNOTATION_HEIGHT,
             ]
         elif genbank_annotation.location.strand == -1:
             xs = [
@@ -205,24 +206,24 @@ def plot_annotations(fig, seqobj):
                 scaled_start + arrow_depth,
             ]
             ys = [
-                annotation_base_y - MARKER_HEIGHT,
-                annotation_base_y + MARKER_HEIGHT,
-                annotation_base_y + MARKER_HEIGHT,
+                annotation_base_y - ANNOTATION_HEIGHT,
+                annotation_base_y + ANNOTATION_HEIGHT,
+                annotation_base_y + ANNOTATION_HEIGHT,
                 annotation_base_y,
-                annotation_base_y - MARKER_HEIGHT,
+                annotation_base_y - ANNOTATION_HEIGHT,
             ]
         else:
             xs = [scaled_start, scaled_start, scaled_end, scaled_end]
             ys = [
-                annotation_base_y - MARKER_HEIGHT,
-                annotation_base_y + MARKER_HEIGHT,
-                annotation_base_y + MARKER_HEIGHT,
-                annotation_base_y - MARKER_HEIGHT,
+                annotation_base_y - ANNOTATION_HEIGHT,
+                annotation_base_y + ANNOTATION_HEIGHT,
+                annotation_base_y + ANNOTATION_HEIGHT,
+                annotation_base_y - ANNOTATION_HEIGHT,
             ]
 
         # Update lowest annotation y
-        if annotation_base_y - MARKER_HEIGHT < lowest_annotation_y:
-            lowest_annotation_y = annotation_base_y - MARKER_HEIGHT
+        if annotation_base_y - ANNOTATION_HEIGHT < lowest_annotation_y:
+            lowest_annotation_y = annotation_base_y - ANNOTATION_HEIGHT
 
         # Define the color
         color = get_feature_color(genbank_annotation)
@@ -255,7 +256,7 @@ def plot_annotations(fig, seqobj):
 
     # Draw a line below the annotations
 
-    lowest_annotation_y -= MARKER_HEIGHT/2
+    lowest_annotation_y -= ANNOTATION_HEIGHT/2
     fig.line(
         [0, xmax],
         [lowest_annotation_y, lowest_annotation_y],
@@ -371,7 +372,6 @@ def plot_ssr(fig, ssr_df):
     fig.add_tools(ssr_glyphs_hover)
 
     return fig
-
 
 def plot_srs(fig, ssr_df):
     height = 1
