@@ -31,7 +31,7 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True, iscircular = F
         sequences = SeqIO.parse(path_as_string, "fasta")
     elif filepath.suffix in GBK_EXTS:
         sequences = SeqIO.parse(path_as_string, "genbank")
-    elif filepath.suffix in GBK_EXTS:
+    elif filepath.suffix in [".csv"]:
         sequences = parse_csv(path_as_string)
     else:
         raise ValueError(
@@ -92,19 +92,23 @@ def parse_csv(path_as_string):
         headers = csvreader.__next__()
         if not headers:
             raise BadSequenceError("CSV file is empty or malformed")
-        names = headers.index("name")
-        seqs = headers.index("seq")
-        if not seqs:
+        try:
+            names = headers.index("name")
+        except:
+            names = None
+        try:
+            seqs = headers.index("seq")
+        except:
             raise BadSequenceError(
-                f"CSV file has no 'csv' column"
+                f"CSV file has no 'seq' column"
             )
         sequences = []
-        for i, entry in enumerate(sequences):
-            if names:
-                name = f"{i+1}_" + entry[names]
+        for i, entry in enumerate(csvreader):
+            if names is not None:
+                name = entry[names]
             else:
-                name = f"{i+1}_sequence"
+                name = f"sequence"
             sequence = entry[seqs]
-            formatted_entry = SeqRecord(Seq(sequence),name=name)
+            formatted_entry = SeqRecord(Seq(sequence),name=name,description=name)
             sequences.append(formatted_entry)
     return sequences

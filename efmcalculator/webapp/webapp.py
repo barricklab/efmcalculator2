@@ -34,7 +34,7 @@ from streamlit_javascript import st_javascript
 
 import hashlib
 
-ASSET_LOCATION = os.path.join(os.path.dirname(__file__), "../visualization/assets")
+ASSET_LOCATION = os.path.join(os.path.dirname(__file__), "assets")
 
 import pandas as pd
 import base64

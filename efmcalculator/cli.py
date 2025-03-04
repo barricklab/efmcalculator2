@@ -4,6 +4,7 @@ import logging
 import pathlib
 import time
 from importlib.metadata import version, PackageNotFoundError
+import os
 
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -80,7 +81,24 @@ def main():
         dest="filetype",
         action="store",
         required=False,
-        help="csv | parquet",
+        help="Output filetype for (tablescsv | parquet)",
+    )
+    parser.add_argument(
+        "-j",
+        "--maxthreads",
+        dest="threads",
+        action="store",
+        type=int,
+        required=False,
+        help="Maximum number of threads (>0)",
+    )
+    parser.add_argument(
+        "-t",
+        "--tall",
+        dest="tall",
+        action="store_true",
+        required=False,
+        help="Parallelize across samples rather than within samples",
     )
     parser.add_argument(
         "-v",
@@ -139,6 +157,15 @@ def main():
         logger.error(f"Cannot write to {args.outpath}")
         exit(1)
 
+    if args.threads is not None and args.threads <=0:
+            logger.error("Max threads must be greater than 0")
+    if args.tall:
+        os.environ["POLARS_MAX_THREADS"] = 1
+    elif args.threads:
+        os.environ["POLARS_MAX_THREADS"] = args.threads
+    global pl
+    import polars as pl
+
 
     # Set up circular ------------
 
@@ -146,7 +173,7 @@ def main():
 
     # Grab sequence information --------
     try:
-        sequences = parse_file(pathlib.Path(args.inpath))
+        sequences = parse_file(pathlib.Path(args.inpath), iscircular=args.circular)
     except ValueError as e:
         logger.error(e)
         exit(1)
@@ -170,10 +197,12 @@ def main():
     # Run EFM Calculator ----------------
     statemachine = StateMachine()
     statemachine.import_sequences(sequences)
-    for seqobject in statemachine.user_sequences.values():
-        seqobject.call_predictions(strategy=args.strategy)
-
-    statemachine.save_results(args.outpath, filetype=args.filetype)
+    if args.tall:
+        statemachine.predict_tall(strategy=args.strategy, outfolder=args.outpath, filetype=args.filetype, threads=args.threads)
+    else:
+        for seqobject in statemachine.user_sequences.values():
+            seqobject.call_predictions(strategy=args.strategy)
+        statemachine.save_results(args.outpath, filetype=args.filetype)
 
     # Done ------------------------------
 
