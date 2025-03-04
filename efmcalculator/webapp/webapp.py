@@ -286,7 +286,7 @@ def run_webapp():
         if not inSeq:
             st.stop()
 
-        statemachine.import_sequences(inSeq)
+        statemachine.import_sequences(inSeq, max_size=50000)
 
         if len(inSeq) == 1:
             disable_dropdown = True
@@ -333,10 +333,14 @@ def run_webapp():
         srs_columns = results[1].columns
         rmd_columns = results[2].columns
         top_columns = seq_record._filtered_top.columns
-        del(top_columns[top_columns.index("show")])
-        del(ssr_columns[ssr_columns.index("show")])
-        del(srs_columns[srs_columns.index("show")])
-        del(rmd_columns[rmd_columns.index("show")])
+        if "show" in top_columns:
+            del(top_columns[top_columns.index("show")])
+        if "show" in ssr_columns:
+            del(ssr_columns[ssr_columns.index("show")])
+        if "show" in srs_columns:
+            del(srs_columns[srs_columns.index("show")])
+        if "show" in rmd_columns:
+            del(rmd_columns[rmd_columns.index("show")])
         ssr_order = ["show"] + ssr_columns
         srs_order = ["show"] + srs_columns
         rmd_order = ["show"] + rmd_columns

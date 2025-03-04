@@ -110,6 +110,13 @@ def main():
         default=1,
         help="0 - Silent | 1 Basic Information | 2 Debug",
     )
+    parser.add_argument(
+        "--summary",
+        dest="summaryonly",
+        action="store_true",
+        required=False,
+        help="Only save summary information rather than all . Useful for very tall inputs.",
+    )
 
     try:
         from ._version import version_tuple
@@ -157,12 +164,16 @@ def main():
         logger.error(f"Cannot write to {args.outpath}")
         exit(1)
 
-    if args.threads is not None and args.threads <=0:
-            logger.error("Max threads must be greater than 0")
     if args.tall:
-        os.environ["POLARS_MAX_THREADS"] = 1
-    elif args.threads:
-        os.environ["POLARS_MAX_THREADS"] = args.threads
+        os.environ["POLARS_MAX_THREADS"] = "1"
+    if args.threads is not None and args.threads <=0:
+        logger.error("Max threads must be greater than 0")
+        exit(1)
+    elif args.tall and not args.threads:
+        threads = os.cpu_count()
+    else:
+        threads = args.threads
+        os.environ["POLARS_MAX_THREADS"] = str(threads)
     global pl
     import polars as pl
 
@@ -185,24 +196,30 @@ def main():
             logger.error("Input is not an existing file or valid sequence")
             exit(1)
 
-    try:
-        validate_sequences(sequences, circular=args.circular)
-    except BadSequenceError as e:
-        logger.error(e)
-        exit(1)
 
     # Unpack sequences into list ---------
     sequences = list(sequences)
 
     # Run EFM Calculator ----------------
     statemachine = StateMachine()
-    statemachine.import_sequences(sequences)
+    try:
+        statemachine.import_sequences(sequences)
+    except BadSequenceError as e:
+        logger.error(e)
+        exit(1)
+
     if args.tall:
-        statemachine.predict_tall(strategy=args.strategy, outfolder=args.outpath, filetype=args.filetype, threads=args.threads)
+        statemachine.predict_tall(strategy=args.strategy,
+                                  outpath=args.outpath,
+                                  filetype=args.filetype,
+                                  threads=threads,
+                                  keepmem=not args.summaryonly,
+                                  summaryonly=args.summaryonly)
     else:
-        for seqobject in statemachine.user_sequences.values():
+        for i, seqobject in enumerate(statemachine.user_sequences.values()):
+            logger.info(msg=f"Running on sequence {i}: {str(seqobject)}")
             seqobject.call_predictions(strategy=args.strategy)
-        statemachine.save_results(args.outpath, filetype=args.filetype)
+        statemachine.save_results(args.outpath, filetype=args.filetype, summaryonly=args.summaryonly)
 
     # Done ------------------------------
 
