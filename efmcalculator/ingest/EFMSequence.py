@@ -194,8 +194,18 @@ class EFMSequence(SeqRecord):
                     self._plotted_predictions.remove(changed_id)
             except ValueError:
                 pass
+            
+    def addSSR(self, predid):
+        self._plotted_predictions.append(predid)
+        st.session_state["ssrchanges"].append(predid)
+        return st.session_state["ssrchanges"]
+    def removeSSR(self, predid):
+        self._plotted_predictions.remove(predid)
+        st.session_state["ssrchanges"].remove(predid)
+        return st.session_state["ssrchanges"]
+    
     def update_ssr_session(self):
-        changes = st.session_state["ssrchanges"]['edited_rows']
+        changes = st.session_state["ssrchanges"]
         for change in changes:
             try:
                 new_state = changes[change]['show']

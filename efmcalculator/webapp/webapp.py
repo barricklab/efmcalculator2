@@ -435,14 +435,11 @@ def run_webapp():
             """
             
             builder = GridOptionsBuilder.from_dataframe(pdssrtable)
+            preselected_indices = pdssrtable[pdssrtable["show"] == True].index.tolist()
+            print(preselected_indices)
+            builder.configure_selection(selection_mode='multiple', use_checkbox= True, pre_selected_rows= preselected_indices)
             
-            # Add a virtual column to store click timestamps
-            builder.configure_column("clicked", "Clicked Timestamp")
-
-            # Configure the grid with the click handler
             builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
-            
-            builder.configure_column("show", header_name="Show", cellEditor="agCheckboxCellEditor", editable=True)
             builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
             builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
             builder.configure_column("start", header_name="Start", type=["numericColumn"])
@@ -450,13 +447,29 @@ def run_webapp():
             builder.configure_column("mutation_rate", header_name="Mutation Rate",
                         type=["numericColumn"], valueFormatter="x.toExponential(2)")
             builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
-
-            grid_options = builder.build() 
-            response = AgGrid(pdssrtable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True, return_edited_values=True,
-            data_return_mode='AS_INPUT', update_mode=GridUpdateMode.VALUE_CHANGED, key = "ssrchanges", allow_unsafe_jscode = True)
-
-            if response:
-                print(response)
+            builder.configure_column("predid", hide = True)
+            builder.configure_column("annotationobjects", hide = True)
+            builder.configure_column("show", hide = True) #vestigial from having data from polars table, not needed once grid is initialized
+            
+            grid_options = builder.build()
+            response = AgGrid(pdssrtable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True, allow_unsafe_jscode = True)
+            
+            if "ssrchanges" not in st.session_state:
+                st.session_state["ssrchanges"] = []
+            
+            if response["selected_rows"] is not None:
+                for i in response["selected_rows"]["predid"]:
+                    if i not in st.session_state["ssrchanges"]:
+                        seq_record.addSSR(i)
+                for i in st.session_state["ssrchanges"]:
+                    if i not in response["selected_rows"]:
+                        seq_record.removeSSR(i)
+                        pass
+                    
+            #st.session_state["ssrchanges"] = response["selected_rows"]
+            
+            print("|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\n" , response["selected_rows"])
+            #print(seq_record.ssrchanged())
            
             #issue in sending data back
             #hovered_predid = st_javascript(js_hover_handler)
@@ -575,7 +588,7 @@ def run_webapp():
             builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
 
             grid_options = builder.build()
-            AgGrid(pdrmdtable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True)
+            #sAgGrid(pdrmdtable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True)
 
         with figcontainer:
             fig = bokeh_plot(seq_record)
