@@ -71,9 +71,7 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     )
 
 
-    # Terminate if sequence is highly mutagenic 
-    if highly_mut(repeat_df):
-        raise ValueError("This sequence is highly mutagenic. Stopping execution")
+
 
 
     # Upgrade long SRSs to RMDs
