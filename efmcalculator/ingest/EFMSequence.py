@@ -10,7 +10,6 @@ from ..pipeline.features import seqfeature_hash, sequence_to_features_df
 
 from ..pipeline.primary_pipeline import predict
 from ..pipeline.post_process import post_process
-from ..pipeline.features import sequence_to_features_df
 
 class EFMSequence(SeqRecord):
     """SeqRecord child class with equality handling and prediction methods"""

@@ -4,6 +4,7 @@ import logging
 import pathlib
 import time
 from importlib.metadata import version, PackageNotFoundError
+import os
 
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -82,7 +83,24 @@ def main():
         dest="filetype",
         action="store",
         required=False,
-        help="csv | parquet",
+        help="Output filetype for (tablescsv | parquet)",
+    )
+    parser.add_argument(
+        "-j",
+        "--maxthreads",
+        dest="threads",
+        action="store",
+        type=int,
+        required=False,
+        help="Maximum number of threads (>0)",
+    )
+    parser.add_argument(
+        "-t",
+        "--tall",
+        dest="tall",
+        action="store_true",
+        required=False,
+        help="Parallelize across samples rather than within samples",
     )
     parser.add_argument(
         "-v",
@@ -93,6 +111,13 @@ def main():
         required=False,
         default=1,
         help="0 - Silent | 1 Basic Information | 2 Debug",
+    )
+    parser.add_argument(
+        "--summary",
+        dest="summaryonly",
+        action="store_true",
+        required=False,
+        help="Only save summary information rather than all . Useful for very tall inputs.",
     )
 
     try:
@@ -141,6 +166,19 @@ def main():
         logger.error(f"Cannot write to {args.outpath}")
         exit(1)
 
+    if args.tall:
+        os.environ["POLARS_MAX_THREADS"] = "1"
+    if args.threads is not None and args.threads <=0:
+        logger.error("Max threads must be greater than 0")
+        exit(1)
+    elif args.tall and not args.threads:
+        threads = os.cpu_count()
+    else:
+        threads = args.threads
+        os.environ["POLARS_MAX_THREADS"] = str(threads)
+    global pl
+    import polars as pl
+
 
     # Set up circular ------------
 
@@ -148,7 +186,7 @@ def main():
 
     # Grab sequence information --------
     try:
-        sequences = parse_file(pathlib.Path(args.inpath))
+        sequences = parse_file(pathlib.Path(args.inpath), iscircular=args.circular)
     except ValueError as e:
         logger.error(e)
         exit(1)
@@ -160,11 +198,7 @@ def main():
             logger.error("Input is not an existing file or valid sequence")
             exit(1)
 
-    #try:
-        #validate_sequences(sequences, circular=args.circular)
-    #except BadSequenceError as e:
-    #    logger.error(e)
-    #    exit(1)
+
 
     # Unpack sequences into list ---------
     print("unpacking")
@@ -172,15 +206,28 @@ def main():
     print("unpacked")
     # Run EFM Calculator ----------------
     statemachine = StateMachine()
-    statemachine.import_sequences(sequences)
-    bar = Bar("Scanning", max=len(statemachine.user_sequences.values()))
+    try:
+        statemachine.import_sequences(sequences)
+    except BadSequenceError as e:
+        logger.error(e)
+        exit(1)
 
-    for seqobject in statemachine.user_sequences.values():
-        seqobject.call_predictions(strategy=args.strategy)
-        bar.next()
+    if args.tall:
+        statemachine.predict_tall(strategy=args.strategy,
+                                  outpath=args.outpath,
+                                  filetype=args.filetype,
+                                  threads=threads,
+                                  keepmem=not args.summaryonly,
+                                  summaryonly=args.summaryonly)
+    else:
+        bar = Bar("Scanning", max=len(statemachine.user_sequences.values()))
+        for i, seqobject in enumerate(statemachine.user_sequences.values()):
+            #logger.info(msg=f"Running on sequence {i}: {str(seqobject)}")
+            seqobject.call_predictions(strategy=args.strategy)
+            bar.next()
+        output = statemachine.save_results(args.outpath, filetype=args.filetype)
+        output.write_csv("igem_5_rip_efm2.csv")
 
-    output = statemachine.save_results(args.outpath, filetype=args.filetype)
-    output.write_csv("igem_5_rip_efm2.csv")
 
     # Done ------------------------------
 

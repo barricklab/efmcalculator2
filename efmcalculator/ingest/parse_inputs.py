@@ -34,7 +34,8 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True, iscircular = F
         sequences = SeqIO.parse(path_as_string, "fasta")
     elif filepath.suffix in GBK_EXTS:
         sequences = SeqIO.parse(path_as_string, "genbank")
-    elif filepath.suffix in CSV_EXTS:
+    elif filepath.suffix in [".csv"]:
+
         sequences = parse_csv(path_as_string)
     else:
         raise ValueError(
@@ -47,20 +48,18 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True, iscircular = F
     sequences = SeqIO.parse(path_as_string, "fasta")
     with open(filepath) as f:
         fileinfo = f.read().encode()
+        filehash = hashlib.md5(fileinfo)
     for i, seq in enumerate(sequences):
         bar.next()
-        try:
-            if use_filename:
-                filename = Path(filepath).stem
-                if not seq.name:
-                    seq.name = f"{filename}"
-                if not seq.description or seq.description == '':
-                    seq.description = f"{filename}"
-            originhash = hashlib.md5(fileinfo + bytes(i) + str(iscircular).encode()).hexdigest()
-            efmseq = EFMSequence(seq, iscircular, originhash)
-            test_sequences.append(efmseq)
-        except:
-            pass
+        if use_filename:
+            filename = Path(filepath).stem
+            if not seq.name:
+                seq.name = f"{filename}"
+            if not seq.description or seq.description == '':
+                seq.description = f"{filename}"
+        originhash = filehash.hexdigest() + hashlib.md5(bytes(i) + str(iscircular).encode()).hexdigest()
+        efmseq = EFMSequence(seq, iscircular, originhash)
+        test_sequences.append(efmseq)
     return test_sequences
 
 
@@ -80,6 +79,10 @@ def validate_sequence(seq):
     IUPAC_BASES = set("ACGTURYSWKMBDHVNacgturyswkmbdhvn")
     sequence = str(seq.seq)
     seq_set = set(sequence.upper().replace(" ", ""))
+    if sequence is "":
+        raise BadSequenceError(
+            f"Input contains an empty sequence."
+        )
     if not seq_set.issubset(IUPAC_BASES):
         raise BadSequenceError(
             f"Input sequence contains invalid characters. Only IUPAC bases are allowed."
@@ -95,24 +98,33 @@ def validate_sequence(seq):
     detect_special_cases(seq)
 
 def parse_csv(path_as_string):
+    csv.field_size_limit(100000000)
     with open(path_as_string, "r") as csvfile:
         csvreader = csv.reader(csvfile)
         headers = csvreader.__next__()
         if not headers:
             raise BadSequenceError("CSV file is empty or malformed")
-        names = headers.index("name")
-        seqs = headers.index("seq")
-        if not seqs:
+        try:
+            names = headers.index("name")
+        except:
+            names = None
+        try:
+            seqs = headers.index("seq")
+        except:
             raise BadSequenceError(
-                f"CSV file has no 'csv' column"
+                f"CSV file has no 'seq' column"
             )
         sequences = []
-        for i, entry in enumerate(sequences):
-            if names:
-                name = f"{i+1}_" + entry[names]
-            else:
-                name = f"{i+1}_sequence"
-            sequence = entry[seqs]
-            formatted_entry = SeqRecord(Seq(sequence),name=name)
-            sequences.append(formatted_entry)
+        try:
+            for i, entry in enumerate(csvreader):
+                if names is not None:
+                    name = entry[names]
+                else:
+                    name = f"sequence"
+                sequence = entry[seqs]
+                formatted_entry = SeqRecord(Seq(sequence),name=name,description=name)
+                sequences.append(formatted_entry)
+                csvreader = csv.reader(csvfile)
+        except csv.Error as e: # Should be handled better probably
+            raise e
     return sequences
