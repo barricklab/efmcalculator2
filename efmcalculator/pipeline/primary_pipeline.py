@@ -10,7 +10,7 @@ from ..constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, 
 from ..utilities import FakeBar
 import streamlit as st
 
-from .subsequence_curation import collect_subsequences, _scan_RMD
+from .subsequence_curation import collect_subsequences, _scan_RMD, highly_mut
 from .detection_strats import _pairwise_slips, _linear_slips
 from .classify_ssr import _collapse_ssr
 from .classify_srs_rmd import _calculate_distances, _categorize_efm
@@ -69,6 +69,12 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     repeat_df = repeat_df.with_columns(
         pl.col("repeat").str.len_chars().alias("repeat_len").cast(pl.Int32)
     )
+
+
+    # Terminate if sequence is highly mutagenic 
+    print("terminate?")
+    if highly_mut(repeat_df):
+        raise ValueError("This sequence is highly mutagenic. Stopping execution")
 
 
     # Upgrade long SRSs to RMDs
