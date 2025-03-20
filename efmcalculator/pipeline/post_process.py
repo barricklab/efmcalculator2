@@ -17,9 +17,9 @@ def post_process(ssr_df, srs_df, rmd_df, seqobj, isCircular):
     rmd_df = rmd_mut_rate_vector(rmd_df)
 
     # Filter on minimum threshold
-    ssr_df = ssr_df.filter(pl.col("mutation_rate") > THRESHOLD)
-    srs_df = srs_df.filter(pl.col("mutation_rate") > THRESHOLD)
-    rmd_df = rmd_df.filter(pl.col("mutation_rate") > THRESHOLD)
+    #ssr_df = ssr_df.filter(pl.col("mutation_rate") > THRESHOLD)
+    #srs_df = srs_df.filter(pl.col("mutation_rate") > THRESHOLD)
+    #rmd_df = rmd_df.filter(pl.col("mutation_rate") > THRESHOLD)
 
     # Apply annotations
     if seqobj.annotations:

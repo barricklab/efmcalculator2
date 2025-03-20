@@ -2,7 +2,7 @@ import streamlit as st
 import pathlib
 import os
 from .ingest.parse_inputs import validate_sequences
-from .constants import MAX_SIZE
+from .constants import MAX_SIZE, SUB_RATE
 import polars as pl
 import concurrent.futures as cf
 from progress.bar import Bar
@@ -145,30 +145,41 @@ class StateMachine:
             if summaryonly:
                 continue
 
-            top = seqobj.top.select(pl.exclude("predid"))
-            ssrs = seqobj.ssrs.select(pl.exclude(["predid", "annotationobjects"]))
-            srss = seqobj.srss.select(pl.exclude(["predid", "annotationobjects"]))
-            rmds = seqobj.rmds.select(pl.exclude(["predid", "annotationobjects"]))
+            #top = seqobj.top.select(pl.exclude("predid"))
+            #ssrs = seqobj.ssrs.select(pl.exclude(["predid", "annotationobjects"]))
+            #srss = seqobj.srss.select(pl.exclude(["predid", "annotationobjects"]))
+            #rmds = seqobj.rmds.select(pl.exclude(["predid", "annotationobjects"]))
+            base_rate = float(len(seqobj)) * float(SUB_RATE)
+            ssr_mut = seqobj.ssrs.select(pl.exclude(["predid", "annotationobjects"])).get_column("mutation_rate").sum()
+            srs_mut = seqobj.srss.select(pl.exclude(["predid", "annotationobjects"])).get_column("mutation_rate").sum()
+            rmd_mut = seqobj.rmds.select(pl.exclude(["predid", "annotationobjects"])).get_column("mutation_rate").sum()
+            r_sum = float(ssr_mut + srs_mut + rmd_mut  + base_rate)
+            rip = float(r_sum) / float(base_rate)
+            new_row = pl.DataFrame({"name": [f"{seqname}"], "rmd_mut": [rmd_mut], "srs_mut": [srs_mut], "ssr_mut": [ssr_mut], "base_rate": [base_rate], "rip_score": [rip]})
+            output = pl.concat([output, new_row], how="vertical")
 
-            folder = os.path.join(folderpath, f"{seqname}")
-            path = pathlib.Path(folder)
-            path.mkdir(parents=True)
-            if filetype == "parquet":
-                top.write_parquet(os.path.join(folder, "top.parquet"))
-                ssrs.write_parquet(os.path.join(folder, "ssrs.parquet"))
-                srss.write_parquet(os.path.join(folder, "srss.parquet"))
-                rmds.write_parquet(os.path.join(folder, "rmds.parquet"))
-            elif filetype == "csv":
-                top.select(pl.exclude("annotations")).write_csv(os.path.join(folder, "top.csv"))
-                ssrs.select(pl.exclude("annotations")).write_csv(os.path.join(folder, "ssrs.csv"))
-                srss.select(pl.exclude("annotations")).write_csv(os.path.join(folder, "srss.csv"))
-                rmds.select(pl.exclude("annotations")).write_csv(os.path.join(folder, "rmds.csv"))
-            else:
-                raise ValueError("Invalid filetype")
+            #folder = os.path.join(folderpath, f"{seqname}")
+            #path = pathlib.Path(folder)
+            #path.mkdir(parents=True)
+            #if filetype == "parquet":
+            #    top.write_parquet(os.path.join(folder, "top.parquet"))
+            #    ssrs.write_parquet(os.path.join(folder, "ssrs.parquet"))
+            #    srss.write_parquet(os.path.join(folder, "srss.parquet"))
+            #    rmds.write_parquet(os.path.join(folder, "rmds.parquet"))
+            #elif filetype == "csv":
+            #    top.select(pl.exclude("annotations")).write_csv(os.path.join(folder, "top.csv"))
+            #    ssrs.select(pl.exclude("annotations")).write_csv(os.path.join(folder, "ssrs.csv"))
+            #    srss.select(pl.exclude("annotations")).write_csv(os.path.join(folder, "srss.csv"))
+            #    rmds.select(pl.exclude("annotations")).write_csv(os.path.join(folder, "rmds.csv"))
+            #else:
+            #    raise ValueError("Invalid filetype")
 
-        if filetype == "parquet":
-            summarypath = os.path.join(folderpath, "summary.parquet")
-            summary_df.write_parquet(summarypath)
-        elif filetype == "csv":
-            summarypath = os.path.join(folderpath, "summary.csv")
-            summary_df.write_csv(summarypath)
+        #if filetype == "parquet":
+        #    summarypath = os.path.join(folderpath, "summary.parquet")
+        #    summary_df.write_parquet(summarypath)
+        #elif filetype == "csv":
+        #    summarypath = os.path.join(folderpath, "summary.csv")
+        #    summary_df.write_csv(summarypath)
+
+        return(output)
+
