@@ -41,21 +41,24 @@ def _pairwise_slips(polars_df, column, is_circular, copies_cap=40) -> pl.DataFra
 
     # terminate if there are 40+ occurrences of a single repeat
     if len(high_mut_df) > 0:
-        raise ValueError("This sequence is highly mutagenic. Stopping execution")
+        #raise ValueError("This sequence is highly mutagenic. Stopping execution")
+        pairwise = pl.DataFrame({"repeat": ["too mutagenic"], "position": [[0]], "length": [0]})
 
-    linear_subset = _linear_slips(linear_subset, column, is_circular=is_circular)
+    else:
 
-    # Run pairwise for SRS's above minimum length
-    pairwise = pairwise.lazy().with_columns(
-        pl.col(column)
-        .map_elements(map_function, return_dtype=pl.List(pl.List(pl.Int64)))
-        .alias(f"pairings").cast(pl.List(pl.List(pl.Int32)))
-    )
+        linear_subset = _linear_slips(linear_subset, column, is_circular=is_circular)
 
-    linear_subset = linear_subset
-    pairwise = pairwise.collect().select(pl.col('repeat'), pl.col('pairings'))
+        # Run pairwise for SRS's above minimum length
+        pairwise = pairwise.lazy().with_columns(
+            pl.col(column)
+            .map_elements(map_function, return_dtype=pl.List(pl.List(pl.Int64)))
+            .alias(f"pairings").cast(pl.List(pl.List(pl.Int32)))
+        )
 
-    pairwise = pl.concat([linear_subset, pairwise])
+        linear_subset = linear_subset
+        pairwise = pairwise.collect().select(pl.col('repeat'), pl.col('pairings'))
+
+        pairwise = pl.concat([linear_subset, pairwise])
 
     return pairwise
 

@@ -6,15 +6,19 @@ from ..constants import THRESHOLD
 import polars as pl
 
 def post_process(ssr_df, srs_df, rmd_df, seqobj, isCircular):
+    if ssr_df[0]["repeat"][0][0] != "too mutagenic":
     # Perform Filtering
-    ssr_df = filter_ssrs(ssr_df, len(seqobj), isCircular)
-    rmd_df, srs_df = filter_direct_repeats(rmd_df, srs_df, len(seqobj), ssr_df, isCircular)
+        ssr_df = filter_ssrs(ssr_df, len(seqobj), isCircular)
+        rmd_df, srs_df = filter_direct_repeats(rmd_df, srs_df, len(seqobj), ssr_df, isCircular)
 
     # Calculate Mutation Rates
-
-    ssr_df = ssr_mut_rate_vector(ssr_df)
-    srs_df = srs_mut_rate_vector(srs_df)
-    rmd_df = rmd_mut_rate_vector(rmd_df)
+        ssr_df = ssr_mut_rate_vector(ssr_df)
+        srs_df = srs_mut_rate_vector(srs_df)
+        rmd_df = rmd_mut_rate_vector(rmd_df)
+    else:
+        ssr_df = ssr_df.with_columns([pl.col("repeat").list.join(", ").alias("repeat"), pl.lit(-1.0).alias("mutation_rate")])
+        srs_df = srs_df.with_columns([pl.col("repeat").list.join(", ").alias("repeat"), pl.lit(-1.0).alias("mutation_rate")])
+        rmd_df = rmd_df.with_columns([pl.col("repeat").list.join(", ").alias("repeat"), pl.lit(-1.0).alias("mutation_rate")])
 
     # Filter on minimum threshold
     #ssr_df = ssr_df.filter(pl.col("mutation_rate") > THRESHOLD)
