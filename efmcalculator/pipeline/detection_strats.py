@@ -1,6 +1,6 @@
 import polars as pl
 import itertools
-from ..constants import MIN_SSR_LEN
+from ..constants import MIN_SRS_LEN
 
 def _pairwise_slips(polars_df, column, is_circular) -> pl.DataFrame:
     """Recieve a polars dataframe with column of [List[type]]
@@ -29,8 +29,8 @@ def _pairwise_slips(polars_df, column, is_circular) -> pl.DataFrame:
         pl.col('repeat').str.len_chars().alias('length')
     )
 
-    linear_subset = polars_df.filter(pl.col('length') < MIN_SSR_LEN)
-    pairwise = polars_df.filter(pl.col('length') >= MIN_SSR_LEN)
+    linear_subset = polars_df.filter(pl.col('length') < MIN_SRS_LEN)
+    pairwise = polars_df.filter(pl.col('length') >= MIN_SRS_LEN)
 
 
 

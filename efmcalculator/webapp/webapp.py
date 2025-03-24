@@ -28,8 +28,6 @@ from ..StateMachine import StateMachine
 from ..ingest import EFMSequence
 from time import sleep
 
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode
-
 from streamlit_javascript import st_javascript
 
 import hashlib
@@ -39,6 +37,7 @@ ASSET_LOCATION = os.path.join(os.path.dirname(__file__), "assets")
 import pandas as pd
 import base64
 import json
+
 
 
 
@@ -290,7 +289,7 @@ def run_webapp():
         if not inSeq:
             st.stop()
 
-        statemachine.import_sequences(inSeq)
+        statemachine.import_sequences(inSeq, webapp = True)
 
         if len(inSeq) == 1:
             disable_dropdown = True
@@ -305,7 +304,7 @@ def run_webapp():
                 disabled = disable_dropdown
             )
             selectedhash = statemachine.named_sequences[selected_sequence]
-            seq_record = statemachine.user_sequences[selectedhash]
+            seq_record = statemachine.sequencestates[selectedhash]
 
         with col6:
                 with TemporaryDirectory() as tempdir:
@@ -319,7 +318,8 @@ def run_webapp():
         unique_features = seq_record.unique_annotations
 
         if not seq_record.predicted:
-            seq_record.call_predictions(strategy="pairwise")
+            seq_record.efmsequence.call_predictions(strategy="pairwise")
+            seq_record.post_predict_processing()
 
         figcontainer = st.container(height=340)
 
@@ -331,36 +331,7 @@ def run_webapp():
             feature_filter = []
         seq_record.set_filters(feature_filter)
 
-        results = [seq_record._filtered_ssrs, seq_record._filtered_srss, seq_record._filtered_rmds]
-
-        ssr_columns = results[0].columns
-        srs_columns = results[1].columns
-        rmd_columns = results[2].columns
-        top_columns = seq_record._filtered_top.columns
-        del(top_columns[top_columns.index("show")])
-        del(ssr_columns[ssr_columns.index("show")])
-        del(srs_columns[srs_columns.index("show")])
-        del(rmd_columns[rmd_columns.index("show")])
-        ssr_order = ["show"] + ssr_columns
-        srs_order = ["show"] + srs_columns
-        rmd_order = ["show"] + rmd_columns
-        top_order = ["show"] + top_columns
-
-        column_config = {"predid": None,
-            "annotationobjects": None,
-            "show": st.column_config.CheckboxColumn("Show", help="Show/hide this prediction"),
-            "repeat": st.column_config.TextColumn("Sequence", help="One monomer of the repeated sequence"),
-            "source": st.column_config.TextColumn("Classification", help="Is the repeat an SSR, SRS, or RMD?"),
-            "repeat_len": st.column_config.NumberColumn("Repeat Length", help="The length of a monomer of the repeat"),
-            "start": st.column_config.NumberColumn("Start", help="The start position of the repeat"),
-            "count": st.column_config.NumberColumn("Count", help="The number of monomers in the repeat"),
-            "first_repeat": st.column_config.NumberColumn("First Repeat", help="The first repeat in the sequence"),
-            "second_repeat": st.column_config.NumberColumn("Second Repeat", help="The second repeat in the sequence"),
-            "distance": st.column_config.NumberColumn("Distance", help="The distance between the repeats"),
-            "mutation_rate": st.column_config.NumberColumn(
-                "Mutation Rate", format="%.2e"
-            ),
-            "annotations": st.column_config.ListColumn("Annotations", help="The anotations a deletion might truncate or remove.")}
+        results = [_, seq_record._filtered_srss, seq_record._filtered_rmds]
 
         if feature_filter:
             sequence_of_interest = seq_record.annotation_coverage(feature_filter)
@@ -393,202 +364,23 @@ def run_webapp():
                 st.markdown(f"<div style='text-align: center;'>Basal mutation rate: 0</div>", unsafe_allow_html=True)
 
         tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
+        seq_record.refresh_last_shown()
+        seq_record.rebuild_top_table()
+        seq_record.rebuild_ssr_table()
+        seq_record.rebuild_srs_table()
+        seq_record.rebuild_rmd_table()
+
         with tab1:
-            top_table = st.data_editor(seq_record._filtered_top,
-                                       disabled=top_columns,
-                                       hide_index=True,
-                                       on_change = seq_record.update_top_session,
-                                       key="topchanges",
-                                       column_config=column_config,
-                                       column_order=top_order,
-                                       use_container_width=True)
+            seq_record.top_webapp_table
+
         with tab2:
-            ssrtable = results[0]
-            pdssrtable = ssrtable.to_pandas()
-            
-            cell_hover_handler = JsCode("""
-            function(params) {
-                // debug
-                const clickedColumn = params.column.colId;
-                const clickedRowIndex = params.rowIndex;
-                const clickedValue = params.node.data[clickedColumn];
-                
-                const predidValue = params.node.data["predid"];
-                
-                // Display information about the click
-                const message = `You hovered on row ${clickedRowIndex}, column ${clickedColumn}, value is ${predidValue}`;
-                console.log(message);
-                
-                window.parent.postMessage(
-                    {type: 'cellMouseOver', predid: predidValue}, '*'
-                    );
-
-            }
-            """)
-            
-            js_hover_handler = """
-                window.addEventListener("message", (event) => {
-                    if (event.data.type === "cellMouseOver") {
-                        resolve(event.data.predid);
-                    }
-                });
-            """
-            
-            builder = GridOptionsBuilder.from_dataframe(pdssrtable)
-            preselected_indices = pdssrtable[pdssrtable["show"] == True].index.tolist()
-            print(preselected_indices)
-            builder.configure_selection(selection_mode='multiple', use_checkbox= True, pre_selected_rows= preselected_indices)
-            
-            builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
-            builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
-            builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
-            builder.configure_column("start", header_name="Start", type=["numericColumn"])
-            builder.configure_column("count", header_name="Count", type=["numericColumn"])
-            builder.configure_column("mutation_rate", header_name="Mutation Rate",
-                        type=["numericColumn"], valueFormatter="x.toExponential(2)")
-            builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
-            builder.configure_column("predid", hide = True)
-            builder.configure_column("annotationobjects", hide = True)
-            builder.configure_column("show", hide = True) #vestigial from having data from polars table, not needed once grid is initialized
-            
-            grid_options = builder.build()
-            response = AgGrid(pdssrtable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True, allow_unsafe_jscode = True)
-            
-            if "ssrchanges" not in st.session_state:
-                st.session_state["ssrchanges"] = []
-            
-            if response["selected_rows"] is not None:
-                for i in response["selected_rows"]["predid"]:
-                    if i not in st.session_state["ssrchanges"]:
-                        seq_record.addSSR(i)
-                for i in st.session_state["ssrchanges"]:
-                    if i not in response["selected_rows"]:
-                        seq_record.removeSSR(i)
-                        pass
-                    
-            #st.session_state["ssrchanges"] = response["selected_rows"]
-            
-            print("|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\n" , response["selected_rows"])
-            #print(seq_record.ssrchanged())
-           
-            #issue in sending data back
-            #hovered_predid = st_javascript(js_hover_handler)
-            #if hovered_predid:
-            #    st.session_state["hovered_predid"] = hovered_predid
-            #    print(hovered_predid)
-            
-            #need to fix this
-            #if response:
-            #    updated_df = response["data"]
-            #    edited_rows = updated_df[pdssrtable[pdssrtable.ne(updated_df).any(axis=1)]]
-            #    if not pdssrtable.equals(updated_df):
-                    #converting pandas back to polars to see if it works, a more elegant solution probably exists
-            #        ssrtable = pl.from_pandas(updated_df)
-            #        st.session_state["ssrchanges"]["edited_rows"] = edited_rows
-            #        seq_record.update_ssr_session()
-            #        print("updated ssr table")
-
-
+            seq_record.ssr_webapp_table
 
         with tab3:
-            srstable = results[1]
-            #st.data_editor(srstable, hide_index=True, disabled=srs_columns,
-            #use_container_width=True,
-            #key="srschanges",
-            #on_change = seq_record.update_srs_session,
-            #column_config=column_config,
-            #column_order=srs_order)
-            pdsrstable = srstable.to_pandas()
-            #print(pdsrstable)
-            #print(pdsrstable)
-            
-            cell_hover_handler = JsCode("""
-            function(params) {
-                // debug
-                const clickedColumn = params.column.colId;
-                const clickedRowIndex = params.rowIndex;
-                const clickedValue = params.node.data[clickedColumn];
-                
-                const predidValue = params.node.data["predid"];
-                
-                // Display information about the click
-                const message = `You hovered on row ${clickedRowIndex}, column ${clickedColumn}, value is ${predidValue}`;
-                console.log(message);
-                
-                window.parent.postMessage(
-                    {type: 'cellMouseOver', predid: predidValue}, '*'
-                    );
+            seq_record.srs_webapp_table
 
-            }
-            """)
-            
-            pdsrstable["repeat"] = pdsrstable["repeat"].astype(str)
-            pdsrstable["annotations"] = pdsrstable["annotations"].astype(str)
-            
-            builder = GridOptionsBuilder.from_dataframe(pdsrstable)
-            
-            builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
-            
-            builder.configure_column("show", header_name="Show", cellEditor="agCheckboxCellEditor", editable=True)
-            builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
-            builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
-            builder.configure_column("start", header_name="Start", type=["numericColumn"])
-            builder.configure_column("count", header_name="Count", type=["numericColumn"])
-            builder.configure_column("mutation_rate", header_name="Mutation Rate",
-                        type=["numericColumn"], valueFormatter="x.toExponential(2)")
-            builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
-
-            grid_options = builder.build()
-            AgGrid(pdsrstable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True, allow_unsafe_jscode = True)
-        
         with tab4:
-            rmdtable = results[2]
-            #st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns,
-            #use_container_width=True,
-            #key="rmdchanges",
-            #on_change = seq_record.update_rmd_session,
-            #column_config=column_config,
-            #column_order=rmd_order)
-            pdrmdtable = rmdtable.to_pandas()
-            #print(pdrmdtable)
-            pdrmdtable["repeat"] = pdrmdtable["repeat"].astype(str)
-            pdrmdtable["annotations"] = pdrmdtable["annotations"].astype(str)
-            
-            cell_hover_handler = JsCode("""
-            function(params) {
-                // debug
-                const clickedColumn = params.column.colId;
-                const clickedRowIndex = params.rowIndex;
-                const clickedValue = params.node.data[clickedColumn];
-                
-                const predidValue = params.node.data["predid"];
-                
-                // Display information about the click
-                const message = `You hovered on row ${clickedRowIndex}, column ${clickedColumn}, value is ${predidValue}`;
-                console.log(message);
-                
-                window.parent.postMessage(
-                    {type: 'cellMouseOver', predid: predidValue}, '*'
-                    );
-
-            }
-            """)
-            
-            builder = GridOptionsBuilder.from_dataframe(pdrmdtable)
-            
-            builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
-            
-            builder.configure_column("show", header_name="Show", cellEditor="agCheckboxCellEditor", editable=True)
-            builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
-            builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
-            builder.configure_column("start", header_name="Start", type=["numericColumn"])
-            builder.configure_column("count", header_name="Count", type=["numericColumn"])
-            builder.configure_column("mutation_rate", header_name="Mutation Rate",
-                        type=["numericColumn"], valueFormatter="x.toExponential(2)")
-            builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
-
-            grid_options = builder.build()
-            #sAgGrid(pdrmdtable, gridOptions=grid_options, height=500, fit_columns_on_grid_load=True)
+            seq_record.rmd_webapp_table
 
         with figcontainer:
             fig = bokeh_plot(seq_record)
@@ -596,3 +388,4 @@ def run_webapp():
             st.bokeh_chart(fig, use_container_width=True)
 
     add_vertical_space(4)
+    seq_record.refreshed = False

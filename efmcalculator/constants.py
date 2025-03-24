@@ -1,7 +1,7 @@
 VALID_STRATEGIES = ["pairwise", "linear"]
 MIN_SHORT_SEQ_LEN = 0
 MAX_SHORT_SEQ_LEN = 16
-MIN_SSR_LEN = 6 # Dont search for SRSs below this length
+MIN_SRS_LEN = 6 # Dont search for SRSs below this length
 MAX_SSR_SPACER = 5000 # Dont search for SRSs this far appart
 UNKNOWN_REC_TYPE = "unknown"
 FASTA_EXTS = [".fa", ".fasta"]

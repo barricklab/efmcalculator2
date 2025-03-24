@@ -5,7 +5,7 @@ import itertools
 from progress.spinner import Spinner
 from progress.bar import IncrementalBar
 import numpy as np
-from ..constants import MAX_SHORT_SEQ_LEN, MIN_SSR_LEN, MIN_SHORT_SEQ_LEN
+from ..constants import MAX_SHORT_SEQ_LEN, MIN_SHORT_SEQ_LEN
 
 
 logger = logging.getLogger(__name__)
