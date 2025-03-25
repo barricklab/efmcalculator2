@@ -6,7 +6,7 @@ from rich import print
 import Bio
 import tempfile
 from typing import List
-from ..constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE
+from ..constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE, MIN_SSR_LEN
 from ..utilities import FakeBar
 import streamlit as st
 
@@ -94,6 +94,10 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
         # Process and Split SRS and RMD
 
         repeat_df = repeat_df.lazy().filter(pl.col("category") != "SSR").collect()
+
+        # Remove SRS that are shorter than min_ssr_length
+        repeat_df.filter(pl.col("repeat_len") >= MIN_SSR_LEN)
+
         if len(repeat_df) > 0:
             repeat_df = (
                 repeat_df.lazy()
