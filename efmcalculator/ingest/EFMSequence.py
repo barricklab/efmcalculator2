@@ -85,20 +85,6 @@ class EFMSequence(SeqRecord):
             raise ValueError("No RMDs calculated. Run call_predictions() first.")
         return self._rmds
 
-    @property
-    def unique_annotations(self):
-        if not self.annotations:
-            return None
-        if isinstance(self._unique_annotations, dict) and self._unique_annotations == {}:
-            self._unique_annotations = sequence_to_features_df(self, self.is_circular)
-            self._unique_annotations = self._unique_annotations.with_columns(
-                pl.concat_str([pl.col("annotations"), pl.lit(" ("), pl.col("left_bound"), pl.lit("-"), pl.col("right_bound"), pl.lit(")")]).alias("annotationobjexpanded_names")
-            )
-        unique_expaned_names = self._unique_annotations.select(pl.col("annotationobjexpanded_names")).unique().rows()
-        unique_expaned_names = [x[0] for x in unique_expaned_names]
-
-        return sorted(unique_expaned_names)
-
     def call_predictions(self, strategy):
         seq = str(self.seq.strip("\n").upper().replace("U", "T"))
         ssr_df, srs_df, rmd_df = predict(seq, strategy, self.is_circular)

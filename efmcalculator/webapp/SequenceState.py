@@ -2,7 +2,7 @@
 import polars as pl
 from .vis_utils import eval_top
 import streamlit as st
-
+from ..ingest.EFMSequence import sequence_to_features_df
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode
 
 
@@ -18,6 +18,8 @@ class SequenceState():
         self._webapp_srss = None
         self._webapp_rmds = None
         self._webapp_top = None
+
+        self._unique_annotations = {}
 
         self.ready = False
         self.refreshed = False
@@ -68,10 +70,24 @@ class SequenceState():
         self.last_srs_selections = None
         self.last_rmd_selections = None
 
+    @property
+    def unique_annotations(self):
+        if not self.efmsequence.annotations:
+            return None
+        if isinstance(self._unique_annotations, dict) and self._unique_annotations == {}:
+            self._unique_annotations = sequence_to_features_df(self.efmsequence, self.efmsequence.is_circular)
+            self._unique_annotations = self._unique_annotations.with_columns(
+                pl.concat_str([pl.col("annotations"), pl.lit(" ("), pl.col("left_bound"), pl.lit("-"), pl.col("right_bound"), pl.lit(")")]).alias("annotationobjexpanded_names")
+            )
+        unique_expaned_names = self._unique_annotations.select(pl.col("annotationobjexpanded_names")).unique().rows()
+        unique_expaned_names = [x[0] for x in unique_expaned_names]
+
+        return sorted(unique_expaned_names)
+
     # Data pertainint to webapp
     def set_filters(self, annotations):
         if annotations:
-            annotation_objects = self.efmsequence._unique_annotations.filter(pl.col("annotationobjexpanded_names").is_in(annotations))
+            annotation_objects = self._unique_annotations.filter(pl.col("annotationobjexpanded_names").is_in(annotations))
             annotation_objects = annotation_objects.select(pl.col("annotationobjects")).unique().rows()
             annotation_objects = [x[0] for x in annotation_objects]
             self._filtered_ssrs = self._webapp_ssrs.filter(pl.col("annotationobjects").list.set_intersection(annotation_objects).list.len() != 0)
