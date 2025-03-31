@@ -4,11 +4,13 @@ import os
 from .ingest.parse_inputs import validate_sequences
 from .constants import MAX_SIZE
 import polars as pl
+
 import concurrent.futures as cf
 from progress.bar import Bar
 import threading
 import multiprocessing as mp
 from .pipeline.mutation_rates import rip_score
+from .webapp.SequenceState import SequenceState
 
 class ThreadSafeBar(Bar):
     def __init__(self, *args, **kwargs):
@@ -45,8 +47,10 @@ class StateMachine:
     def __init__(self):
         self.user_sequences = {}
         self.named_sequences = {}
+        self.sequencestates = {}
 
-    def import_sequences(self, sequences, max_size=None):
+
+    def import_sequences(self, sequences, max_size=None, webapp = False):
         """Import newly uploaded sequences while retaining state of existing sequences"""
         # Import sequences without overwriting old ones
         new = {seq._originhash: seq for seq in sequences}
@@ -59,6 +63,10 @@ class StateMachine:
 
         # Validate sequences if they changed
         validate_sequences(self.user_sequences.values())
+
+        # Make webapp states
+        if webapp:
+            self.sequencestates = {key: SequenceState(value) for key, value in self.user_sequences.items()}
 
         # Update sequence names
         self.named_sequences = {}

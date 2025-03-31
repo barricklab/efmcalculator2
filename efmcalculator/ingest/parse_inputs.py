@@ -106,6 +106,7 @@ def parse_csv(path_as_string):
                 f"CSV file has no 'seq' column"
             )
         sequences = []
+
         try:
             for i, entry in enumerate(csvreader):
                 if names is not None:
@@ -118,4 +119,5 @@ def parse_csv(path_as_string):
                 csvreader = csv.reader(csvfile)
         except csv.Error as e: # Should be handled better probably
             raise e
+
     return sequences

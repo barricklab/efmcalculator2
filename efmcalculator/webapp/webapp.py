@@ -28,6 +28,8 @@ from ..StateMachine import StateMachine
 from ..ingest import EFMSequence
 from time import sleep
 
+from streamlit_javascript import st_javascript
+
 import hashlib
 
 ASSET_LOCATION = os.path.join(os.path.dirname(__file__), "assets")
@@ -35,6 +37,7 @@ ASSET_LOCATION = os.path.join(os.path.dirname(__file__), "assets")
 import pandas as pd
 import base64
 import json
+
 
 
 
@@ -286,7 +289,7 @@ def run_webapp():
         if not inSeq:
             st.stop()
 
-        statemachine.import_sequences(inSeq, max_size=50000)
+        statemachine.import_sequences(inSeq, max_size=50000, webapp = True)
 
         if len(inSeq) == 1:
             disable_dropdown = True
@@ -301,7 +304,7 @@ def run_webapp():
                 disabled = disable_dropdown
             )
             selectedhash = statemachine.named_sequences[selected_sequence]
-            seq_record = statemachine.user_sequences[selectedhash]
+            seq_record = statemachine.sequencestates[selectedhash]
 
         with col6:
                 with TemporaryDirectory() as tempdir:
@@ -315,7 +318,8 @@ def run_webapp():
         unique_features = seq_record.unique_annotations
 
         if not seq_record.predicted:
-            seq_record.call_predictions(strategy="pairwise")
+            seq_record.efmsequence.call_predictions(strategy="pairwise")
+            seq_record.post_predict_processing()
 
         figcontainer = st.container(height=340)
 
@@ -327,40 +331,7 @@ def run_webapp():
             feature_filter = []
         seq_record.set_filters(feature_filter)
 
-        results = [seq_record._filtered_ssrs, seq_record._filtered_srss, seq_record._filtered_rmds]
-
-        ssr_columns = results[0].columns
-        srs_columns = results[1].columns
-        rmd_columns = results[2].columns
-        top_columns = seq_record._filtered_top.columns
-        if "show" in top_columns:
-            del(top_columns[top_columns.index("show")])
-        if "show" in ssr_columns:
-            del(ssr_columns[ssr_columns.index("show")])
-        if "show" in srs_columns:
-            del(srs_columns[srs_columns.index("show")])
-        if "show" in rmd_columns:
-            del(rmd_columns[rmd_columns.index("show")])
-        ssr_order = ["show"] + ssr_columns
-        srs_order = ["show"] + srs_columns
-        rmd_order = ["show"] + rmd_columns
-        top_order = ["show"] + top_columns
-
-        column_config = {"predid": None,
-            "annotationobjects": None,
-            "show": st.column_config.CheckboxColumn("Show", help="Show/hide this prediction"),
-            "repeat": st.column_config.TextColumn("Sequence", help="One monomer of the repeated sequence"),
-            "source": st.column_config.TextColumn("Classification", help="Is the repeat an SSR, SRS, or RMD?"),
-            "repeat_len": st.column_config.NumberColumn("Repeat Length", help="The length of a monomer of the repeat"),
-            "start": st.column_config.NumberColumn("Start", help="The start position of the repeat"),
-            "count": st.column_config.NumberColumn("Count", help="The number of monomers in the repeat"),
-            "first_repeat": st.column_config.NumberColumn("First Repeat", help="The first repeat in the sequence"),
-            "second_repeat": st.column_config.NumberColumn("Second Repeat", help="The second repeat in the sequence"),
-            "distance": st.column_config.NumberColumn("Distance", help="The distance between the repeats"),
-            "mutation_rate": st.column_config.NumberColumn(
-                "Mutation Rate", format="%.2e"
-            ),
-            "annotations": st.column_config.ListColumn("Annotations", help="The anotations a deletion might truncate or remove.")}
+        results = [_, seq_record._filtered_srss, seq_record._filtered_rmds]
 
         if feature_filter:
             sequence_of_interest = seq_record.annotation_coverage(feature_filter)
@@ -393,41 +364,23 @@ def run_webapp():
                 st.markdown(f"<div style='text-align: center;'>Basal mutation rate: 0</div>", unsafe_allow_html=True)
 
         tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
+        seq_record.refresh_last_shown()
+        seq_record.rebuild_top_table()
+        seq_record.rebuild_ssr_table()
+        seq_record.rebuild_srs_table()
+        seq_record.rebuild_rmd_table()
+
         with tab1:
-            top_table = st.data_editor(seq_record._filtered_top,
-                                       disabled=top_columns,
-                                       hide_index=True,
-                                       on_change = seq_record.upate_top_session,
-                                       key="topchanges",
-                                       column_config=column_config,
-                                       column_order=top_order,
-                                       use_container_width=True)
+            seq_record.top_webapp_table
+
         with tab2:
-            ssrtable = results[0]
-            st.data_editor(ssrtable,
-                          hide_index=True,
-                          disabled=ssr_columns,
-                          use_container_width=True,
-                          key="ssrchanges",
-                          on_change = seq_record.update_ssr_session,
-                          column_config=column_config,
-                          column_order=ssr_order)
+            seq_record.ssr_webapp_table
+
         with tab3:
-            srstable = results[1]
-            st.data_editor(srstable, hide_index=True, disabled=srs_columns,
-            use_container_width=True,
-            key="srschanges",
-            on_change = seq_record.update_srs_session,
-            column_config=column_config,
-            column_order=srs_order)
+            seq_record.srs_webapp_table
+
         with tab4:
-            rmdtable = results[2]
-            st.data_editor(rmdtable, hide_index=True, disabled=rmd_columns,
-            use_container_width=True,
-            key="rmdchanges",
-            on_change = seq_record.update_rmd_session,
-            column_config=column_config,
-            column_order=rmd_order)
+            seq_record.rmd_webapp_table
 
         with figcontainer:
             fig = bokeh_plot(seq_record)
@@ -435,3 +388,4 @@ def run_webapp():
             st.bokeh_chart(fig, use_container_width=True)
 
     add_vertical_space(4)
+    seq_record.refreshed = False

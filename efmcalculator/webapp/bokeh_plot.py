@@ -3,7 +3,7 @@ import bokeh as bk
 import copy
 from Bio import SeqFeature
 from bokeh.plotting import figure
-from bokeh.models import HoverTool
+from bokeh.models import HoverTool, CustomJS
 from typing import List
 import polars as pl
 from ..constants import MARKER_HEIGHT, COLORS
@@ -16,7 +16,8 @@ ANNOTATION_HEIGHT = MARKER_HEIGHT/2
 
 def bokeh_plot(seqobj):
     # Figure boilerplate
-    fig = figure(plot_height=300)
+
+    fig = figure(plot_height=300, output_backend="svg")
     fig.line(x=[0, len(seqobj.seq)], y=[0, 0], line_color="black", line_width=2)
     fig.xaxis.axis_label = "Position"
     fig.yaxis.visible = False
@@ -26,13 +27,20 @@ def bokeh_plot(seqobj):
     fig, depth = plot_annotations(fig, seqobj)
 
     # Calculate vertical stagger to prevent overlapping annotations
-    selected_ssrs = seqobj._filtered_ssrs.filter(pl.col("show") == True)
-    selected_srss = seqobj._filtered_srss.filter(pl.col("show") == True)
-    selected_rmds = seqobj._filtered_rmds.filter(pl.col("show") == True)
+    selected_ssrs = seqobj.get_shown_predictions(seqobj._filtered_ssrs)
+    selected_ssrs = seqobj._filtered_ssrs.with_row_index(
+                           ).filter(pl.col("index").is_in(selected_ssrs))
+    selected_srss = seqobj.get_shown_predictions(seqobj._filtered_srss)
+    selected_srss = seqobj._filtered_srss.with_row_index(
+                           ).filter(pl.col("index").is_in(selected_srss))
+    selected_rmds = seqobj.get_shown_predictions(seqobj._filtered_rmds)
+    selected_rmds = seqobj._filtered_rmds.with_row_index(
+                           ).filter(pl.col("index").is_in(selected_rmds))
 
     stagger_database = {
         0: []
     }
+
     stagger_ssrs = selected_ssrs.with_columns(
         (pl.col("repeat_len")*pl.col("count")+pl.col("start")-1).alias("end").cast(pl.Int32),
         pl.lit("SSR").alias("type"),
@@ -149,7 +157,7 @@ def plot_annotations(fig, seqobj):
             color = COLORS["misc"]
         return color
 
-    seqobj.features = assign_feature_levels(seqobj.features)
+    staggered_features = assign_feature_levels(seqobj.features)
     xmax = len(seqobj.seq)
 
     annotation_depth = -500
@@ -162,7 +170,7 @@ def plot_annotations(fig, seqobj):
             "position": [],
             "strand": [],
         }
-    for genbank_annotation in seqobj.features:
+    for genbank_annotation in staggered_features:
         arrow_depth = 100
         # @TODO: SCALE ANNOTATIONS
 
@@ -372,7 +380,6 @@ def plot_ssr(fig, ssr_df):
     fig.add_tools(ssr_glyphs_hover)
 
     return fig
-
 
 def plot_srs(fig, ssr_df):
     height = 1

@@ -164,6 +164,7 @@ def main():
         logger.error(f"Cannot write to {args.outpath}")
         exit(1)
 
+
     if args.tall:
         os.environ["POLARS_MAX_THREADS"] = "1"
     if args.threads is not None and args.threads <=0:
@@ -174,6 +175,7 @@ def main():
     else:
         threads = args.threads
         os.environ["POLARS_MAX_THREADS"] = str(threads)
+
     global pl
     import polars as pl
 
@@ -202,6 +204,7 @@ def main():
 
     # Run EFM Calculator ----------------
     statemachine = StateMachine()
+
     try:
         statemachine.import_sequences(sequences)
     except BadSequenceError as e:
@@ -220,6 +223,7 @@ def main():
             logger.info(msg=f"Running on sequence {i}: {str(seqobject)}")
             seqobject.call_predictions(strategy=args.strategy)
         statemachine.save_results(args.outpath, filetype=args.filetype, summaryonly=args.summaryonly)
+
 
     # Done ------------------------------
 
