@@ -16,6 +16,7 @@ ANNOTATION_HEIGHT = MARKER_HEIGHT/2
 
 def bokeh_plot(seqobj):
     # Figure boilerplate
+
     fig = figure(plot_height=300, output_backend="svg")
     fig.line(x=[0, len(seqobj.seq)], y=[0, 0], line_color="black", line_width=2)
     fig.xaxis.axis_label = "Position"

@@ -6,11 +6,11 @@ from rich import print
 import Bio
 import tempfile
 from typing import List
-from ..constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE
+from ..constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE, MIN_SSR_LEN
 from ..utilities import FakeBar
 import streamlit as st
 
-from .subsequence_curation import collect_subsequences, _scan_RMD
+from .subsequence_curation import collect_subsequences, _scan_RMD, highly_mut
 from .detection_strats import _pairwise_slips, _linear_slips
 from .classify_ssr import _collapse_ssr
 from .classify_srs_rmd import _calculate_distances, _categorize_efm
@@ -71,6 +71,9 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     )
 
 
+
+
+
     # Upgrade long SRSs to RMDs
     repeat_df = _scan_RMD(repeat_df, seq, seq_len, isCircular)
 
@@ -89,6 +92,10 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     # Process and Split SRS and RMD
 
     repeat_df = repeat_df.lazy().filter(pl.col("category") != "SSR").collect()
+
+    # Remove SRS that are shorter than min_ssr_length
+    repeat_df.filter(pl.col("repeat_len") >= MIN_SSR_LEN)
+
     if len(repeat_df) > 0:
         repeat_df = (
             repeat_df.lazy()

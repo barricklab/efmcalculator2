@@ -1,8 +1,9 @@
 import polars as pl
 import itertools
-from ..constants import MIN_SRS_LEN
+from ..constants import MIN_SSR_LEN, MAX_SHORT_SEQ_LEN
 
-def _pairwise_slips(polars_df, column, is_circular) -> pl.DataFrame:
+
+def _pairwise_slips(polars_df, column, is_circular, copies_cap=40) -> pl.DataFrame:
     """Recieve a polars dataframe with column of [List[type]]
     Returns the dataframe back with a pairwise list of positions"
 
@@ -32,7 +33,16 @@ def _pairwise_slips(polars_df, column, is_circular) -> pl.DataFrame:
     linear_subset = polars_df.filter(pl.col('length') < MIN_SRS_LEN)
     pairwise = polars_df.filter(pl.col('length') >= MIN_SRS_LEN)
 
+    high_mut_df = (
+        pairwise.filter(
+            pl.col("length") == MAX_SHORT_SEQ_LEN-1,
+            pl.col("position").list.len() >= copies_cap
+            )
+    )
 
+    # terminate if there are 40+ occurrences of a single repeat
+    if len(high_mut_df) > 0:
+        raise ValueError("This sequence is highly mutagenic. Stopping execution")
 
     linear_subset = _linear_slips(linear_subset, column, is_circular=is_circular)
 

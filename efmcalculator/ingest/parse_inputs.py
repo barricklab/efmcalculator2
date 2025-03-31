@@ -42,19 +42,17 @@ def parse_file(filepath: pathlib.Path, use_filename: bool = True, iscircular = F
     test_sequences = []
     with open(filepath) as f:
         fileinfo = f.read().encode()
+        filehash = hashlib.md5(fileinfo)
     for i, seq in enumerate(sequences):
-        try:
-            if use_filename:
-                filename = Path(filepath).stem
-                if not seq.name:
-                    seq.name = f"{filename}"
-                if not seq.description or seq.description == '':
-                    seq.description = f"{filename}"
-            originhash = hashlib.md5(fileinfo + bytes(i) + str(iscircular).encode()).hexdigest()
-            efmseq = EFMSequence(seq, iscircular, originhash)
-            test_sequences.append(efmseq)
-        except:
-            pass
+        if use_filename:
+            filename = Path(filepath).stem
+            if not seq.name:
+                seq.name = f"{filename}"
+            if not seq.description or seq.description == '':
+                seq.description = f"{filename}"
+        originhash = filehash.hexdigest() + hashlib.md5(bytes(i) + str(iscircular).encode()).hexdigest()
+        efmseq = EFMSequence(seq, iscircular, originhash)
+        test_sequences.append(efmseq)
     return test_sequences
 
 
@@ -72,6 +70,10 @@ def validate_sequence(seq):
     IUPAC_BASES = set("ACGTURYSWKMBDHVNacgturyswkmbdhvn")
     sequence = str(seq.seq)
     seq_set = set(sequence.upper().replace(" ", ""))
+    if sequence is "":
+        raise BadSequenceError(
+            f"Input contains an empty sequence."
+        )
     if not seq_set.issubset(IUPAC_BASES):
         raise BadSequenceError(
             f"Input sequence contains invalid characters. Only IUPAC bases are allowed."
@@ -87,6 +89,7 @@ def validate_sequence(seq):
     detect_special_cases(seq)
 
 def parse_csv(path_as_string):
+    csv.field_size_limit(100000000)
     with open(path_as_string, "r") as csvfile:
         csvreader = csv.reader(csvfile)
         headers = csvreader.__next__()
@@ -103,12 +106,18 @@ def parse_csv(path_as_string):
                 f"CSV file has no 'seq' column"
             )
         sequences = []
-        for i, entry in enumerate(csvreader):
-            if names is not None:
-                name = entry[names]
-            else:
-                name = f"sequence"
-            sequence = entry[seqs]
-            formatted_entry = SeqRecord(Seq(sequence),name=name,description=name)
-            sequences.append(formatted_entry)
+
+        try:
+            for i, entry in enumerate(csvreader):
+                if names is not None:
+                    name = entry[names]
+                else:
+                    name = f"sequence"
+                sequence = entry[seqs]
+                formatted_entry = SeqRecord(Seq(sequence),name=name,description=name)
+                sequences.append(formatted_entry)
+                csvreader = csv.reader(csvfile)
+        except csv.Error as e: # Should be handled better probably
+            raise e
+
     return sequences

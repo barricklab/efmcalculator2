@@ -289,7 +289,7 @@ def run_webapp():
         if not inSeq:
             st.stop()
 
-        statemachine.import_sequences(inSeq, webapp = True)
+        statemachine.import_sequences(inSeq, max_size=50000, webapp = True)
 
         if len(inSeq) == 1:
             disable_dropdown = True
