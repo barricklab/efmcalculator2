@@ -1,6 +1,6 @@
 import polars as pl
 import itertools
-from ..constants import MIN_SSR_LEN, MAX_SHORT_SEQ_LEN
+from ..constants import MIN_SRS_LEN, MAX_SHORT_SEQ_LEN
 
 
 def _pairwise_slips(polars_df, column, is_circular, copies_cap=40) -> pl.DataFrame:
