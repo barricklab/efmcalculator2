@@ -87,7 +87,7 @@ def rmd_mut_rate(length, distance, org):
     return recombo_rate
 
 
-def rmd_mut_rate_vector(rmd_df, org="ecoli"):
+def rmd_mut_rate_vector(rmd_df, org="reca"):
     if org == "ecoli" or org == "yeast":
         rmd_df = (
             rmd_df.lazy().with_columns(
@@ -113,7 +113,7 @@ def rmd_mut_rate_vector(rmd_df, org="ecoli"):
     return rmd_df
 
 
-def srs_mut_rate_vector(rmd_df, org="ecoli"):
+def srs_mut_rate_vector(rmd_df, org="reca"):
     """
     Calculate the recombination rate based on a GAM model.
 
