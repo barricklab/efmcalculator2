@@ -34,25 +34,6 @@ def collect_subsequences(seq, isCircular, window_max=16) -> pl.LazyFrame:
     return repeats
 
 
-def highly_mut(df: pl.DataFrame):
-    df = (
-        df.filter(pl.col("repeat_len") == MAX_SHORT_SEQ_LEN-1)
-        .group_by(pl.col("repeat"))
-        .agg(
-            pl.col("pairings"), 
-            pl.first("repeat_len")
-            )
-        .with_columns(pl.col("pairings").list.unique().alias("positions"))
-        .filter(pl.col("positions").list.len() >= 40)
-    )
-
-    # terminate if there are 40+ occurrences of a single repeat
-    if df.is_empty():
-        return False
-    else:
-        return True
-
-
 
 
 def _scan_RMD(df: pl.DataFrame, seq, seq_len, isCircular) -> pl.DataFrame:
