@@ -143,19 +143,6 @@ def main():
 
 
 
-    if args.tall:
-        os.environ["POLARS_MAX_THREADS"] = "1"
-    if args.threads is not None and args.threads <=0:
-        logger.error("Max threads must be greater than 0")
-        exit(1)
-    elif args.tall and not args.threads:
-        threads = os.cpu_count()
-    else:
-        threads = args.threads
-        os.environ["POLARS_MAX_THREADS"] = str(threads)
-
-    global pl
-    import polars as pl
 
 
 
@@ -199,7 +186,7 @@ def main():
         bar.next()
 
     output = statemachine.save_results(args.outpath, filetype=args.filetype)
-    output.write_csv("igem_1_rip_efm2_v3.csv")
+    output.write_csv("pdcaf_test.csv")
 
 
     # Done ------------------------------
