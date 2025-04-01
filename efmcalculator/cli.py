@@ -4,7 +4,6 @@ import logging
 import pathlib
 import time
 from importlib.metadata import version, PackageNotFoundError
-import os
 
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -26,6 +25,8 @@ from .StateMachine import StateMachine
 
 import logging
 from rich.logging import RichHandler
+
+from progress.bar import Bar
 
 FORMAT = "%(message)s"
 logging.basicConfig(
@@ -81,24 +82,7 @@ def main():
         dest="filetype",
         action="store",
         required=False,
-        help="Output filetype for (tablescsv | parquet)",
-    )
-    parser.add_argument(
-        "-j",
-        "--maxthreads",
-        dest="threads",
-        action="store",
-        type=int,
-        required=False,
-        help="Maximum number of threads (>0)",
-    )
-    parser.add_argument(
-        "-t",
-        "--tall",
-        dest="tall",
-        action="store_true",
-        required=False,
-        help="Parallelize across samples rather than within samples",
+        help="csv | parquet",
     )
     parser.add_argument(
         "-v",
@@ -109,13 +93,6 @@ def main():
         required=False,
         default=1,
         help="0 - Silent | 1 Basic Information | 2 Debug",
-    )
-    parser.add_argument(
-        "--summary",
-        dest="summaryonly",
-        action="store_true",
-        required=False,
-        help="Only save summary information rather than all . Useful for very tall inputs.",
     )
 
     try:
@@ -165,6 +142,7 @@ def main():
         exit(1)
 
 
+
     if args.tall:
         os.environ["POLARS_MAX_THREADS"] = "1"
     if args.threads is not None and args.threads <=0:
@@ -180,49 +158,48 @@ def main():
     import polars as pl
 
 
+
     # Set up circular ------------
 
     args.isCirc = args.circular
 
     # Grab sequence information --------
     try:
-        sequences = parse_file(pathlib.Path(args.inpath), iscircular=args.circular)
+        sequences = parse_file(pathlib.Path(args.inpath))
     except ValueError as e:
         logger.error(e)
         exit(1)
     except OSError as e:
         try:
-            validate_sequence(EFMSequence(SeqRecord(Seq(args.inpath), id="text input", name="text input"), is_circular=args.circular))
+           # validate_sequence(EFMSequence(SeqRecord(Seq(args.inpath), id="text input", name="text input"), is_circular=args.circular))
             sequences = [EFMSequence(SeqRecord(Seq(args.inpath), id="text input", name="text input"), is_circular=args.circular)]
         except:
             logger.error("Input is not an existing file or valid sequence")
             exit(1)
 
+    #try:
+        #validate_sequences(sequences, circular=args.circular)
+    #except BadSequenceError as e:
+    #    logger.error(e)
+    #    exit(1)
 
     # Unpack sequences into list ---------
+    print("unpacking")
     sequences = list(sequences)
-
+    print("unpacked")
     # Run EFM Calculator ----------------
     statemachine = StateMachine()
 
-    try:
-        statemachine.import_sequences(sequences)
-    except BadSequenceError as e:
-        logger.error(e)
-        exit(1)
+    statemachine.import_sequences(sequences)
+    bar = Bar("Scanning", max=len(statemachine.user_sequences.values()))
 
-    if args.tall:
-        statemachine.predict_tall(strategy=args.strategy,
-                                  outpath=args.outpath,
-                                  filetype=args.filetype,
-                                  threads=threads,
-                                  keepmem=not args.summaryonly,
-                                  summaryonly=args.summaryonly)
-    else:
-        for i, seqobject in enumerate(statemachine.user_sequences.values()):
-            logger.info(msg=f"Running on sequence {i}: {str(seqobject)}")
-            seqobject.call_predictions(strategy=args.strategy)
-        statemachine.save_results(args.outpath, filetype=args.filetype, summaryonly=args.summaryonly)
+
+    for seqobject in statemachine.user_sequences.values():
+        seqobject.call_predictions(strategy=args.strategy)
+        bar.next()
+
+    output = statemachine.save_results(args.outpath, filetype=args.filetype)
+    output.write_csv("igem_1_rip_efm2_v3.csv")
 
 
     # Done ------------------------------
