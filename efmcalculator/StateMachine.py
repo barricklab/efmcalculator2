@@ -5,14 +5,56 @@ from .ingest.parse_inputs import validate_sequences
 from .constants import MAX_SIZE, SUB_RATE
 import polars as pl
 
+
+import concurrent.futures as cf
+from progress.bar import Bar
+import threading
+import multiprocessing as mp
+from .pipeline.mutation_rates import rip_score
+from .webapp.SequenceState import SequenceState
+
+class ThreadSafeBar(Bar):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._lock = threading.Lock()
+
+    def next(self):
+        with self._lock:
+            super().next()
+
+def _parallel_worker(args):
+    """Internal function for parallelizing sequence analysis across many sequences"""
+    seqobj, seqname, strategy, keepmem = args
+    seqobj.call_predictions(strategy)
+    scores = rip_score(ssr_df=seqobj.ssrs, srs_df=seqobj.srss,
+                        rmd_df=seqobj.rmds, sequence_length=len(seqobj))
+    scores['name'] = seqname
+    reorder = ['name', 'ssr_sum', 'srs_sum', 'rmd_sum', 'bps_sum', 'rip']
+    scores = {k: scores[k] for k in reorder}
+    sample_df = pl.DataFrame(scores).cast({
+        'ssr_sum': pl.Float64,
+        'srs_sum': pl.Float64,
+        'rmd_sum': pl.Float64,
+        'bps_sum': pl.Float64,
+        'rip': pl.Float64
+    })
+    if not keepmem:
+        seqobj = None
+    return seqobj, scores
+
+
 class StateMachine:
     """Class for recording user session state between streamlit interactions to prevent rerunning analysis and make
     selected predictions persist."""
     def __init__(self):
         self.user_sequences = {}
         self.named_sequences = {}
+        self.sequencestates = {}
 
-    def import_sequences(self, sequences):
+
+
+    def import_sequences(self, sequences, max_size=None, webapp = False):
+
         """Import newly uploaded sequences while retaining state of existing sequences"""
         # Import sequences without overwriting old ones
         new = {seq._originhash: seq for seq in sequences}
@@ -25,6 +67,10 @@ class StateMachine:
 
         # Validate sequences if they changed
         #validate_sequences(self.user_sequences.values(), max_len=MAX_SIZE)
+
+        # Make webapp states
+        if webapp:
+            self.sequencestates = {key: SequenceState(value) for key, value in self.user_sequences.items()}
 
         # Update sequence names
         self.named_sequences = {}

@@ -6,7 +6,7 @@ from rich import print
 import Bio
 import tempfile
 from typing import List
-from ..constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE
+from ..constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE, MIN_SRS_LEN
 from ..utilities import FakeBar
 import streamlit as st
 
@@ -59,6 +59,7 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
         repeat_df = _linear_slips(repeat_df, "position", isCircular)
     else:
         raise ValueError("Invalid strategy")
+
 
 
     if repeat_df[0]["repeat"][0] != "too mutagenic":

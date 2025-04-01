@@ -231,7 +231,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
     # filter out SRS nested fully inside SSRs
     # if statement needed because cross join with an empty df creates an empty df
     if ssr_dataframe.height > 0:
-        ssr_ranges = (
+        ssr_dataframe = (
             ssr_dataframe
             .select(
                 # start is the 1st bp of SSR
@@ -260,50 +260,38 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             .select("start", "end", "ssr_length", "wraparound")
         )
 
-        # srs_dataframe with a separate row for each repeat and each SSR range
-        ssr_srs_cross = filtered_df.join(ssr_ranges, how="cross")
+        ssr_ranges = list(ssr_dataframe.select([pl.col("start"), pl.col("end"), pl.col("wraparound")]).iter_rows())
+        
 
+        # Function to check 'nested' condition for a single row against all tuples
+        def check_nested(row):
+            first_repeat = row["first_repeat"]
+            second_repeat = row["second_repeat"]
+            repeat_len = row["repeat_len"]
+
+            nested_values = []
+            for start, end, wraparound in ssr_ranges:
+                if wraparound:
+                    condition = not (
+                        ((first_repeat < start) & ((first_repeat + repeat_len - 2) > end)) |
+                        ((second_repeat < start) & ((second_repeat + repeat_len - 2) > end))
+                    )
+                else:
+                    condition = (first_repeat >= start) & ((second_repeat + repeat_len - 1) <= end)
+                
+                nested_values.append(condition)
+
+            return any(nested_values)  # If any tuple results in True, set nested=True
+
+
+        # Apply function to each row
         filtered_df = (
-            ssr_srs_cross
-            .with_columns(
-                pl.when(pl.col("wraparound") == True)
-                .then(
-                    (
-                        (
-                            # remove if no part of srs is after end and before start of wraparound ssr
-                            ~(
-                                (
-                                    (pl.col("first_repeat")<pl.col("start")) &
-                                    ((pl.col("first_repeat")+pl.col("repeat_len")-2) > pl.col("end"))
-                                ) |
-                                (
-                                    (pl.col("second_repeat") < pl.col("start")) &
-                                    ((pl.col("second_repeat")+pl.col("repeat_len")-2) > pl.col("end"))
-                                )
-                            )
-                        )
-                        .alias("nested")
-                    )
-                )
-                .otherwise(
-                    ((pl.col("first_repeat") >= pl.col("start")) & ((pl.col("second_repeat") + pl.col("repeat_len") - 1) <= pl.col("end")))
-                    .alias("nested")
-                    )
+            filtered_df.with_columns(
+                pl.struct(["first_repeat", "second_repeat", "repeat_len"])
+                .map_elements(check_nested)
+                .alias("nested")
             )
-            .group_by(
-                pl.col("first_repeat"),
-                pl.col("second_repeat"),
-                pl.col("repeat")
-            )
-            .agg(
-                pl.col("nested"),
-                pl.first("distance"),
-                pl.first("type"),
-                pl.first("repeat_len")
-            )
-            .filter(
-                ~pl.col("nested").list.any()
-            )
+            .filter(~pl.col("nested"))  # Filter out rows where nested=True
         )
 
     filtered_df = filtered_df.select("repeat", "repeat_len", "first_repeat", "second_repeat", "distance", "type")

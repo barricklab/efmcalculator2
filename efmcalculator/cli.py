@@ -142,6 +142,23 @@ def main():
         exit(1)
 
 
+
+    if args.tall:
+        os.environ["POLARS_MAX_THREADS"] = "1"
+    if args.threads is not None and args.threads <=0:
+        logger.error("Max threads must be greater than 0")
+        exit(1)
+    elif args.tall and not args.threads:
+        threads = os.cpu_count()
+    else:
+        threads = args.threads
+        os.environ["POLARS_MAX_THREADS"] = str(threads)
+
+    global pl
+    import polars as pl
+
+
+
     # Set up circular ------------
 
     args.isCirc = args.circular
@@ -172,8 +189,10 @@ def main():
     print("unpacked")
     # Run EFM Calculator ----------------
     statemachine = StateMachine()
+
     statemachine.import_sequences(sequences)
     bar = Bar("Scanning", max=len(statemachine.user_sequences.values()))
+
 
     for seqobject in statemachine.user_sequences.values():
         seqobject.call_predictions(strategy=args.strategy)
@@ -181,6 +200,7 @@ def main():
 
     output = statemachine.save_results(args.outpath, filetype=args.filetype)
     output.write_csv("igem_1_rip_efm2_v3.csv")
+
 
     # Done ------------------------------
 
