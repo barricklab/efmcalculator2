@@ -288,7 +288,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
         filtered_df = (
             filtered_df.with_columns(
                 pl.struct(["first_repeat", "second_repeat", "repeat_len"])
-                .map_elements(check_nested)
+                .map_elements(check_nested, return_dtype=pl.Boolean)
                 .alias("nested")
             )
             .filter(~pl.col("nested"))  # Filter out rows where nested=True
