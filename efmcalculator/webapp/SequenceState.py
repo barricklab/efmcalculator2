@@ -308,11 +308,14 @@ class SequenceState():
         builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
         builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
         builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
-        builder.configure_column("start", header_name="Start", type=["numericColumn"])
-        builder.configure_column("count", header_name="Count", type=["numericColumn"])
+        builder.configure_column("first_repeat", header_name="First Repeat", type=["numericColumn"])
+        builder.configure_column("second_repeat", header_name="Second Repeat", type=["numericColumn"])
+        builder.configure_column("distance", header_name="Distance", type=["numericColumn"])
         builder.configure_column("mutation_rate", header_name="Mutation Rate",
                     type=["numericColumn"], valueFormatter="x.toExponential(2)")
         builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
+        builder.configure_column("predid", hide = True)
+        builder.configure_column("annotationobjects", hide = True)
 
         grid_options = builder.build()
         self._srs_webapp_state = grid_options
@@ -391,11 +394,14 @@ class SequenceState():
         builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
         builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
         builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
-        builder.configure_column("start", header_name="Start", type=["numericColumn"])
-        builder.configure_column("count", header_name="Count", type=["numericColumn"])
+        builder.configure_column("first_repeat", header_name="First Repeat", type=["numericColumn"])
+        builder.configure_column("second_repeat", header_name="Second Repeat", type=["numericColumn"])
+        builder.configure_column("distance", header_name="Distance", type=["numericColumn"])
         builder.configure_column("mutation_rate", header_name="Mutation Rate",
                     type=["numericColumn"], valueFormatter="x.toExponential(2)")
         builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
+        builder.configure_column("predid", hide = True)
+        builder.configure_column("annotationobjects", hide = True)
 
         grid_options = builder.build()
         self._rmd_webapp_state = grid_options
