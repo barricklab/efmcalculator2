@@ -70,6 +70,9 @@ class SequenceState():
         self.last_srs_selections = None
         self.last_rmd_selections = None
 
+    def reset_selected_predictions(self):
+        self._shown_predictions = [x[0] for x in self._filtered_top.select(pl.col("predid")).unique().rows()]
+
     @property
     def unique_annotations(self):
         if not self.efmsequence.annotations:

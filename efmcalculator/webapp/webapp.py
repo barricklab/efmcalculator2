@@ -331,6 +331,10 @@ def run_webapp():
             feature_filter = []
         seq_record.set_filters(feature_filter)
 
+        if not st.session_state.get("last_filter", []) == feature_filter:
+            seq_record.reset_selected_predictions()
+        st.session_state["last_filter"] = feature_filter
+
         results = [_, seq_record._filtered_srss, seq_record._filtered_rmds]
 
         if feature_filter:
