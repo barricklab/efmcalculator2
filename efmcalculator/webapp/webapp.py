@@ -335,7 +335,7 @@ def run_webapp():
             seq_record.reset_selected_predictions()
         st.session_state["last_filter"] = feature_filter
 
-        results = [_, seq_record._filtered_srss, seq_record._filtered_rmds]
+        results = [seq_record._filtered_ssrs, seq_record._filtered_srss, seq_record._filtered_rmds]
 
         if feature_filter:
             sequence_of_interest = seq_record.annotation_coverage(feature_filter)
@@ -363,9 +363,9 @@ def run_webapp():
             else:
                 st.markdown(f"<div style='text-align: center;'>RMDs: 0</div>", unsafe_allow_html=True)
             if summary['bps_sum'] > 0:
-                st.markdown(f"<div style='text-align: center;'>Basal mutation rate: {summary['bps_sum']:.2e}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: center;'>Base Pair Substitution Rate: {summary['bps_sum']:.2e}</div>", unsafe_allow_html=True)
             else:
-                st.markdown(f"<div style='text-align: center;'>Basal mutation rate: 0</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: center;'>Base Pair Substitution Rate: 0</div>", unsafe_allow_html=True)
 
         tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
         seq_record.refresh_last_shown()
