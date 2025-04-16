@@ -62,7 +62,7 @@ class test_unit_run_complete_wo_errors(unittest.TestCase):
     """Tests to ensure that EFM2 is capable of completing a single example. Fails on error only"""
     def test_unit_run_complete_wo_errors(self):
         print("Test: Run complete without errors")
-        L6_10_plasmid = output_directory_path  + "/../examples/L6-10_plasmid_bba.gb"
+        L6_10_plasmid = output_directory_path  + "/../examples/1_L6-10_plasmid.gb"
         L6_10_plasmid = pathlib.Path(L6_10_plasmid)
         L6_10_plasmid = efmcalculator.ingest.parse_file(L6_10_plasmid)
         inseqs = list()
