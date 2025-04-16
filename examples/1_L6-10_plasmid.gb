@@ -13,50 +13,22 @@ FEATURES             Location/Qualifiers
                      /label="Stem loop"
                      /ApEinfo_revcolor="#b4abac"
                      /ApEinfo_fwdcolor="#b4abac"
-     misc_feature    117..120
-                     /label="DNA: BioBrick prefix"
-                     /ApEinfo_revcolor="#c7b0e3"
-                     /ApEinfo_fwdcolor="#c7b0e3"
      Promoter        139..286
                      /label="Uknown Promoter"
                      /ApEinfo_revcolor="#b1ff67"
                      /ApEinfo_fwdcolor="#b1ff67"
-     Coding Seq      287..353
-                     /label="Leader for KanR"
-                     /ApEinfo_revcolor="#ff9ccd"
-                     /ApEinfo_fwdcolor="#ff9ccd"
-     DNA motif       295..300
-                     /label="Scar Seq"
-                     /ApEinfo_revcolor="#75c6a9"
-                     /ApEinfo_fwdcolor="#75c6a9"
      DNA motif       295..320
                      /label="Inserted Seq"
                      /ApEinfo_revcolor="#84b0dc"
                      /ApEinfo_fwdcolor="#84b0dc"
-     DNA Motif       301..310
-                     /label="To Be Deleted"
-                     /ApEinfo_revcolor="#ffef86"
-                     /ApEinfo_fwdcolor="#ffef86"
-     DNA element     311..320
-                     /label="Scar Seq"
-                     /ApEinfo_revcolor="#75c6a9"
-                     /ApEinfo_fwdcolor="#75c6a9"
      misc_feature    354..1169
-                     /label="KanR "
+                     /label="KanR"
                      /ApEinfo_revcolor="#ff9ccd"
                      /ApEinfo_fwdcolor="#ff9ccd"
-     misc_feature    1186..1190
-                     /label="DNA: BioBrick suffix"
-                     /ApEinfo_revcolor="#d6b295"
-                     /ApEinfo_fwdcolor="#d6b295"
      stem_loop       1191..1262
                      /label="E. coli his operon terminator"
                      /ApEinfo_revcolor="#ffef86"
                      /ApEinfo_fwdcolor="#ffef86"
-     stem_loop       1199..1233
-                     /label="Stem loop"
-                     /ApEinfo_revcolor="#f58a5e"
-                     /ApEinfo_fwdcolor="#f58a5e"
      primer_bind     complement(1326..1345)
                      /label="Verification reverse (VR) primer binding site"
                      /ApEinfo_revcolor="#75c6a9"
@@ -65,10 +37,6 @@ FEATURES             Location/Qualifiers
                      /label="rep (pMB1) misc"
                      /ApEinfo_revcolor="#75c6a9"
                      /ApEinfo_fwdcolor="#75c6a9"
-     misc            1445..1445
-                     /label="ORI misc"
-                     /ApEinfo_revcolor="#f8d3a9"
-                     /ApEinfo_fwdcolor="#f8d3a9"
      stem_loop       2211..2316
                      /label="T0 terminator"
                      /ApEinfo_revcolor="#faac61"

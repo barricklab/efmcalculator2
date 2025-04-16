@@ -280,10 +280,12 @@ def run_webapp():
                 examples_path = "examples/"
                 for infile_loc in glob.glob(os.path.join(examples_path, "*.gb")) + glob.glob(os.path.join(examples_path, "*.fasta")):
                     gbs.append(infile_loc.split("/")[-1])
+                gbs = sorted(gbs)
                 exampleFile = st.radio("Choose example file:", gbs)
                 filepath = Path(examples_path + f"{exampleFile}")
                 if filepath:
                     inSeq = parse_file(filepath, iscircular = True)
+                st.write("Examples run in linear mode")
 
 
         if not inSeq:

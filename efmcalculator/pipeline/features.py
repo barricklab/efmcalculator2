@@ -196,7 +196,7 @@ def sequence_to_features_df(sequence, circular=True):
 
     df = pl.DataFrame([(feature.type,
                         get_feature_bounds(feature.location),
-                        feature.qualifiers.get("label", "")[0],
+                        feature.qualifiers.get("label", ["unlabeled"])[0],
                         seqfeature_hash(feature)) for feature in features],
         schema=['type', 'loc', 'annotations', 'annotationobjects'],
         orient="row")
