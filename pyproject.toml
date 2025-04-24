@@ -26,6 +26,7 @@ dependencies = [
         "pyarrow",
         "bokeh==2.4.3",
         "numpy<2",
+        "streamlit==1.43.0",
         "streamlit-extras",
         "streamlit-aggrid",
         "streamlit_javascript"
