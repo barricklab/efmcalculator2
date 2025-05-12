@@ -4,7 +4,6 @@ from types import NoneType
 
 import polars as pl
 from ..webapp.vis_utils import eval_top
-import streamlit as st
 
 from ..pipeline.features import seqfeature_hash
 

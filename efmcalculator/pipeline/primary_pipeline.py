@@ -8,7 +8,6 @@ import tempfile
 from typing import List
 from ..constants import MIN_SHORT_SEQ_LEN, MAX_SHORT_SEQ_LEN, UNKNOWN_REC_TYPE, SUB_RATE, MIN_SRS_LEN
 from ..utilities import FakeBar
-import streamlit as st
 
 from .subsequence_curation import collect_subsequences, _scan_RMD, highly_mut
 from .detection_strats import _pairwise_slips, _linear_slips

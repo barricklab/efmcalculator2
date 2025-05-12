@@ -2,9 +2,13 @@
 import polars as pl
 from .vis_utils import eval_top
 import streamlit as st
+import logging
+for name, l in logging.root.manager.loggerDict.items():
+    if "streamlit" in name:
+        l.disabled = True
+
 from ..ingest.EFMSequence import sequence_to_features_df
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode
-
 
 class SequenceState():
     """Manages sequence-specific state information for the webapp"""
