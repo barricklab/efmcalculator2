@@ -81,7 +81,7 @@ def main():
         dest="filetype",
         action="store",
         required=False,
-        help="Output filetype for (tablescsv | parquet)",
+        help="Output filetype for tables (csv | parquet)",
     )
     parser.add_argument(
         "-j",

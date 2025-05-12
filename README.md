@@ -6,18 +6,23 @@
 
 
 # Installation
-Efmcalculator can be accessed as a free web tool at ____.
+The EFM Calculator can be accessed as a free web tool at efm2-beta.streamlit.app. It is limited to 50000 bases to ensure the app remains performant for other users.
+It can be installed and run locally below without such base restriction.
 
 ## From pip:
-Run pip install efmcalculator
+`pip install efmcalculator` or clone this repository and `pip install ./` from the root of the repository.
 
 # Command Line Usage
 - -h: help
 - -i: inpath
 - -o: outpath
 - -s: strategy. Either “linear” or “pairwise”
-- -c: circular
+- -c: circular inputs
+- -f: output filetype for tables, either csv or parquet
+- -j: threads
+- -t: tall. Parallelizes across inputs rather than within.
 - -v: verbose. 0 (silent), 1 (basic information), 2 (debug)
+- --summary: saves only aggrigate results, useful for very tall inputs
 
 Print efmcalculator help:
 ```
