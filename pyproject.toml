@@ -5,33 +5,42 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "EFMCalculator"
 authors = [
-    {name = "TBD", email = "tbd@example.utexas.edu"},
+    { name = "croots", email = "croots@utexas.edu" },
+    { name = "coolbears", email = "sld3379@utexas.edu" },
+    { name = "kevin99111", email = "kevinyang260@gmail.com" },
+    { name = "avkatre", email = "avyaykatre@gmail.com" },
 ]
-maintainers = [
-    {name = "Cameron Roots", email = "croots@utexas.edu"}
-]
+maintainers = [{ name = "croots", email = "croots@utexas.edu" }]
 description = "A webapp and command line utility for identifying mutational hotspots"
 # version = Managed by setuptools-scm
 dynamic = ["version"]
 requires-python = ">=3.12"
 readme = "README.md"
-keywords = ["science", "biology", "evolution", "synthetic biology", "synbio", "bioinformatics", "bioengineering"]
+keywords = [
+    "science",
+    "biology",
+    "evolution",
+    "synthetic biology",
+    "synbio",
+    "bioinformatics",
+    "bioengineering",
+]
 dependencies = [
-        "pandas",
-        "polars==1.19",
-        "progress",
-        "biopython",
-        "statsmodels",
-        "rich",
-        "pyarrow",
-        "bokeh==2.4.3",
-        "numpy<2",
-        "streamlit==1.43.0",
-        "streamlit-extras",
-        "streamlit-aggrid",
-        "streamlit_javascript"
-    ]
-license = {text = "GPL-3.0"}
+    "pandas",
+    "polars==1.19",
+    "progress",
+    "biopython",
+    "statsmodels",
+    "rich",
+    "pyarrow",
+    "bokeh==2.4.3",
+    "numpy<2",
+    "streamlit==1.43.0",
+    "streamlit-extras",
+    "streamlit-aggrid",
+    "streamlit_javascript",
+]
+license = { text = "GPL-3.0" }
 
 classifiers = [
     "Development Status :: 3 - Beta",
