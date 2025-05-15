@@ -234,7 +234,7 @@ def main():
     t_min, t_sec = divmod(t_sec, 60)
     t_hour, t_min = divmod(t_min, 60)
     logger.info(
-        f"EFMCalculator completed in {t_hour:02d}h:{t_min:02d}m:{t_sec:02d}s:{t_msec:02d}ms"
+        f"EFMCalculator2 completed in {t_hour:02d}h:{t_min:02d}m:{t_sec:02d}s:{t_msec:02d}ms"
     )
 
 if __name__ == "__main__":
