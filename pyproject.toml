@@ -68,3 +68,5 @@ packages = ["efmcalculator"]
 
 [tool.setuptools_scm]
 version_file = "efmcalculator/_version.py"
+version_scheme = "post-release"
+local_scheme = "no-local-version"
