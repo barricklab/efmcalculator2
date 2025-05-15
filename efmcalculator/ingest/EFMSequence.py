@@ -4,7 +4,6 @@ from types import NoneType
 
 import polars as pl
 from ..webapp.vis_utils import eval_top
-import streamlit as st
 
 from ..pipeline.features import seqfeature_hash
 
@@ -175,10 +174,12 @@ def sequence_to_features_df(sequence, circular=True):
 
     df = pl.DataFrame([(feature.type,
                         get_feature_bounds(feature.location),
-                        feature.qualifiers.get("label", "")[0],
+                        feature.qualifiers.get("label", ["unlabeled"])[0],
                         seqfeature_hash(feature)) for feature in features],
         schema=['type', 'loc', 'annotations', 'annotationobjects'],
         orient="row")
+
+    print(df)
 
     # expand out loc
     df = df.with_columns(pl.col("loc").list.to_struct(fields=['left_bound', 'right_bound'])).unnest("loc")

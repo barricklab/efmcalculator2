@@ -1,0 +1,63 @@
+LOCUS       MN915252                1122 bp ds-DNA     linear       16-APR-2025
+DEFINITION  Escherichia coli strain SPRAI119 B CRISPR1 repeat region.
+ACCESSION   MN915252
+VERSION     MN915252.1
+SOURCE      Escherichia coli
+  ORGANISM  Escherichia coli Bacteria; Pseudomonadati; Pseudomonadota;
+            Gammaproteobacteria; Enterobacterales; Enterobacteriaceae;
+            Escherichia.
+COMMENT     Imported using the Genbank importer. File name:
+            Ecoli_crispr_region.gb ##Assembly-Data-START## Sequencing
+            Technology :: Sanger dideoxy sequencing ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     misc_feature    63..91
+                     /label="Repeat"
+     misc_feature    124..152
+                     /label="Repeat"
+     misc_feature    185..213
+                     /label="Repeat"
+     misc_feature    246..274
+                     /label="Repeat"
+     misc_feature    307..335
+                     /label="Repeat"
+     misc_feature    368..396
+                     /label="Repeat"
+     misc_feature    429..457
+                     /label="Repeat"
+     misc_feature    551..579
+                     /label="Repeat"
+     misc_feature    612..640
+                     /label="Repeat"
+     misc_feature    673..701
+                     /label="Repeat"
+     misc_feature    734..762
+                     /label="Repeat"
+     misc_feature    796..824
+                     /label="Repeat"
+     misc_feature    857..885
+                     /label="Repeat"
+     misc_feature    918..946
+                     /label="Repeat"
+     misc_feature    979..1007
+                     /label="Repeat"
+ORIGIN
+        1 ccggtttatc cccgctggcn cggggaannn aaaaccaaac ttntccataa attccatagc
+       61 cgcggtttat tcccgctggc gcggggaaca cacgcgcgta ccggatcgcg gacaacaaat
+      121 tgccggttta tccccgctgg cgcggggaac acctgaaacc agttggctcg ttgttcttct
+      181 ttggcggttt atccccgctg gcgcggggaa cacgctggtt ttgaatcgtc ccgcgctcga
+      241 gacgccggtt tatccccgct ggcgcgggga acacggcaac ataacgaaca aaatcaacgt
+      301 caacctcggt ttatccccgc tggcgcgggg aacacggaaa ccgccccggc ggtggttagc
+      361 tgtttgccgg tttatccccg ctggcgcggg gaacaccagt ttttgctccc actgcgactg
+      421 gtggaaaacg gtttatcccc gctggcgcgg ggaacaccaa accggcctca attgcggccg
+      481 cgcgggccgc ggtttatccc cgctggcgcg gggaacacgg tttcctgatc ctgcgcggtg
+      541 ctgatgggcg cggtttatcc ccgctggcgc ggggaacaca tgaagtttat agcgccaaaa
+      601 ttgacgaaag acggtttatc cccgctggcg cggggaacac tttccgcctg cccacttcaa
+      661 aaacggtctg atcggtttat ccccgctggc gcggggaaca cggcgataca agcacccgat
+      721 taccggcaaa tttcggttta tccccgctgg cgcggggaac acgcgtgcaa accgcgatcc
+      781 gttctggtgc aaaaacggtt tatccccgct ggcgcgggga acacagcaac gcgtaaacca
+      841 gatcgccgat cgtggccggt ttatccccgc tggcgcgggg aacacgcagt cgctgctggt
+      901 agccgaacag ggtagaaagg tttatccccg ctggcgcggg gaacactgtc gcctacaata
+      961 aattacagcg tagtgattcg gtttatcccc gctggcgcgg ggaacacact aagcatacat
+     1021 atctgttttt aaacaaattt attccacatc aacaatctac caactaaatt caaacatttc
+     1081 cttattttta aagaacgtct aacttattga tatcaacaga ag
+//

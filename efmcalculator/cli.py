@@ -82,7 +82,25 @@ def main():
         dest="filetype",
         action="store",
         required=False,
-        help="csv | parquet",
+        help="Output filetype for tables (csv | parquet)",
+    )
+    parser.add_argument(
+        "-j",
+        "--maxthreads",
+        dest="threads",
+        action="store",
+        type=int,
+        required=False,
+        help="Maximum number of threads (>0)",
+    )
+    parser.add_argument(
+        "-t",
+        "--tall",
+        dest="tall",
+        action="store_true",
+        required=False,
+        help="Parallelize across samples rather than within samples",
+
     )
     parser.add_argument(
         "-v",

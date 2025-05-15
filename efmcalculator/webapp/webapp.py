@@ -73,27 +73,6 @@ def download_data(): # https://gist.github.com/snehankekre/2dcce9fb42b2f7e1742de
         height=0,
     )
 
-def check_password():
-    """Returns `True` if the user had the correct password."""
-    def password_entered():
-        """Checks whether a password entered by the user is correct."""
-        if hmac.compare_digest(st.session_state.get("password", ""), st.secrets["password"]):
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Don't store the password.
-        else:
-            st.session_state["password_correct"] = False
-
-    # Return True if the password is validated.
-    if st.session_state.get("password_correct", False):
-        return True
-
-    # Show input for password.
-    st.text_input(
-        "Password", type="password", on_change=password_entered, key="password"
-    )
-    if "password_correct" in st.session_state:
-        st.error("😕 Password incorrect")
-    return False
 
 def check_feats_look_circular(seq):
     """Checks to see if features look circular."""
@@ -115,10 +94,6 @@ def check_feats_look_circular(seq):
         return False
 
 def run_webapp():
-
-    if not check_password():
-        st.stop()  # Do not continue if check_password is not True.
-        pass
 
     st._config.set_option(f"theme.base", "light")
     st.set_page_config(
@@ -280,10 +255,12 @@ def run_webapp():
                 examples_path = "examples/"
                 for infile_loc in glob.glob(os.path.join(examples_path, "*.gb")) + glob.glob(os.path.join(examples_path, "*.fasta")):
                     gbs.append(infile_loc.split("/")[-1])
+                gbs = sorted(gbs)
                 exampleFile = st.radio("Choose example file:", gbs)
                 filepath = Path(examples_path + f"{exampleFile}")
                 if filepath:
                     inSeq = parse_file(filepath, iscircular = True)
+                st.write("Examples run in linear mode")
 
 
         if not inSeq:
@@ -331,7 +308,11 @@ def run_webapp():
             feature_filter = []
         seq_record.set_filters(feature_filter)
 
-        results = [_, seq_record._filtered_srss, seq_record._filtered_rmds]
+        if not st.session_state.get("last_filter", []) == feature_filter:
+            seq_record.reset_selected_predictions()
+        st.session_state["last_filter"] = feature_filter
+
+        results = [seq_record._filtered_ssrs, seq_record._filtered_srss, seq_record._filtered_rmds]
 
         if feature_filter:
             sequence_of_interest = seq_record.annotation_coverage(feature_filter)
@@ -359,9 +340,9 @@ def run_webapp():
             else:
                 st.markdown(f"<div style='text-align: center;'>RMDs: 0</div>", unsafe_allow_html=True)
             if summary['bps_sum'] > 0:
-                st.markdown(f"<div style='text-align: center;'>Basal mutation rate: {summary['bps_sum']:.2e}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: center;'>Base Pair Substitution Rate: {summary['bps_sum']:.2e}</div>", unsafe_allow_html=True)
             else:
-                st.markdown(f"<div style='text-align: center;'>Basal mutation rate: 0</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: center;'>Base Pair Substitution Rate: 0</div>", unsafe_allow_html=True)
 
         tab1, tab2, tab3, tab4 = st.tabs(["Top", "SSR", "SRS", "RMD"])
         seq_record.refresh_last_shown()
