@@ -1,1 +1,1 @@
-efmcalculator @ git+https://github.com/barricklab/efmcalculator2@production
+efmcalculator2 @ git+https://github.com/barricklab/efmcalculator2@production
