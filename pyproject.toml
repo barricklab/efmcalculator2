@@ -55,9 +55,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/barricklab/efmcalculator2"
-Documentation = "https://github.com/barricklab/efmcalculator2"
-Issues = "https://github.com/barricklab/efmcalculator2/issues"
+Homepage = "https://github.com/barricklab/efm-calculator2"
+Documentation = "https://github.com/barricklab/efmc-alculator2"
+Issues = "https://github.com/barricklab/efm-calculator2/issues"
 
 [project.scripts]
 efmcalculator = "efmcalculator.cli:main"
