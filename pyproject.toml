@@ -3,7 +3,7 @@ requires = ["setuptools>=64", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "EFMCalculator"
+name = "EFMCalculator2"
 authors = [
     { name = "croots", email = "croots@utexas.edu" },
     { name = "coolbears", email = "sld3379@utexas.edu" },
@@ -43,7 +43,7 @@ dependencies = [
 license = { text = "GPL-3.0" }
 
 classifiers = [
-    "Development Status :: 3 - Beta",
+    "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Environment :: Web Environment",
     "Operating System :: OS Independent",
@@ -60,11 +60,16 @@ Documentation = "https://github.com/barricklab/efmcalculator2"
 Issues = "https://github.com/barricklab/efmcalculator2/issues"
 
 [project.scripts]
-efmcalculator = "efmcalculator.cli:main"
-efmcalculator-webapp = "efmcalculator.webapp.bootstrap_streamlit:bootstrap_streamlit"
+efmcalculator2 = "efmcalculator2.cli:main"
+efmcalculator2-webapp = "efmcalculator2.webapp.bootstrap_streamlit:bootstrap_streamlit"
+efmcalculator = "efmcalculator2.cli:main"
+efmcalculator-webapp = "efmcalculator2.webapp.bootstrap_streamlit:bootstrap_streamlit"
+
 
 [tool.setuptools]
-packages = ["efmcalculator"]
+packages = ["efmcalculator2"]
 
 [tool.setuptools_scm]
-version_file = "efmcalculator/_version.py"
+version_file = "efmcalculator2/_version.py"
+version_scheme = "post-release"
+local_scheme = "no-local-version"

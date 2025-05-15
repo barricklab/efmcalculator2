@@ -28,10 +28,10 @@ jobs:
         with:
           python-version: 3.12
 
-      - name: install efmcalculator
+      - name: install efmcalculator2
         run: |
           pip install ./
 
-      - name: test efmcalculator
+      - name: test efmcalculator2
         run: |
           python -m unittest

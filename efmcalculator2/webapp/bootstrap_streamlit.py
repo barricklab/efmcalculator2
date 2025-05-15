@@ -1,6 +1,6 @@
 import subprocess
 
-from efmcalculator import run_webapp
+from efmcalculator2 import run_webapp
 
 
 def bootstrap_streamlit():
