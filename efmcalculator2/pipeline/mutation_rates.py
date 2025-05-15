@@ -4,7 +4,7 @@ import sys
 from ..constants import SUB_RATE
 
 try:
-    gam_result_filepath = filepath = os.path.dirname(sys.modules['efmcalculator'].__file__)+'/data/gam_df.csv'
+    gam_result_filepath = filepath = os.path.dirname(sys.modules['efmcalculator2'].__file__)+'/data/gam_df.csv'
 except e:
     print("Error while loading gam results")
     exit(1)
