@@ -35,7 +35,7 @@ def ssr_mut_rate(repeat_count, unit_length, org):
     return mut_rate
 
 
-def ssr_mut_rate_vector(ssr_df, org="ecoli"):
+def ssr_mut_rate_vector(ssr_df, org="reca"):
     if org == "ecoli" or org == "reca":
         ssr_df = (
             ssr_df.lazy().with_columns(
@@ -92,7 +92,9 @@ def rmd_mut_rate_vector(rmd_df, org="reca"):
         rmd_df = (
             rmd_df.lazy().with_columns(
                 mutation_rate=(
-                    ((8.8 + pl.col("distance")) ** (-29.0 / pl.col("repeat_len")))
+                    # EFM 1 has 8.8 + pl.col("distance"). However, from Oliveira 2008, it looks like the correct value is 5.8. 
+                    # Likely a typo made in EFM 1.
+                    ((5.8 + pl.col("distance")) ** (-29.0 / pl.col("repeat_len")))
                     * (pl.col("repeat_len") / (1 + 1465.6 * pl.col("repeat_len")))
                 )
             )

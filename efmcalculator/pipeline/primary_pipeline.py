@@ -59,77 +59,80 @@ def predict(seq: str, strategy: str, isCircular: bool) -> List[pl.DataFrame]:
     else:
         raise ValueError("Invalid strategy")
 
-    if "position" in repeat_df:
-        repeat_df = repeat_df.drop("position")
-    if "position_corrected" in repeat_df:
-        repeat_df = repeat_df.drop("position_corrected")
-    repeat_df = repeat_df.explode("pairings")
-    # Get length of each repeat
-    repeat_df = repeat_df.with_columns(
-        pl.col("repeat").str.len_chars().alias("repeat_len").cast(pl.Int32)
-    )
+
+
+    if repeat_df[0]["repeat"][0] != "too mutagenic":
+        if "position" in repeat_df:
+            repeat_df = repeat_df.drop("position")
+        if "position_corrected" in repeat_df:
+            repeat_df = repeat_df.drop("position_corrected")
+        repeat_df = repeat_df.explode("pairings")
+        # Get length of each repeat
+        repeat_df = repeat_df.with_columns(
+            pl.col("repeat").str.len_chars().alias("repeat_len").cast(pl.Int32)
+        )
 
 
 
 
 
-    # Upgrade long SRSs to RMDs
-    repeat_df = _scan_RMD(repeat_df, seq, seq_len, isCircular)
+        # Upgrade long SRSs to RMDs
+        repeat_df = _scan_RMD(repeat_df, seq, seq_len, isCircular)
 
-    # Calculate Distances
-    repeat_df = _calculate_distances(repeat_df, seq_len, isCircular)
-    repeat_df = repeat_df.filter(pl.col("distance") >= 0)
-    repeat_df = repeat_df.unique()
+        # Calculate Distances
+        repeat_df = _calculate_distances(repeat_df, seq_len, isCircular)
+        repeat_df = repeat_df.filter(pl.col("distance") >= 0)
+        repeat_df = repeat_df.unique()
 
-    # Categorize positions
-    repeat_df = _categorize_efm(repeat_df)
-    # Collapse SSRs down
-    ssr_df = _collapse_ssr(repeat_df).select(
-        pl.col(["repeat", "repeat_len", "start", "count"])
-    )
+        # Categorize positions
+        repeat_df = _categorize_efm(repeat_df)
+        # Collapse SSRs down
+        ssr_df = _collapse_ssr(repeat_df).select(
+            pl.col(["repeat", "repeat_len", "start", "count"])
+        )
 
-    # Process and Split SRS and RMD
+        # Process and Split SRS and RMD
 
-    repeat_df = repeat_df.lazy().filter(pl.col("category") != "SSR").collect()
-
-    # Remove SRS that are shorter than min_ssr_length
-    repeat_df.filter(pl.col("repeat_len") >= MIN_SRS_LEN)
-
-    if len(repeat_df) > 0:
-        repeat_df = (
-            repeat_df.lazy()
-            .select(
-                pl.col(["repeat", "repeat_len", "pairings", "distance", "category"])
-            )
-            .collect()
-            .rechunk()  # Weird issue with invalid pairing state
-            .lazy()
-            .with_columns(
-                pl.col("pairings").list.to_struct(
-                    fields=[
-                        "first_repeat",
-                        "second_repeat",
-                    ]
+        repeat_df = repeat_df.lazy().filter(pl.col("category") != "SSR").collect()
+        if len(repeat_df) > 0:
+            repeat_df = (
+                repeat_df.lazy()
+                .select(
+                    pl.col(["repeat", "repeat_len", "pairings", "distance", "category"])
                 )
-            )
-            .unnest("pairings")
-        ).collect()
-    else:
-        schema = {
-            "repeat": pl.Utf8,
-            "repeat_len": pl.Int32,
-            "first_repeat": pl.Int32,
-            "second_repeat": pl.Int32,
-            "distance": pl.Int32,
-            "category": pl.Categorical,
-        }
-        repeat_df = pl.DataFrame(schema=schema)
+                .collect()
+                .rechunk()  # Weird issue with invalid pairing state
+                .lazy()
+                .with_columns(
+                    pl.col("pairings").list.to_struct(
+                        fields=[
+                            "first_repeat",
+                            "second_repeat",
+                        ]
+                    )
+                )
+                .unnest("pairings")
+            ).collect()
+        else:
+            schema = {
+                "repeat": pl.Utf8,
+                "repeat_len": pl.Int32,
+                "first_repeat": pl.Int32,
+                "second_repeat": pl.Int32,
+                "distance": pl.Int32,
+                "category": pl.Categorical,
+            }
+            repeat_df = pl.DataFrame(schema=schema)
 
-    srs_df = repeat_df.filter(pl.col("category") == "SRS").select(
-        pl.col(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance"])
-    )
-    rmd_df = repeat_df.filter(pl.col("category") == "RMD").select(
-        pl.col(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance"])
-    )
+        srs_df = repeat_df.filter(pl.col("category") == "SRS").select(
+            pl.col(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance"])
+        )
+        rmd_df = repeat_df.filter(pl.col("category") == "RMD").select(
+            pl.col(["repeat", "repeat_len", "first_repeat", "second_repeat", "distance"])
+        )
+    else:
+        ssr_df = pl.DataFrame({"repeat": [["too mutagenic"]], "repeat_len": [0], "start": [0], "count": [0]})
+        srs_df = pl.DataFrame({"repeat": [["too mutagenic"]], "repeat_len": [0], "first_repeat": [0], "second_repeat": [0], "distance": [0]})
+        rmd_df = pl.DataFrame({"repeat": [["too mutagenic"]], "repeat_len": [0], "first_repeat": [0], "second_repeat": [0], "distance": [0]})
 
     return [ssr_df, srs_df, rmd_df]
