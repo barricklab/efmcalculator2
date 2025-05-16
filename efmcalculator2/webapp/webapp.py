@@ -167,11 +167,11 @@ def run_webapp():
         )
         try:
             from .._version import version_tuple
-            st.markdown(f"Version {version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]} ([{str(version_tuple[4])[1:8]}](https://www.github.com/barricklab/efm-calculator2/commit/{str(version_tuple[4]).split('.')[0][1:8]}))")
+            st.markdown(f"Version {version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]} ([{str(version_tuple[4])[1:8]}](https://www.github.com/barricklab/efmcalculator2/commit/{str(version_tuple[4]).split('.')[0][1:8]}))")
         except:
             pass
     with colbadge:
-        st.html(r'<a href="https://github.com/barricklab/efm-calculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/efm-calculator2?style=social&label=barricklab%2Fefm-calculator2"></a>')
+        st.html(r'<a href="https://github.com/barricklab/efmcalculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/efmcalculator2?style=social&label=barricklab%2Fefmcalculator2"></a>')
 
 
     col1,col2,col3 = st.columns([2,1,2])
