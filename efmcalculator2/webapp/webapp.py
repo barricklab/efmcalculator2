@@ -38,10 +38,9 @@ import pandas as pd
 import base64
 import json
 
-
 @st.fragment
 def downloadfragment():
-    def download_data(tempdir): # https://gist.github.com/snehankekre/2dcce9fb42b2f7e1742de7431326b263
+    def download_data(tempdir): 
         outputdir = tempdir + "/results"
         os.mkdir(outputdir)
         statemachine = st.session_state["statemachine"]
@@ -286,7 +285,7 @@ def run_webapp():
 
         with col6:
             downloadfragment()
-
+      
         figcontainer = st.container(height=340)
 
         if unique_features:
@@ -356,7 +355,6 @@ def run_webapp():
             fig = bokeh_plot(seq_record)
             sleep(0.1) # Helps to avoid two plots displayed
             st.bokeh_chart(fig, use_container_width=True)
-
 
     add_vertical_space(4)
     seq_record.refreshed = False
