@@ -38,40 +38,34 @@ import pandas as pd
 import base64
 import json
 
-
-
-
-def download_data(): # https://gist.github.com/snehankekre/2dcce9fb42b2f7e1742de7431326b263
-    with TemporaryDirectory() as tempdir:
+@st.fragment
+def downloadfragment():
+    def download_data(tempdir): 
         outputdir = tempdir + "/results"
         os.mkdir(outputdir)
         statemachine = st.session_state["statemachine"]
         filetype = st.session_state["dlft"]
         statemachine.save_results(outputdir, filetype=filetype)
-        filestream=io.BytesIO() # https://stackoverflow.com/questions/75304410/streamlit-download-button-not-working-when-trying-to-download-files-as-zip
-        with zipfile.ZipFile(filestream, mode='w', compression=zipfile.ZIP_DEFLATED) as zipf:
+        with zipfile.ZipFile(f"{outputdir}/results.zip", mode='w', compression=zipfile.ZIP_DEFLATED) as zipf:
             for root, dirs, files in os.walk(outputdir):
                     for file in files:
                         zipf.write(os.path.join(root, file),
                                     os.path.relpath(os.path.join(root, file),
                                                     os.path.join(outputdir, '..')))
-        b64 = base64.b64encode(filestream.getvalue()).decode()
+        return f"{outputdir}/results.zip"
 
-    dl_link = f"""
-    <html>
-    <head>
-    <title>Start Auto Download file</title>
-    <script src="http://code.jquery.com/jquery-3.2.1.min.js"></script>
-    <script>
-    $('<a href="data:application/zip;base64,{b64}" download="results.zip">')[0].click()
-    </script>
-    </head>
-    </html>
-    """
-    components.html(
-        dl_link,
-        height=0,
-    )
+
+    with TemporaryDirectory() as tempdir:
+        if not st.session_state.get("dlft"):
+            st.session_state["dlft"] = "csv"
+        with open(download_data(tempdir), "rb") as fp:
+            st.download_button(label = "Download",
+                data = fp,
+                mime="application/zip",
+                use_container_width=True,
+                file_name="results.zip")
+        st.selectbox("Download File Format",["csv", "parquet"], key="dlft",
+            help="CSV files are easily usable in most spreadsheat programs but lack annotation information. Parquet files require specialized tooling but include annotation metadata")
 
 
 def check_feats_look_circular(seq):
@@ -167,11 +161,11 @@ def run_webapp():
         )
         try:
             from .._version import version_tuple
-            st.markdown(f"Version {version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]} ([{str(version_tuple[4])[1:8]}](https://www.github.com/barricklab/efm-calculator2/commit/{str(version_tuple[4]).split('.')[0][1:8]}))")
+            st.markdown(f"Version {version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]} ([{str(version_tuple[4])[1:8]}](https://www.github.com/barricklab/efmcalculator2/commit/{str(version_tuple[4]).split('.')[0][1:8]}))")
         except:
             pass
     with colbadge:
-        st.html(r'<a href="https://github.com/barricklab/efm-calculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/efm-calculator2?style=social&label=barricklab%2Fefm-calculator2"></a>')
+        st.html(r'<a href="https://github.com/barricklab/efmcalculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/efmcalculator2?style=social&label=barricklab%2Fefmcalculator2"></a>')
 
 
     col1,col2,col3 = st.columns([2,1,2])
@@ -283,21 +277,15 @@ def run_webapp():
             selectedhash = statemachine.named_sequences[selected_sequence]
             seq_record = statemachine.sequencestates[selectedhash]
 
-        with col6:
-                with TemporaryDirectory() as tempdir:
-                    submit = st.button("Download results",
-                                       on_click=download_data,
-                                       use_container_width=True,
-                                       type="primary")
-                st.selectbox("Download File Format",["csv", "parquet"], key="dlft",
-                    help="CSV files are easily usable in most spreadsheat programs but lack annotation information. Parquet files require specialized tooling but include annotation metadata")
-
         unique_features = seq_record.unique_annotations
 
         if not seq_record.predicted:
             seq_record.efmsequence.call_predictions(strategy="pairwise")
             seq_record.post_predict_processing()
 
+        with col6:
+            downloadfragment()
+      
         figcontainer = st.container(height=340)
 
         if unique_features:
