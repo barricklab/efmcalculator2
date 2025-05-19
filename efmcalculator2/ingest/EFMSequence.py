@@ -179,8 +179,6 @@ def sequence_to_features_df(sequence, circular=True):
         schema=['type', 'loc', 'annotations', 'annotationobjects'],
         orient="row")
 
-    print(df)
-
     # expand out loc
     df = df.with_columns(pl.col("loc").list.to_struct(fields=['left_bound', 'right_bound'])).unnest("loc")
     df = df.with_columns(
