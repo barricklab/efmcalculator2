@@ -82,7 +82,14 @@ class StateMachine:
             self.named_sequences[sequence_name] = seqhash
 
     def save_results(self, folderpath, prediction_style = None, filetype = "parquet"):
-        output = pl.DataFrame(schema={"name": pl.Utf8, "rmd_mut": pl.Float64, "srs_mut": pl.Float64, "ssr_mut": pl.Float64, "base_rate": pl.Float64, "rip_score": pl.Float64})
+        summary_df = pl.DataFrame([
+                    pl.Series("name", [], dtype=pl.String),
+                    pl.Series("ssr_sum", [], dtype=pl.Float64),
+                    pl.Series("srs_sum", [], dtype=pl.Float64),
+                    pl.Series("rmd_sum", [], dtype=pl.Float64),
+                    pl.Series("bps_sum", [], dtype=pl.Float64),
+                    pl.Series("rip", [], dtype=pl.Float64),
+                ])        
         for seqname in self.named_sequences:
             seqhash = self.named_sequences[seqname]
             seqobj = self.user_sequences[seqhash]
@@ -96,14 +103,19 @@ class StateMachine:
             #ssrs = seqobj.ssrs.select(pl.exclude(["predid", "annotationobjects"]))
             #srss = seqobj.srss.select(pl.exclude(["predid", "annotationobjects"]))
             #rmds = seqobj.rmds.select(pl.exclude(["predid", "annotationobjects"]))
-            base_rate = float(len(seqobj)) * float(SUB_RATE)
-            ssr_mut = seqobj.ssrs.select(pl.exclude(["predid", "annotationobjects"])).get_column("mutation_rate").sum()
-            srs_mut = seqobj.srss.select(pl.exclude(["predid", "annotationobjects"])).get_column("mutation_rate").sum()
-            rmd_mut = seqobj.rmds.select(pl.exclude(["predid", "annotationobjects"])).get_column("mutation_rate").sum()
-            r_sum = float(ssr_mut + srs_mut + rmd_mut  + base_rate)
-            rip = float(r_sum) / float(base_rate)
-            new_row = pl.DataFrame({"name": [f"{seqname}"], "rmd_mut": [rmd_mut], "srs_mut": [srs_mut], "ssr_mut": [ssr_mut], "base_rate": [base_rate], "rip_score": [rip]})
-            output = pl.concat([output, new_row], how="vertical")
+            scores = rip_score(ssr_df=seqobj.ssrs, srs_df=seqobj.srss,
+                                rmd_df=seqobj.rmds, sequence_length=len(seqobj))
+            scores['name'] = seqname
+            reorder = ['name', 'ssr_sum', 'srs_sum', 'rmd_sum', 'bps_sum', 'rip']
+            scores = {k: scores[k] for k in reorder}
+            sample_df = pl.DataFrame(scores).cast({
+                'ssr_sum': pl.Float64,
+                'srs_sum': pl.Float64,
+                'rmd_sum': pl.Float64,
+                'bps_sum': pl.Float64,
+                'rip': pl.Float64
+            })
+            summary_df.extend(sample_df)
 
             
 
@@ -123,4 +135,4 @@ class StateMachine:
             #    rmds.select(pl.exclude("annotations")).write_csv(os.path.join(folder, "rmds.csv"))
             #else:
             #    raise ValueError("Invalid filetype")
-        return(output)
+        return(summary_df)

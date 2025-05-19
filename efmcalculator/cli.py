@@ -204,7 +204,7 @@ def main():
         bar.next()
 
     output = statemachine.save_results(args.outpath, filetype=args.filetype)
-    output.write_csv("pdcaf_test.csv")
+    output.write_csv("igem_1_rip_efm2_modified.csv")
 
 
     # Done ------------------------------
