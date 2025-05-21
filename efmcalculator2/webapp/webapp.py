@@ -148,6 +148,11 @@ def run_webapp():
            }
     </style>""", unsafe_allow_html=True)
 
+    # Initialize session state
+    if not st.session_state.get("statemachine", False):
+        st.session_state["statemachine"] = StateMachine()
+    statemachine = st.session_state["statemachine"]
+
     collogo,_,colbadge = st.columns([2,1,2], vertical_alignment="bottom")
     with collogo:
         st.markdown(
@@ -187,13 +192,9 @@ def run_webapp():
         st.write("Jack, B. R., Leonard, S. P., Mishler, D. M., Renda, B. A., Leon, D., Suárez, G. A., & Barrick, J. E. (2015). Predicting the Genetic Stability of Engineered DNA Sequences with the EFM Calculator. ACS Synthetic Biology, 4(8), 939–943. https://doi.org/10.1021/acssynbio.5b00068")
 
 
-    # Initialize session state
-    if not st.session_state.get("statemachine", False):
-        st.session_state["statemachine"] = StateMachine()
-    statemachine = st.session_state["statemachine"]
-
     with TemporaryDirectory() as tempdir:
         is_circular = True
+        field = None
         if option == upload_option:
             with col1:
                 is_circular = st.checkbox(label="Circular Prediction", value=True)
@@ -237,6 +238,7 @@ def run_webapp():
             field = field.replace("\n", "")
             field = field.replace(" ", "")
             field = "".join([i for i in field if not i.isdigit()])
+            last_text_input = st.session_state.get("last_text_input", "")
             if field:
                 record = SeqRecord(Seq(field), id="sequence")
                 originhash = hashlib.md5(("string" + field).encode())
@@ -263,7 +265,14 @@ def run_webapp():
         for seq in inSeq:
             seq.oneindex = True
 
-        statemachine.import_sequences(inSeq, max_size=50000, webapp = True)
+        print(f"{option == enter_option} and {field == st.session_state.get("last_text_input", "")}")
+        print(f"{field=}, {st.session_state.get("last_text_input", "")=}")
+        if option == enter_option and field == st.session_state.get("last_text_input", ""):
+            pass
+        else:
+            print("reimporting")
+            statemachine.import_sequences(inSeq, max_size=50000, webapp = True)
+        st.session_state["last_text_input"] = field
 
         if len(inSeq) == 1:
             disable_dropdown = True
@@ -281,6 +290,8 @@ def run_webapp():
             seq_record = statemachine.sequencestates[selectedhash]
 
         unique_features = seq_record.unique_annotations
+
+        print(seq_record)
 
         if not seq_record.predicted:
             seq_record.efmsequence.call_predictions(strategy="pairwise")
