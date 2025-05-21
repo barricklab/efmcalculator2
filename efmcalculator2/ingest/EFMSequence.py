@@ -12,7 +12,7 @@ from ..pipeline.post_process import post_process
 
 class EFMSequence(SeqRecord):
     """SeqRecord child class with equality handling and prediction methods"""
-    def __init__(self, seqrecord: SeqRecord, is_circular = False, originhash = None):
+    def __init__(self, seqrecord: SeqRecord, is_circular = False, originhash = None, oneindex = False):
         super().__init__(seq=seqrecord.seq,
             id=seqrecord.id,
             name=seqrecord.name,
@@ -42,6 +42,8 @@ class EFMSequence(SeqRecord):
 
         self._plotted_predictions = []
         self._ssr_webapp_state = None
+
+        self.oneindex = oneindex
 
 
     @property
@@ -101,6 +103,21 @@ class EFMSequence(SeqRecord):
         self._rmds = rmd_df.with_columns(
             pl.concat_str(pl.col(['repeat', 'repeat_len', "first_repeat", "second_repeat", "distance", "mutation_rate"])).hash().cast(pl.String).alias('predid')
         )
+
+        if self.oneindex:
+            self._ssrs = self._ssrs.with_columns(
+                pl.col('start') + 1
+            )
+            self._srss = self._srss.with_columns(
+                pl.col('first_repeat') + 1,
+                pl.col('second_repeat') + 1
+            )
+            self._rmds = self._rmds.with_columns(
+                pl.col('first_repeat') + 1,
+                pl.col('second_repeat') + 1,
+            )
+
+
         self._top = eval_top(self._ssrs, self._srss, self._rmds)
         self._predicted = True
 

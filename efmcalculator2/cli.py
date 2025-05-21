@@ -201,6 +201,8 @@ def main():
 
     # Unpack sequences into list ---------
     sequences = list(sequences)
+    for seq in sequences:
+        seq.oneindex = True
 
     # Run EFM Calculator ----------------
     statemachine = StateMachine()

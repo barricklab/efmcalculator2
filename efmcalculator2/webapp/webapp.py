@@ -40,7 +40,7 @@ import json
 
 @st.fragment
 def downloadfragment():
-    def download_data(tempdir): 
+    def download_data(tempdir):
         outputdir = tempdir + "/results"
         os.mkdir(outputdir)
         statemachine = st.session_state["statemachine"]
@@ -260,6 +260,9 @@ def run_webapp():
         if not inSeq:
             st.stop()
 
+        for seq in inSeq:
+            seq.oneindex = True
+
         statemachine.import_sequences(inSeq, max_size=50000, webapp = True)
 
         if len(inSeq) == 1:
@@ -285,7 +288,7 @@ def run_webapp():
 
         with col6:
             downloadfragment()
-      
+
         figcontainer = st.container(height=340)
 
         if unique_features:
