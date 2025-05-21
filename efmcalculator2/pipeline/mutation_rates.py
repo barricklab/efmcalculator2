@@ -150,8 +150,9 @@ def rip_score(ssr_df, srs_df, rmd_df, sequence_length):
     # Set the maximum rate sum to 1 for now.
     if r_sum > 1:
         r_sum = float(1)
-    rel_rate = float(r_sum) / float(base_rate)
     '''
+
+    rel_rate = float(r_sum) / float(base_rate)
 
     return {
         "rip": rel_rate,
