@@ -160,7 +160,7 @@ class StateMachine:
             srss = seqobj.srss.select(pl.exclude(["predid", "annotationobjects"]))
             rmds = seqobj.rmds.select(pl.exclude(["predid", "annotationobjects"]))
 
-            folder = os.path.join(folderpath, sanitize_filename("{seqname}"))
+            folder = os.path.join(folderpath, sanitize_filename(f"{seqname}"))
             path = pathlib.Path(folder)
             path.mkdir(parents=True)
             if filetype == "parquet":

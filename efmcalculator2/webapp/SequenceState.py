@@ -34,6 +34,8 @@ class SequenceState():
         self.srskey = f"srstable{self.counter}"
         self.rmdkey = f"rmdtable{self.counter}"
 
+        self._last_filters = []
+
     # Data from upstream EFMSequence
 
     @property
@@ -66,7 +68,6 @@ class SequenceState():
         self._filtered_srss = None
         self._filtered_rmds = None
         self._filtered_top = None
-        self._last_filters = []
         self.set_filters(None)
 
         self.last_top_selections = None
@@ -415,6 +416,8 @@ class SequenceState():
         state = callbackobj.grid_response["gridState"]
         new_selection = state.get('rowSelection', [])
 
+        print(f"Before: {self.last_rmd_selections}, {new_selection}")
+
         if self.last_rmd_selections is not None and self.last_rmd_selections == new_selection:
             return
         if self.last_rmd_selections is None:
@@ -422,16 +425,17 @@ class SequenceState():
         if self.last_rmd_selections == new_selection:
             return
 
+
         self.counter += 1
         self.topkey = f"toptable{self.counter}"
 
         to_drop = [int(x) for x in self.last_rmd_selections if x not in new_selection]
         to_add = [int(x) for x in new_selection if x not in self.last_rmd_selections]
 
-
         self._update_general_table(self._filtered_rmds, to_drop, to_add)
 
         self.last_rmd_selections = new_selection
+        print(f"After: {self.last_rmd_selections}, {new_selection}")
 
 
     def annotation_coverage(self, annotations):

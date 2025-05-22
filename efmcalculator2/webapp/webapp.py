@@ -1,3 +1,4 @@
+from os.path import normpath
 import streamlit as st
 import subprocess
 import io
@@ -45,7 +46,7 @@ def downloadfragment():
         os.mkdir(outputdir)
         statemachine = st.session_state["statemachine"]
         filetype = st.session_state["dlft"]
-        statemachine.save_results(outputdir, filetype=filetype)
+        statemachine.save_results(outputdir, filetype=filetype, prediction_style="pairwise")
         with zipfile.ZipFile(f"{outputdir}/results.zip", mode='w', compression=zipfile.ZIP_DEFLATED) as zipf:
             for root, dirs, files in os.walk(outputdir):
                     for file in files:
@@ -226,6 +227,8 @@ def run_webapp():
                     inSeq.extend(file_sequences)
 
                 st.success("Files uploaded.")
+            else:
+                st.session_state["statemachine"] = StateMachine()
 
         elif option == enter_option:
             with col1:
@@ -244,6 +247,8 @@ def run_webapp():
                 originhash = hashlib.md5(("string" + field).encode())
                 record = EFMSequence(record, is_circular, originhash)
                 inSeq = [record]
+            else:
+                st.session_state["statemachine"] = StateMachine()
 
         elif option == example_option:
             with col1:
@@ -272,6 +277,12 @@ def run_webapp():
             statemachine.import_sequences(inSeq, max_size=50000, webapp = True)
         st.session_state["last_text_input"] = field
 
+        for seq in statemachine.sequencestates.values():
+            if not seq.predicted:
+                seq.efmsequence.call_predictions(strategy="pairwise")
+                seq.post_predict_processing()
+                seq.reset_selected_predictions()
+
         if len(inSeq) == 1:
             disable_dropdown = True
         else:
@@ -288,10 +299,6 @@ def run_webapp():
             seq_record = statemachine.sequencestates[selectedhash]
 
         unique_features = seq_record.unique_annotations
-
-        if not seq_record.predicted:
-            seq_record.efmsequence.call_predictions(strategy="pairwise")
-            seq_record.post_predict_processing()
 
         with col6:
             downloadfragment()
