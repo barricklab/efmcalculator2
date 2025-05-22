@@ -265,12 +265,10 @@ def run_webapp():
         for seq in inSeq:
             seq.oneindex = True
 
-        print(f"{option == enter_option} and {field == st.session_state.get("last_text_input", "")}")
-        print(f"{field=}, {st.session_state.get("last_text_input", "")=}")
+
         if option == enter_option and field == st.session_state.get("last_text_input", ""):
             pass
         else:
-            print("reimporting")
             statemachine.import_sequences(inSeq, max_size=50000, webapp = True)
         st.session_state["last_text_input"] = field
 
@@ -290,8 +288,6 @@ def run_webapp():
             seq_record = statemachine.sequencestates[selectedhash]
 
         unique_features = seq_record.unique_annotations
-
-        print(seq_record)
 
         if not seq_record.predicted:
             seq_record.efmsequence.call_predictions(strategy="pairwise")

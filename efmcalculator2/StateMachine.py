@@ -10,6 +10,7 @@ import threading
 import multiprocessing as mp
 from .pipeline.mutation_rates import rip_score
 from .webapp.SequenceState import SequenceState
+from .utilities import sanitize_filename
 
 class ThreadSafeBar(Bar):
     def __init__(self, *args, **kwargs):
@@ -78,6 +79,7 @@ class StateMachine:
             self.named_sequences[sequence_name] = seqhash
 
     def predict_tall(self, outpath, strategy, filetype, threads, keepmem=False, summaryonly=False):
+        outpath = sanitize_filename(outpath)
         samples = []
         for seqname in self.named_sequences:
             seqhash = self.named_sequences[seqname]
@@ -117,6 +119,7 @@ class StateMachine:
                 summary_df.write_csv(summarypath)
 
     def save_results(self, folderpath, prediction_style = None, filetype = "parquet", summaryonly=False):
+        folderpath = sanitize_filename(folderpath)
         summary_df = pl.DataFrame([
             pl.Series("name", [], dtype=pl.String),
             pl.Series("ssr_sum", [], dtype=pl.Float64),
@@ -157,7 +160,7 @@ class StateMachine:
             srss = seqobj.srss.select(pl.exclude(["predid", "annotationobjects"]))
             rmds = seqobj.rmds.select(pl.exclude(["predid", "annotationobjects"]))
 
-            folder = os.path.join(folderpath, f"{seqname}")
+            folder = os.path.join(folderpath, sanitize_filename("{seqname}"))
             path = pathlib.Path(folder)
             path.mkdir(parents=True)
             if filetype == "parquet":
