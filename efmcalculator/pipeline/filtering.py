@@ -45,11 +45,14 @@ def filter_ssrs(ssr_dataframe, seq_len, circular):
         if(not circular):
             joined = (
             joined.filter(
-                    # these repeats are fully contained in another repeat, and has less count
+                    # scenario 1: ssr occupies the same space as another ssr, but has less count
+                    # scenario 2: ssr is a smaller version of anothr ssr
                     (
                         (pl.col("start") >= pl.col("start_right")) &
                         (pl.col("end") <= pl.col("end_right")) &
-                        (pl.col("count") <= pl.col("count_right"))
+                        (pl.col("count") <= pl.col("count_right")) &
+                        # prevent nested SSR from being filtered out (GGCGGCGGCAGC...)
+                        (pl.col("repeat_len")*pl.col("count") > pl.col("repeat_len_right"))
                     ) |
                     # these repeats are alternate versions of other SSRs
                     (
@@ -80,7 +83,11 @@ def filter_ssrs(ssr_dataframe, seq_len, circular):
                             (pl.col("modified_end") <= pl.col("modified_end_right"))
                             )
                         ) &
-                        (pl.col("count") <= pl.col("count_right"))
+                        (
+                            (pl.col("count") <= pl.col("count_right")) &
+                            # prevent nested SSR from being filtered out (GGCGGCGGCAGC...)
+                            (pl.col("repeat_len")*pl.col("count") > pl.col("repeat_len_right"))
+                        )
                     ) |
                     # these repeats are alternate versions of other SSRs
                     (
@@ -159,30 +166,29 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
         )
         .sort(["first_repeat", "repeat_len"], descending=[False, True])
         .with_columns(
-            pl.col("first_repeat").shift(1).alias("last_first_repeat"),
-            pl.col("second_repeat").shift(1).list.unique().alias("last_second_repeat"),
-            pl.col("repeat_len").shift(1).alias("last_len")
+            pl.col("first_repeat").shift(1).alias("prv_first_repeat"),
+            pl.col("second_repeat").shift(1).list.unique().alias("prv_second_repeat"),
+            pl.col("repeat_len").shift(1).alias("prv_len")
         )
         .explode(["second_repeat", "distance", "type"])
         .with_row_index()
     )
 
 
-    # Create a list of indices that should be deleted
     # Delete instances of smaller repeats that are in bigger repeats (ex. 2 copies of "AAGTCAT" and 3 copies of "AAGTCA". Delete the instance of "AAGTCA" that 
     # corresponds to the "AAGTCAT" repeat and keep the other 2 pairwise repeats)
     filter_out = (
         combined_dataframe
         .filter(
-            (pl.col("first_repeat") == pl.col("last_first_repeat")) &
-            (pl.col("last_second_repeat").list.contains(pl.col("second_repeat"))) &
-            (pl.col("repeat_len") < pl.col("last_len"))
+            (pl.col("first_repeat") == pl.col("prv_first_repeat")) &
+            (pl.col("prv_second_repeat").list.contains(pl.col("second_repeat"))) &
+            (pl.col("repeat_len") < pl.col("prv_len"))
             )
-        .select("index").to_series().to_list()
     )
-    
 
-    # Create another list of indices that should be deleted
+    combined_dataframe = combined_dataframe.join(filter_out, on="index", how="anti")
+ 
+
     # Delete shorter versions of the same repeat that start at different positions
     filter_out_2 = (
         combined_dataframe
@@ -193,42 +199,33 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             pl.first("repeat_len"),
             pl.col("distance"),
             pl.col("type"), 
-            pl.first("last_first_repeat"), 
-            pl.first("last_second_repeat"),
-            pl.first("last_len"), 
             pl.col("index")
         )
         .with_columns(
-            pl.col("first_repeat").shift(1).alias("last_first_repeat"),
-            pl.col("second_repeat").shift(1).list.unique().alias("last_second_repeat"),
-            pl.col("repeat_len").shift(1).alias("last_len")
+            pl.col("first_repeat").shift(1).alias("prv_first_repeat"),
+            pl.col("second_repeat").shift(1).list.unique().alias("prv_second_repeat"),
+            pl.col("repeat_len").shift(1).alias("prv_len")
         )
         .explode(["repeat", "second_repeat", "distance", "type", "index"])
         .with_columns(
-            (pl.col("first_repeat") - pl.col("last_first_repeat")).alias("difference")
+            (pl.col("first_repeat") - pl.col("prv_first_repeat")).alias("difference")
         )
         .with_columns(
             (pl.col("first_repeat") - pl.col("difference")).alias("adjusted_first_repeat"),
             (pl.col("second_repeat") - pl.col("difference")).alias("adjusted_second_repeat")
         )
         .filter(
-            (pl.col("adjusted_first_repeat") == pl.col("last_first_repeat")) &
-            (pl.col("last_second_repeat").list.contains(pl.col("adjusted_second_repeat"))) &
-            (pl.col("repeat_len") <= pl.col("last_len"))
+            (pl.col("adjusted_first_repeat") == pl.col("prv_first_repeat")) &
+            (pl.col("prv_second_repeat").list.contains(pl.col("adjusted_second_repeat"))) &
+            (pl.col("repeat_len") <= pl.col("prv_len"))
         )
-        .select("index").to_series().to_list()
+        #.select("index").to_series().to_list()
         )
-
-    # Filter out repetas with indices in either of the lists
-    filtered_df = combined_dataframe.filter(
-        ~(
-            (pl.col("index").is_in(filter_out)) |
-            (pl.col("index").is_in(filter_out_2))
-        )
-    )
+    
+    combined_dataframe = combined_dataframe.join(filter_out_2, on="index", how="anti")
 
 
-    # filter out SRS nested fully inside SSRs
+ # filter out SRS nested fully inside SSRs
     # if statement needed because cross join with an empty df creates an empty df
     if ssr_dataframe.height > 0:
         ssr_dataframe = (
@@ -285,14 +282,64 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
 
 
         # Apply function to each row
-        filtered_df = (
-            filtered_df.with_columns(
+        combined_dataframe = (
+            combined_dataframe.with_columns(
                 pl.struct(["first_repeat", "second_repeat", "repeat_len"])
                 .map_elements(check_nested, return_dtype=pl.Boolean)
                 .alias("nested")
             )
             .filter(~pl.col("nested"))  # Filter out rows where nested=True
         )
+
+
+    # Remove redundant repeats where positions of smaller repeat are different than larger repeat but are still fully contained
+    filter_out_3 = (
+        combined_dataframe
+        .sort(["first_repeat", "repeat_len"], descending=[False, True])
+        .with_columns(
+            (pl.col("first_repeat") + pl.col("repeat_len")).alias("first_end"),
+            (pl.col("second_repeat") + pl.col("repeat_len")).alias("second_end")
+        )
+        .group_by("repeat", maintain_order=True)
+        .agg(
+            pl.col("first_repeat"),
+            pl.col("second_repeat"),
+            pl.col("repeat_len"),
+            pl.col("distance"),
+            pl.col("type"), 
+            pl.col("index"), 
+            pl.col("first_end"),
+            pl.col("second_end")
+        )
+        .with_columns(
+            pl.col("first_repeat").shift(1).list.unique().alias("prv_first_repeat"),
+            pl.col("second_repeat").shift(1).list.unique().alias("prv_second_repeat"),
+            pl.col("repeat_len").shift(1).alias("prv_len"), 
+            pl.col("first_end").shift(1).list.unique().alias("prv_first_end"),
+            pl.col("second_end").shift(1).list.unique().alias("prv_second_end"),
+        )
+        .with_columns(
+            pl.col("prv_first_repeat").fill_null([]),
+            pl.col("prv_first_end").fill_null([]),
+            pl.col("prv_second_repeat").fill_null([]),
+            pl.col("prv_second_end").fill_null([]),
+        )
+        .explode(["first_repeat", "second_repeat", "repeat_len", "distance", "type", "index", "first_end", "second_end"])
+        .explode(["prv_first_repeat", "prv_first_end"])
+        .explode(["prv_second_repeat", "prv_second_end"])
+        .filter(
+            (
+                (pl.col("first_repeat") >= pl.col("prv_first_repeat")) &
+                (pl.col("first_end") <= pl.col("prv_first_end")) 
+            ) &
+                (pl.col("second_repeat") >= pl.col("prv_second_repeat")) &
+                (pl.col("second_end") <= pl.col("prv_second_end")) 
+        )
+        # drop added columns so anti join can be performed
+        .drop(["first_end", "second_end", "prv_first_end", "prv_second_end"])
+    )
+
+    filtered_df = combined_dataframe.join(filter_out_3, on="index", how="anti")   
 
     filtered_df = filtered_df.select("repeat", "repeat_len", "first_repeat", "second_repeat", "distance", "type")
 
