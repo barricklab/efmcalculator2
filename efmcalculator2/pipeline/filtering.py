@@ -46,15 +46,13 @@ def filter_ssrs(ssr_dataframe, seq_len, circular):
             joined = (
             joined.filter(
                     # scenario 1: ssr occupies the same space as another ssr, but has less count
-                    # scenario 2: sr is a smaller version of anothr ssr
+                    # scenario 2: ssr is a smaller version of anothr ssr
                     (
                         (pl.col("start") >= pl.col("start_right")) &
                         (pl.col("end") <= pl.col("end_right")) &
-                        (
-                            (pl.col("count") <= pl.col("count_right")) &
-                            # prevent nested SSR from being filtered out (GGCGGCGGCAGC...)
-                            ((pl.col("end_right") - pl.col("end")).abs() < pl.col("repeat_len")) 
-                        )
+                        (pl.col("count") <= pl.col("count_right")) &
+                        # prevent nested SSR from being filtered out (GGCGGCGGCAGC...)
+                        (pl.col("repeat_len")*pl.col("count") > pl.col("repeat_len_right"))
                     ) |
                     # these repeats are alternate versions of other SSRs
                     (
@@ -88,7 +86,7 @@ def filter_ssrs(ssr_dataframe, seq_len, circular):
                         (
                             (pl.col("count") <= pl.col("count_right")) &
                             # prevent nested SSR from being filtered out (GGCGGCGGCAGC...)
-                            ((pl.col("end_right") - pl.col("end")).abs() < pl.col("repeat_len")) 
+                            (pl.col("repeat_len")*pl.col("count") > pl.col("repeat_len_right"))
                         )
                     ) |
                     # these repeats are alternate versions of other SSRs
