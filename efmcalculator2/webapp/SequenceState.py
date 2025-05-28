@@ -137,7 +137,7 @@ class SequenceState():
         builder.configure_selection(selection_mode='multiple', use_checkbox= True, pre_selected_rows= preselected_indices)
 
         builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
-        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
+        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat", editable=True)
         builder.configure_column("mutation_rate", header_name="Mutation Rate",
                     type=["numericColumn"], valueFormatter="x.toExponential(2)")
         builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
@@ -225,9 +225,8 @@ class SequenceState():
         pandas_conversion = self._filtered_ssrs.to_pandas()
         builder = GridOptionsBuilder.from_dataframe(pandas_conversion)
         builder.configure_selection(selection_mode='multiple', use_checkbox= True, pre_selected_rows= preselected_indices)
-
         builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
-        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
+        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat", editable=True)
         builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
         builder.configure_column("start", header_name="Start", type=["numericColumn"])
         builder.configure_column("count", header_name="Count", type=["numericColumn"])
@@ -311,7 +310,7 @@ class SequenceState():
         builder = GridOptionsBuilder.from_dataframe(pandas_conversion)
         builder.configure_selection(selection_mode='multiple', use_checkbox= True, pre_selected_rows= preselected_indices)
         builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
-        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
+        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat", editable=True)
         builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
         builder.configure_column("first_repeat", header_name="First Repeat", type=["numericColumn"])
         builder.configure_column("second_repeat", header_name="Second Repeat", type=["numericColumn"])
@@ -397,7 +396,7 @@ class SequenceState():
         builder = GridOptionsBuilder.from_dataframe(pandas_conversion)
         builder.configure_selection(selection_mode='multiple', use_checkbox= True, pre_selected_rows= preselected_indices)
         builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
-        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
+        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat", editable=True)
         builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
         builder.configure_column("first_repeat", header_name="First Repeat", type=["numericColumn"])
         builder.configure_column("second_repeat", header_name="Second Repeat", type=["numericColumn"])
