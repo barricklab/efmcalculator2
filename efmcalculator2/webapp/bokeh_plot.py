@@ -310,7 +310,7 @@ def plot_ssr(fig, ssr_df):
         left_pos = row["start"]
         repeat_len = row["repeat_len"]
         y_height = row["level"]*MARKER_HEIGHT*1.5
-        glyph = [[point[0]*repeat_len+left_pos, point[1]+OUTLINE_PADDING_Y] for point in ssr_shape]
+        glyph = [[point[0]*(repeat_len*row["count"])+left_pos, point[1]+OUTLINE_PADDING_Y] for point in ssr_shape]
 
         ssr_source["x"].append([x for x, _ in glyph])
         ssr_source["y"].append([y+y_height+MARKER_HEIGHT*0.5 for _, y in glyph])
@@ -323,11 +323,11 @@ def plot_ssr(fig, ssr_df):
         ssr_source["sequence"].append(row["repeat"]*repeat_len)
 
         # Outline
-        outline = [[point[0]*repeat_len+left_pos, point[1]+OUTLINE_PADDING_Y] for point in ssr_shape]
+        outline = [[point[0]*(repeat_len*row["count"])+left_pos, point[1]+OUTLINE_PADDING_Y] for point in ssr_shape]
 
         outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
-                        [OUTLINE_PADDING_X+repeat_len, -OUTLINE_PADDING_Y],
-                        [OUTLINE_PADDING_X+repeat_len, OUTLINE_PADDING_Y],
+                        [OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
+                        [OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
                         [-OUTLINE_PADDING_X, OUTLINE_PADDING_Y],
                         [-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y]]
         for i in range(len(outline)):

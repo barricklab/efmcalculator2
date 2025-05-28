@@ -57,7 +57,6 @@ class StateMachine:
         new = {seq._originhash: seq for seq in sequences}
         retained_states = {}
         for key in new:
-            print(key)
             if key in self.user_sequences:
                 new[key] = self.user_sequences[key]
                 if webapp:
