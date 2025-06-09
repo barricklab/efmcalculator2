@@ -157,12 +157,25 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             )
         )
         .sort(["first_repeat", "repeat_len"], descending=[False, True])
+        .group_by(pl.col("repeat"))
+        .agg(
+            pl.col("first_repeat"),
+            pl.col("second_repeat"),
+            pl.first("repeat_len"),
+            pl.col("distance"),
+            pl.col("type")
+        )
+        .with_columns(
+            (pl.col("second_repeat").list.unique().list.eval(pl.element().count()).list.first() + 1).alias("num_positions")
+        )
+        .explode(["first_repeat", "second_repeat", "distance", "type"])
         .group_by(pl.col("first_repeat"), pl.col("repeat"))
         .agg(
             pl.col("second_repeat"),
             pl.first("repeat_len"),
             pl.col("distance"),
-            pl.col("type")
+            pl.col("type"), 
+            pl.col("num_positions")
         )
         .sort(["first_repeat", "repeat_len"], descending=[False, True])
         .with_columns(
@@ -170,7 +183,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             pl.col("second_repeat").shift(1).list.unique().alias("prv_second_repeat"),
             pl.col("repeat_len").shift(1).alias("prv_len")
         )
-        .explode(["second_repeat", "distance", "type"])
+        .explode(["second_repeat", "distance", "type", "num_positions"])
         .with_row_index()
     )
 
@@ -196,19 +209,22 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
         .agg(
             pl.col("repeat"),
             pl.col("second_repeat"),
-            pl.first("repeat_len"),
+            pl.col("repeat_len"),
             pl.col("distance"),
             pl.col("type"), 
-            pl.col("index")
+            pl.col("index"), 
+            pl.col("num_positions")
         )
         .with_columns(
             pl.col("first_repeat").shift(1).alias("prv_first_repeat"),
             pl.col("second_repeat").shift(1).list.unique().alias("prv_second_repeat"),
-            pl.col("repeat_len").shift(1).alias("prv_len")
+            pl.col("repeat_len").shift(1).fill_null([0]).alias("prv_len"),
+            pl.col("num_positions").shift(1).alias("prv_num_positions")
+
         )
-        .explode(["repeat", "second_repeat", "distance", "type", "index"])
+        .explode(["repeat", "second_repeat", "repeat_len", "distance", "type", "index", "num_positions"])
         .with_columns(
-            (pl.col("first_repeat") - pl.col("prv_first_repeat")).alias("difference")
+            (pl.col("first_repeat") - pl.col("prv_first_repeat")).alias("difference"),
         )
         .with_columns(
             (pl.col("first_repeat") - pl.col("difference")).alias("adjusted_first_repeat"),
@@ -217,11 +233,12 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
         .filter(
             (pl.col("adjusted_first_repeat") == pl.col("prv_first_repeat")) &
             (pl.col("prv_second_repeat").list.contains(pl.col("adjusted_second_repeat"))) &
-            (pl.col("repeat_len") <= pl.col("prv_len"))
-        )
-        #.select("index").to_series().to_list()
-        )
-    
+            (pl.col("num_positions") <= pl.col("prv_num_positions").list.max())
+        )        
+    )
+    #pl.Config(tbl_cols=-1)
+    #print(filter_out_2)
+    filter_out_2.to_pandas().to_excel("filter_out_2_new.xlsx")
     combined_dataframe = combined_dataframe.join(filter_out_2, on="index", how="anti")
 
 
