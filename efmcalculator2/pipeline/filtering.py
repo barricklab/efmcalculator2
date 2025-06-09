@@ -236,9 +236,6 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             (pl.col("num_positions") <= pl.col("prv_num_positions").list.max())
         )        
     )
-    #pl.Config(tbl_cols=-1)
-    #print(filter_out_2)
-    filter_out_2.to_pandas().to_excel("filter_out_2_new.xlsx")
     combined_dataframe = combined_dataframe.join(filter_out_2, on="index", how="anti")
 
 
