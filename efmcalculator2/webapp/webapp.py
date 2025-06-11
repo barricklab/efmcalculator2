@@ -225,23 +225,22 @@ def run_webapp():
         elif option == enter_option:
             with col1:
                 is_circular = st.checkbox(label="Circular Prediction", value=True)
-            with col3:
-                upload_disclaimer = f"""<div>
-                <p>Total sequence length must be less than {MAX_SIZE+1}.</p>
-                </div>"""
-                field = st.text_area("Input sequence here:", max_chars=MAX_SIZE)
-                st.markdown(upload_disclaimer, unsafe_allow_html=True)
-                field = field.replace("\n", "")
-                field = field.replace(" ", "")
-                field = "".join([i for i in field if not i.isdigit()])
-                last_text_input = st.session_state.get("last_text_input", "")
-                if field:
-                    record = SeqRecord(Seq(field), id="sequence")
-                    originhash = hashlib.md5(("string" + field).encode())
-                    record = EFMSequence(record, is_circular, originhash)
-                    inSeq = [record]
-                else:
-                    st.session_state["statemachine"] = StateMachine()
+            upload_disclaimer = f"""<div>
+            <p>Total sequence length must be less than {MAX_SIZE+1}.</p>
+            </div>"""
+            field = st.text_area("Input sequence here:", max_chars=MAX_SIZE)
+            st.markdown(upload_disclaimer, unsafe_allow_html=True)
+            field = field.replace("\n", "")
+            field = field.replace(" ", "")
+            field = "".join([i for i in field if not i.isdigit()])
+            last_text_input = st.session_state.get("last_text_input", "")
+            if field:
+                record = SeqRecord(Seq(field), id="sequence")
+                originhash = hashlib.md5(("string" + field).encode())
+                record = EFMSequence(record, is_circular, originhash)
+                inSeq = [record]
+            else:
+                st.session_state["statemachine"] = StateMachine()
 
         elif option == example_option:
             with col3:
