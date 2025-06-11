@@ -154,29 +154,15 @@ def run_webapp():
         st.session_state["statemachine"] = StateMachine()
     statemachine = st.session_state["statemachine"]
 
-    collogo,_,colbadge = st.columns([2,1,2], vertical_alignment="bottom")
-    with collogo:
-        st.markdown(
-            f"""
-            <div class="container">
-                <img class="logo-img" src="data:image/svg+xml;base64,{base64.b64encode(open(ASSET_LOCATION + "/tombstone.svg", "rb").read()).decode()}">
-                <p class="logo-text">EFM Calculator</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+    col1,col2,col3 = st.columns([2,1,2])
+
+    with col1:
         try:
             from .._version import version_tuple
             st.markdown(f"Version {version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]} ([{str(version_tuple[4])[1:8]}](https://www.github.com/barricklab/efmcalculator2/commit/{str(version_tuple[4]).split('.')[0][1:8]}))")
         except:
             pass
-    with colbadge:
         st.html(r'<a href="https://github.com/barricklab/efmcalculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/efmcalculator2?style=social&label=barricklab%2Fefmcalculator2"></a>')
-
-
-    col1,col2,col3 = st.columns([2,1,2])
-
-    with col1:
         upload_option = "Upload files (FASTA, GenBank, or CSV)"
         enter_option = "Copy/Paste Plain Text"
         example_option = "Example"
@@ -188,16 +174,11 @@ def run_webapp():
 
         inSeq = None
 
-    with col3:
-        st.write("The EFM Calculator predicts mutational hotspots as a result of DNA polymerase slippage. It classifies these hotspots into three categories, Short Sequence Repeats, Short Repeated Sequences, and Repeat Mediated Deletions. For more information, please see the paper. If you have found this tool helpful, please remember to cite it as well.")
-        st.write("Jack, B. R., Leonard, S. P., Mishler, D. M., Renda, B. A., Leon, D., Suárez, G. A., & Barrick, J. E. (2015). Predicting the Genetic Stability of Engineered DNA Sequences with the EFM Calculator. ACS Synthetic Biology, 4(8), 939–943. https://doi.org/10.1021/acssynbio.5b00068")
-
-
     with TemporaryDirectory() as tempdir:
         is_circular = True
         field = None
         if option == upload_option:
-            with col1:
+            with col3:
                 is_circular = st.checkbox(label="Circular Prediction", value=True)
             upload_disclaimer = f"Total sequence length must be less than {MAX_SIZE+1}. CSV files must have a 'seq' column and may have a 'name' column."
             uploaded_files = st.file_uploader("Choose a file:", type=VALID_EXTS, accept_multiple_files = True)
@@ -233,25 +214,26 @@ def run_webapp():
         elif option == enter_option:
             with col1:
                 is_circular = st.checkbox(label="Circular Prediction", value=True)
-            upload_disclaimer = f"""<div>
-            <p>Total sequence length must be less than {MAX_SIZE+1}.</p>
-            </div>"""
-            field = st.text_area("Input sequence here:", max_chars=MAX_SIZE)
-            st.markdown(upload_disclaimer, unsafe_allow_html=True)
-            field = field.replace("\n", "")
-            field = field.replace(" ", "")
-            field = "".join([i for i in field if not i.isdigit()])
-            last_text_input = st.session_state.get("last_text_input", "")
-            if field:
-                record = SeqRecord(Seq(field), id="sequence")
-                originhash = hashlib.md5(("string" + field).encode())
-                record = EFMSequence(record, is_circular, originhash)
-                inSeq = [record]
-            else:
-                st.session_state["statemachine"] = StateMachine()
+            with col3:
+                upload_disclaimer = f"""<div>
+                <p>Total sequence length must be less than {MAX_SIZE+1}.</p>
+                </div>"""
+                field = st.text_area("Input sequence here:", max_chars=MAX_SIZE)
+                st.markdown(upload_disclaimer, unsafe_allow_html=True)
+                field = field.replace("\n", "")
+                field = field.replace(" ", "")
+                field = "".join([i for i in field if not i.isdigit()])
+                last_text_input = st.session_state.get("last_text_input", "")
+                if field:
+                    record = SeqRecord(Seq(field), id="sequence")
+                    originhash = hashlib.md5(("string" + field).encode())
+                    record = EFMSequence(record, is_circular, originhash)
+                    inSeq = [record]
+                else:
+                    st.session_state["statemachine"] = StateMachine()
 
         elif option == example_option:
-            with col1:
+            with col3:
                 gbs = []
                 examples_path = "examples/"
                 for infile_loc in glob.glob(os.path.join(examples_path, "*.gb")) + glob.glob(os.path.join(examples_path, "*.fasta")):
@@ -375,3 +357,6 @@ def run_webapp():
 
     add_vertical_space(4)
     seq_record.refreshed = False
+
+    st.write("The EFM Calculator predicts mutational hotspots as a result of DNA polymerase slippage. It classifies these hotspots into three categories, Short Sequence Repeats, Short Repeated Sequences, and Repeat Mediated Deletions. For more information, please see the paper. If you have found this tool helpful, please remember to cite it as well.")
+    st.write("Jack, B. R., Leonard, S. P., Mishler, D. M., Renda, B. A., Leon, D., Suárez, G. A., & Barrick, J. E. (2015). Predicting the Genetic Stability of Engineered DNA Sequences with the EFM Calculator. ACS Synthetic Biology, 4(8), 939–943. https://doi.org/10.1021/acssynbio.5b00068")
