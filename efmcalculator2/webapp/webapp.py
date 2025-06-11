@@ -155,13 +155,7 @@ def run_webapp():
     statemachine = st.session_state["statemachine"]
 
     col1,col2,col3 = st.columns([2,1,2])
-
     with col1:
-        try:
-            from .._version import version_tuple
-            st.markdown(f"Version {version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]} ([{str(version_tuple[4])[1:8]}](https://www.github.com/barricklab/efmcalculator2/commit/{str(version_tuple[4]).split('.')[0][1:8]}))")
-        except:
-            pass
         st.html(r'<a href="https://github.com/barricklab/efmcalculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/efmcalculator2?style=social&label=barricklab%2Fefmcalculator2"></a>')
         upload_option = "Upload files (FASTA, GenBank, or CSV)"
         enter_option = "Copy/Paste Plain Text"
@@ -174,14 +168,21 @@ def run_webapp():
 
         inSeq = None
 
+    with col3:
+        try:
+            from .._version import version_tuple
+            st.markdown(f"Version {version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]} ([{str(version_tuple[4])[1:8]}](https://www.github.com/barricklab/efmcalculator2/commit/{str(version_tuple[4]).split('.')[0][1:8]}))")
+        except:
+            pass
+
     with TemporaryDirectory() as tempdir:
         is_circular = True
         field = None
         if option == upload_option:
             with col3:
                 is_circular = st.checkbox(label="Circular Prediction", value=True)
-            upload_disclaimer = f"Total sequence length must be less than {MAX_SIZE+1}. CSV files must have a 'seq' column and may have a 'name' column."
-            uploaded_files = st.file_uploader("Choose a file:", type=VALID_EXTS, accept_multiple_files = True)
+                upload_disclaimer = f"Total sequence length must be less than {MAX_SIZE+1}. CSV files must have a 'seq' column and may have a 'name' column."
+                uploaded_files = st.file_uploader("Choose a file:", type=VALID_EXTS, accept_multiple_files = True)
             st.write(upload_disclaimer)
             if uploaded_files:
                 inSeq = []
