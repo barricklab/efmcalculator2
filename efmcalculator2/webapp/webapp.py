@@ -154,9 +154,17 @@ def run_webapp():
         st.session_state["statemachine"] = StateMachine()
     statemachine = st.session_state["statemachine"]
 
-    col1,col2,col3 = st.columns([2,1,2])
+    col1,col2,col3 = st.columns([2,0.5,2])
     with col1:
-        st.html(r'<a href="https://github.com/barricklab/efmcalculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/efmcalculator2?style=social&label=barricklab%2Fefmcalculator2"></a>')
+        st.markdown(
+            f"""
+            <div class="container">
+                <img class="logo-img" src="data:image/svg+xml;base64,{base64.b64encode(open(ASSET_LOCATION + "/tombstone.svg", "rb").read()).decode()}">
+                <p class="logo-text">EFM Calculator</p>
+            </div>
+            """,
+            unsafe_allow_html=True)
+
         upload_option = "Upload files (FASTA, GenBank, or CSV)"
         enter_option = "Copy/Paste Plain Text"
         example_option = "Example"
@@ -169,6 +177,8 @@ def run_webapp():
         inSeq = None
 
     with col3:
+        st.text("")
+        st.text("")
         try:
             from .._version import version_tuple
             st.markdown(f"Version {version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]} ([{str(version_tuple[4])[1:8]}](https://www.github.com/barricklab/efmcalculator2/commit/{str(version_tuple[4]).split('.')[0][1:8]}))")
@@ -271,7 +281,7 @@ def run_webapp():
         else:
             disable_dropdown = False
 
-        col4,col5,col6 = st.columns([2,1,2])
+        col4,col5,col6 = st.columns([2,0.5,2])
 
         with col4:
             selected_sequence = st.selectbox(
