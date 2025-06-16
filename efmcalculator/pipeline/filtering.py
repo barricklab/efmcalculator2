@@ -157,12 +157,25 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             )
         )
         .sort(["first_repeat", "repeat_len"], descending=[False, True])
+        .group_by(pl.col("repeat"))
+        .agg(
+            pl.col("first_repeat"),
+            pl.col("second_repeat"),
+            pl.first("repeat_len"),
+            pl.col("distance"),
+            pl.col("type")
+        )
+        .with_columns(
+            (pl.col("second_repeat").list.unique().list.eval(pl.element().count()).list.first() + 1).alias("num_positions")
+        )
+        .explode(["first_repeat", "second_repeat", "distance", "type"])
         .group_by(pl.col("first_repeat"), pl.col("repeat"))
         .agg(
             pl.col("second_repeat"),
             pl.first("repeat_len"),
             pl.col("distance"),
-            pl.col("type")
+            pl.col("type"), 
+            pl.col("num_positions")
         )
         .sort(["first_repeat", "repeat_len"], descending=[False, True])
         .with_columns(
@@ -170,7 +183,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             pl.col("second_repeat").shift(1).list.unique().alias("prv_second_repeat"),
             pl.col("repeat_len").shift(1).alias("prv_len")
         )
-        .explode(["second_repeat", "distance", "type"])
+        .explode(["second_repeat", "distance", "type", "num_positions"])
         .with_row_index()
     )
 
@@ -190,39 +203,51 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
  
 
     # Delete shorter versions of the same repeat that start at different positions
-    filter_out_2 = (
-        combined_dataframe
-        .group_by("first_repeat", maintain_order=True)
-        .agg(
-            pl.col("repeat"),
-            pl.col("second_repeat"),
-            pl.first("repeat_len"),
-            pl.col("distance"),
-            pl.col("type"), 
-            pl.col("index")
+    for i in range(2):
+        filter_out_2 = (
+            combined_dataframe
+            .group_by("first_repeat", maintain_order=True)
+            .agg(
+                pl.col("repeat"),
+                pl.col("second_repeat"),
+                pl.col("repeat_len"),
+                pl.col("distance"),
+                pl.col("type"), 
+                pl.col("index"), 
+                pl.col("num_positions")
+            )
+            .with_columns(
+                pl.col("first_repeat").shift(1).alias("prv_first_repeat"),
+                pl.col("second_repeat").shift(1).list.unique().alias("prv_second_repeat"),
+                pl.col("repeat_len").shift(1).fill_null([0]).alias("prv_len"),
+                pl.col("num_positions").shift(1).alias("prv_num_positions")
+
+            )
+            .explode(["repeat", "second_repeat", "repeat_len", "distance", "type", "index", "num_positions"])
+            .with_columns(
+                (pl.col("first_repeat") - pl.col("prv_first_repeat")).alias("difference"),
+            )
+            .with_columns(
+                (pl.col("first_repeat") - pl.col("difference")).alias("adjusted_first_repeat"),
+                (pl.col("second_repeat") - pl.col("difference")).alias("adjusted_second_repeat")
+            )
+            .filter(
+                pl.when(i == 0)
+                # Filter out repeats that are definitely redundant first to avoid removing repeats that are redundant with 
+                .then(
+                    (pl.col("difference") <= pl.col("repeat_len")) &
+                    (pl.col("adjusted_first_repeat") == pl.col("prv_first_repeat")) &
+                    (pl.col("prv_second_repeat").list.contains(pl.col("adjusted_second_repeat"))) &
+                    (pl.col("num_positions") <= pl.col("prv_num_positions").list.max())
+                )
+                .otherwise(
+                    (pl.col("difference") <= pl.col("repeat_len")) &
+                    (pl.col("adjusted_first_repeat") == pl.col("prv_first_repeat")) &
+                    (pl.col("prv_second_repeat").list.contains(pl.col("adjusted_second_repeat")))
+                )
+            )        
         )
-        .with_columns(
-            pl.col("first_repeat").shift(1).alias("prv_first_repeat"),
-            pl.col("second_repeat").shift(1).list.unique().alias("prv_second_repeat"),
-            pl.col("repeat_len").shift(1).alias("prv_len")
-        )
-        .explode(["repeat", "second_repeat", "distance", "type", "index"])
-        .with_columns(
-            (pl.col("first_repeat") - pl.col("prv_first_repeat")).alias("difference")
-        )
-        .with_columns(
-            (pl.col("first_repeat") - pl.col("difference")).alias("adjusted_first_repeat"),
-            (pl.col("second_repeat") - pl.col("difference")).alias("adjusted_second_repeat")
-        )
-        .filter(
-            (pl.col("adjusted_first_repeat") == pl.col("prv_first_repeat")) &
-            (pl.col("prv_second_repeat").list.contains(pl.col("adjusted_second_repeat"))) &
-            (pl.col("repeat_len") <= pl.col("prv_len"))
-        )
-        #.select("index").to_series().to_list()
-        )
-    
-    combined_dataframe = combined_dataframe.join(filter_out_2, on="index", how="anti")
+        combined_dataframe = combined_dataframe.join(filter_out_2, on="index", how="anti")
 
 
  # filter out SRS nested fully inside SSRs
@@ -296,10 +321,7 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
     filter_out_3 = (
         combined_dataframe
         .sort(["first_repeat", "repeat_len"], descending=[False, True])
-        .with_columns(
-            (pl.col("first_repeat") + pl.col("repeat_len")).alias("first_end"),
-            (pl.col("second_repeat") + pl.col("repeat_len")).alias("second_end")
-        )
+        
         .group_by("repeat", maintain_order=True)
         .agg(
             pl.col("first_repeat"),
@@ -307,33 +329,51 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
             pl.col("repeat_len"),
             pl.col("distance"),
             pl.col("type"), 
-            pl.col("index"), 
-            pl.col("first_end"),
-            pl.col("second_end")
+            pl.col("index")
         )
         .with_columns(
-            pl.col("first_repeat").shift(1).list.unique().alias("prv_first_repeat"),
-            pl.col("second_repeat").shift(1).list.unique().alias("prv_second_repeat"),
-            pl.col("repeat_len").shift(1).alias("prv_len"), 
-            pl.col("first_end").shift(1).list.unique().alias("prv_first_end"),
-            pl.col("second_end").shift(1).list.unique().alias("prv_second_end"),
+            (pl.col("first_repeat") + pl.col("repeat_len")).alias("first_end"),
+            (pl.col("second_repeat") + pl.col("repeat_len")).alias("second_end")
         )
+        .with_columns(
+            pl.col("first_repeat").shift(1).alias("prv_first_repeat"),
+            pl.col("second_repeat").shift(1).alias("prv_second_repeat"),
+            pl.col("repeat_len").shift(1).alias("prv_len"), 
+            pl.col("first_end").shift(1).alias("prv_first_end"),
+            pl.col("second_end").shift(1).alias("prv_second_end"),
+        )
+        .explode(["first_repeat", "first_end", "repeat_len", "distance", "type", "index"])
         .with_columns(
             pl.col("prv_first_repeat").fill_null([]),
             pl.col("prv_first_end").fill_null([]),
             pl.col("prv_second_repeat").fill_null([]),
             pl.col("prv_second_end").fill_null([]),
         )
-        .explode(["first_repeat", "second_repeat", "repeat_len", "distance", "type", "index", "first_end", "second_end"])
-        .explode(["prv_first_repeat", "prv_first_end"])
-        .explode(["prv_second_repeat", "prv_second_end"])
+        .with_columns(
+            pl.struct(["prv_first_repeat", "prv_first_end", "first_repeat", "first_end"]).map_elements(
+                lambda row: any(
+                    r <= row["first_repeat"] and e >= row["first_end"]
+                    for r, e in zip(row["prv_first_repeat"], row["prv_first_end"])
+                    ), return_dtype=pl.Boolean
+                ).alias("first_repeat_redundant"),
+            pl.struct(["prv_second_repeat", "prv_second_end", "second_repeat", "second_end"]).map_elements(
+                lambda row: any(
+                    r <= sr and e >= se
+                    for r, e in zip(row["prv_second_repeat"], row["prv_second_end"])
+                    for sr, se in zip(row["second_repeat"], row["second_end"])
+                    ), return_dtype=pl.Boolean
+            ).alias("second_repeat_redundant")
+        )
+        #.explode(["repeat_len", "distance", "type", "index"])
         .filter(
             (
-                (pl.col("first_repeat") >= pl.col("prv_first_repeat")) &
-                (pl.col("first_end") <= pl.col("prv_first_end")) 
+                #(pl.col("first_repeat") >= pl.col("prv_first_repeat")) &
+                #(pl.col("first_end") <= pl.col("prv_first_end")) 
+                pl.col("first_repeat_redundant") == True
             ) &
-                (pl.col("second_repeat") >= pl.col("prv_second_repeat")) &
-                (pl.col("second_end") <= pl.col("prv_second_end")) 
+                (pl.col("second_repeat_redundant") == True) 
+                #(pl.col("second_repeat") >= pl.col("prv_second_repeat")) &
+                #(pl.col("second_end") <= pl.col("prv_second_end")) 
         )
         # drop added columns so anti join can be performed
         .drop(["first_end", "second_end", "prv_first_end", "prv_second_end"])
