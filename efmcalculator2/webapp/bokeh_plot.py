@@ -14,6 +14,8 @@ OUTLINE_PADDING_Y = 25
 INNER_HEIGHT = MARKER_HEIGHT-OUTLINE_PADDING_Y*2
 ANNOTATION_HEIGHT = MARKER_HEIGHT/2
 
+WEBAPP_SEQ_TRUNCATE = 25
+
 def bokeh_plot(seqobj):
     # Figure boilerplate
 
@@ -310,6 +312,11 @@ def plot_ssr(fig, ssr_df):
         left_pos = row["start"]
         repeat_len = row["repeat_len"]
         y_height = row["level"]*MARKER_HEIGHT*1.5
+
+        seq = row["repeat"]*repeat_len
+        if len(seq) > WEBAPP_SEQ_TRUNCATE:
+            seq = seq[:WEBAPP_SEQ_TRUNCATE] + "..."
+
         glyph = [[point[0]*(repeat_len*row["count"])+left_pos, point[1]+OUTLINE_PADDING_Y] for point in ssr_shape]
 
         ssr_source["x"].append([x for x, _ in glyph])
@@ -320,7 +327,7 @@ def plot_ssr(fig, ssr_df):
         ssr_source["mutation_rate"].append(row["mutation_rate"])
         ssr_source["line_width"].append(2)
         ssr_source["line_color"].append("black")
-        ssr_source["sequence"].append(row["repeat"]*repeat_len)
+        ssr_source["sequence"].append(seq)
 
         # Outline
         outline = [[point[0]*(repeat_len*row["count"])+left_pos, point[1]+OUTLINE_PADDING_Y] for point in ssr_shape]
@@ -341,7 +348,7 @@ def plot_ssr(fig, ssr_df):
         ssr_outline_source["mutation_rate"].append(row["mutation_rate"])
         ssr_outline_source["line_width"].append(3)
         ssr_outline_source["line_color"].append(color)
-        ssr_outline_source["sequence"].append(row["repeat"]*row["count"])
+        ssr_outline_source["sequence"].append(seq)
         ssr_outline_source["monomer"].append(row["repeat"])
         ssr_outline_source['count'].append(row["count"])
 
@@ -409,6 +416,10 @@ def plot_srs(fig, ssr_df):
         left_glyph = [[point[0]*repeat_len+left_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
         right_glyph = [[point[0]*repeat_len+right_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
 
+        seq = row["repeat"]*repeat_len
+        if len(seq) > WEBAPP_SEQ_TRUNCATE:
+            seq = seq[:WEBAPP_SEQ_TRUNCATE] + "..."
+
         srs_source["x"].append([x for x, _ in left_glyph])
         srs_source["y"].append([y+y_height+MARKER_HEIGHT*0.5 for _, y in left_glyph])
         srs_source["x"].append([x for x, _ in right_glyph])
@@ -421,7 +432,7 @@ def plot_srs(fig, ssr_df):
             srs_source["mutation_rate"].append(row["mutation_rate"])
             srs_source["line_width"].append(2)
             srs_source["line_color"].append("black")
-            srs_source["sequence"].append(row["repeat"])
+            srs_source["sequence"].append(seq)
             srs_source["distance"].append(row["distance"])
 
     srs_glyphs = fig.patches(
@@ -462,6 +473,9 @@ def plot_srs(fig, ssr_df):
         right_pos = row["second_repeat"]
         repeat_len = row["repeat_len"]
         y_height = row["level"]*MARKER_HEIGHT*1.5
+        seq = row["repeat"]*repeat_len
+        if len(seq) > WEBAPP_SEQ_TRUNCATE:
+            seq = seq[:WEBAPP_SEQ_TRUNCATE] + "..."
         if row["distance"] > OUTLINE_PADDING_X*4: # Distant SRSs
             left_outline = [[point[0]+left_pos, point[1]+OUTLINE_PADDING_Y] for point in outline_shape_left]
             left_outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
@@ -497,7 +511,7 @@ def plot_srs(fig, ssr_df):
                 srs_outline_source["mutation_rate"].append(row["mutation_rate"])
                 srs_outline_source["line_width"].append(3)
                 srs_outline_source["line_color"].append(color)
-                srs_outline_source["sequence"].append(row["repeat"])
+                srs_outline_source["sequence"].append(seq)
                 srs_outline_source["distance"].append(row["distance"])
 
 
@@ -530,7 +544,7 @@ def plot_srs(fig, ssr_df):
             srs_outline_source["mutation_rate"].append(row["mutation_rate"])
             srs_outline_source["line_width"].append(3)
             srs_outline_source["line_color"].append(color)
-            srs_outline_source["sequence"].append(row["repeat"])
+            srs_outline_source["sequence"].append(seq)
             srs_outline_source["distance"].append(row["distance"])
 
     srs_glyphs_outline = fig.patches(
@@ -596,6 +610,10 @@ def plot_rmd(fig, rmd_df):
         left_glyph = [[point[0]*repeat_len+left_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
         right_glyph = [[point[0]*repeat_len+right_pos, point[1]+OUTLINE_PADDING_Y] for point in rmd_shape]
 
+        seq = row["repeat"]*repeat_len
+        if len(seq) > WEBAPP_SEQ_TRUNCATE:
+            seq = seq[:WEBAPP_SEQ_TRUNCATE] + "..."
+
         rmd_source["x"].append([x for x, _ in left_glyph])
         rmd_source["y"].append([y+y_height+MARKER_HEIGHT*0.5 for _, y in left_glyph])
         rmd_source["x"].append([x for x, _ in right_glyph])
@@ -608,7 +626,7 @@ def plot_rmd(fig, rmd_df):
             rmd_source["mutation_rate"].append(row["mutation_rate"])
             rmd_source["line_width"].append(2)
             rmd_source["line_color"].append("black")
-            rmd_source["sequence"].append(row["repeat"])
+            rmd_source["sequence"].append(seq)
             rmd_source["distance"].append(row["distance"])
 
     rmd_glyphs = fig.patches(
@@ -649,6 +667,11 @@ def plot_rmd(fig, rmd_df):
         right_pos = row["second_repeat"]
         repeat_len = row["repeat_len"]
         y_height = row["level"]*MARKER_HEIGHT*1.5
+
+        seq = row["repeat"]*repeat_len
+        if len(seq) > WEBAPP_SEQ_TRUNCATE:
+            seq = seq[:WEBAPP_SEQ_TRUNCATE] + "..."
+
         if row["distance"] > OUTLINE_PADDING_X*4: # Distant rmds
             left_outline = [[point[0]+left_pos, point[1]+OUTLINE_PADDING_Y] for point in outline_shape_left]
             left_outline_mods = [[-OUTLINE_PADDING_X, -OUTLINE_PADDING_Y],
@@ -684,7 +707,7 @@ def plot_rmd(fig, rmd_df):
                 rmd_outline_source["mutation_rate"].append(row["mutation_rate"])
                 rmd_outline_source["line_width"].append(3)
                 rmd_outline_source["line_color"].append(color)
-                rmd_outline_source["sequence"].append(row["repeat"])
+                rmd_outline_source["sequence"].append(seq)
                 rmd_outline_source["distance"].append(row["distance"])
 
 
@@ -717,7 +740,7 @@ def plot_rmd(fig, rmd_df):
             rmd_outline_source["mutation_rate"].append(row["mutation_rate"])
             rmd_outline_source["line_width"].append(3)
             rmd_outline_source["line_color"].append(color)
-            rmd_outline_source["sequence"].append(row["repeat"])
+            rmd_outline_source["sequence"].append(seq)
             rmd_outline_source["distance"].append(row["distance"])
 
     rmd_glyphs_outline = fig.patches(
