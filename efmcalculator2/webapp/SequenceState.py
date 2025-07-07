@@ -83,7 +83,7 @@ class SequenceState():
         if not self.efmsequence.annotations:
             return None
         if isinstance(self._unique_annotations, dict) and self._unique_annotations == {}:
-            self._unique_annotations = sequence_to_features_df(self.efmsequence, self.efmsequence.is_circular)
+            self._unique_annotations = sequence_to_features_df(self.efmsequence, self.efmsequence.is_circular, self.efmsequence.oneindex)
             self._unique_annotations = self._unique_annotations.with_columns(
                 pl.concat_str([pl.col("annotations"), pl.lit(" ("), pl.col("left_bound"), pl.lit("-"), pl.col("right_bound"), pl.lit(")")]).alias("annotationobjexpanded_names")
             )

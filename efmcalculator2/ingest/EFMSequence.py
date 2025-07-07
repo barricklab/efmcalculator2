@@ -129,7 +129,7 @@ class EFMSequence(SeqRecord):
         else:
             return True
 
-def sequence_to_features_df(sequence, circular=True):
+def sequence_to_features_df(sequence, circular=True, onindex = False):
     """Takes genbank annotations and turns them into a polars dataframe"""
     features = sequence.features
     seqlen = len(sequence)
@@ -202,5 +202,9 @@ def sequence_to_features_df(sequence, circular=True):
         pl.col("left_bound").cast(pl.Int32),
         pl.col("right_bound").cast(pl.Int32)
     )
+
+    if onindex:
+        df = df.with_columns(left_bound = pl.col("left_bound") +1,
+                             right_bound = pl.col("right_bound") +1)
 
     return df
