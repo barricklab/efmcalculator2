@@ -455,7 +455,7 @@ class SequenceState():
                     break
             else:
                 # entirely outside
-                coverage.append((row['left_bound'], row['right_bound']))
+                coverage.append([row['left_bound'], row['right_bound']])
         base_coverage = 0
         for region in coverage:
             base_coverage += region[1] - region[0] + 1
