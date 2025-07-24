@@ -397,20 +397,23 @@ def filter_direct_repeats(rmd_dataframe, srs_dataframe, seq_len, ssr_dataframe, 
 # Rename sequences into "Tandem Repeat" when appropriate
 def rename_tandem_repeat(repeat_dataframe, sequence, circular):
     def check_tandem_repeat(row):
-        spacer = row["repeat_len"] + row["first_repeat"]
-        tandem_bp = row["repeat_len"] + row["second_repeat"]
-        if(circular):
-            if(tandem_bp > len(sequence)):
-                tandem_bp = tandem_bp - len(sequence)
-        if(sequence[spacer] == sequence[tandem_bp]):
-            return True
+        if(row["distance"] == 1):
+            spacer = row["repeat_len"] + row["first_repeat"]
+            tandem_bp = row["repeat_len"] + row["second_repeat"]
+            if(circular):
+                if(tandem_bp > len(sequence)):
+                    tandem_bp = tandem_bp - len(sequence)
+            if(sequence[spacer] == sequence[tandem_bp]):
+                return True
+            else:
+                return False
         else:
             return False
     
     repeat_dataframe = (
         repeat_dataframe
         .with_columns(
-            pl.struct(["first_repeat", "second_repeat", "repeat_len"])
+            pl.struct(["first_repeat", "second_repeat", "repeat_len", "distance"])
             .map_elements(check_tandem_repeat, return_dtype=pl.Boolean)
             .alias("tandem_repeat")
             )
