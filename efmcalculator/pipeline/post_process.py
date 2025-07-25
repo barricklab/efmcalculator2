@@ -1,5 +1,5 @@
 from .mutation_rates import ssr_mut_rate_vector, srs_mut_rate_vector, rmd_mut_rate_vector
-from .filtering import filter_ssrs, filter_direct_repeats
+from .filtering import filter_ssrs, filter_direct_repeats, rename_tandem_repeat
 from .features import assign_features_ssr, assign_features_rmd
 from ..constants import THRESHOLD
 
@@ -35,6 +35,11 @@ def post_process(ssr_df, srs_df, rmd_df, seqobj, isCircular):
     #ssr_df = ssr_df.filter(pl.col("mutation_rate") > THRESHOLD)
     #srs_df = srs_df.filter(pl.col("mutation_rate") > THRESHOLD)
     #rmd_df = rmd_df.filter(pl.col("mutation_rate") > THRESHOLD)
+
+
+    # Classify SRS and RMD as "Tandem Repeat" when appropriate
+    srs_df = rename_tandem_repeat(srs_df, seqobj, isCircular)
+    rmd_df = rename_tandem_repeat(rmd_df, seqobj, isCircular)
 
     # Apply annotations
     if seqobj.annotations:
