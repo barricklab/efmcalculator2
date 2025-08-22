@@ -37,7 +37,7 @@ dependencies = [
     "numpy<2",
     "streamlit==1.43.0",
     "streamlit-extras",
-    "streamlit-aggrid",
+    "streamlit-aggrid==1.1.7",
     "streamlit_javascript",
 ]
 license = { text = "GPL-3.0" }
