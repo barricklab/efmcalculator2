@@ -140,7 +140,6 @@ class SequenceState():
         builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat", editable=True)
         builder.configure_column("mutation_rate", header_name="Mutation Rate",
                     type=["numericColumn"], valueFormatter="x.toExponential(2)")
-        builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
         builder.configure_column("predid", hide = True)
         builder.configure_column("annotationobjects", hide = True)
         grid_options = builder.build()
@@ -179,6 +178,7 @@ class SequenceState():
         """Streamlit aggrid table representing ssr data"""
 
         pandas_conversion = self._filtered_ssrs.to_pandas()
+
         return AgGrid(pandas_conversion,
                             gridOptions=self._ssr_webapp_state,
                             height=500,
@@ -223,6 +223,7 @@ class SequenceState():
             self.last_ssr_selections = preselected_indices
 
         pandas_conversion = self._filtered_ssrs.to_pandas()
+
         builder = GridOptionsBuilder.from_dataframe(pandas_conversion)
         builder.configure_selection(selection_mode='multiple', use_checkbox= True, pre_selected_rows= preselected_indices)
         builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
@@ -306,7 +307,18 @@ class SequenceState():
         if self.last_srs_selections is None:
             self.last_srs_selections = preselected_indices
 
+        order = [
+            "repeat",
+            "repeat_len",
+            "count",
+            "start",
+            "mutation_rate",
+            "annotations",
+            "predid",
+            "annotationobjects"
+        ]
         pandas_conversion = self._filtered_srss.to_pandas()
+        pandas_conversion = pandas_conversion[[col for col in order if col in pandas_conversion.columns]]
         builder = GridOptionsBuilder.from_dataframe(pandas_conversion)
         builder.configure_selection(selection_mode='multiple', use_checkbox= True, pre_selected_rows= preselected_indices)
         builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
@@ -318,6 +330,7 @@ class SequenceState():
         builder.configure_column("mutation_rate", header_name="Mutation Rate",
                     type=["numericColumn"], valueFormatter="x.toExponential(2)")
         builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
+        builder.configure_column("tandem_repeat", header_name="Tandem Repeat", type=["boolColumn"])
         builder.configure_column("predid", hide = True)
         builder.configure_column("annotationobjects", hide = True)
 
@@ -392,7 +405,19 @@ class SequenceState():
         if self.last_rmd_selections is None:
             self.last_rmd_selections = preselected_indices
 
+        order = [
+            "repeat",
+            "repeat_len",
+            "count",
+            "start",
+            "mutation_rate",
+            "annotations",
+            "predid",
+            "annotationobjects"
+        ]
+
         pandas_conversion = self._filtered_rmds.to_pandas()
+        pandas_conversion = pandas_conversion[[col for col in order if col in pandas_conversion.columns]]
         builder = GridOptionsBuilder.from_dataframe(pandas_conversion)
         builder.configure_selection(selection_mode='multiple', use_checkbox= True, pre_selected_rows= preselected_indices)
         builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
@@ -404,6 +429,7 @@ class SequenceState():
         builder.configure_column("mutation_rate", header_name="Mutation Rate",
                     type=["numericColumn"], valueFormatter="x.toExponential(2)")
         builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
+        builder.configure_column("tandem_repeat", header_name="Tandem Repeat", type=["boolColumn"])
         builder.configure_column("predid", hide = True)
         builder.configure_column("annotationobjects", hide = True)
 
