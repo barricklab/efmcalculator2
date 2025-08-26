@@ -21,15 +21,14 @@ def post_process(ssr_df, srs_df, rmd_df, seqobj, isCircular):
     srs_df = srs_df.filter(pl.col("mutation_rate") > THRESHOLD)
     rmd_df = rmd_df.filter(pl.col("mutation_rate") > THRESHOLD)
 
-    # Classify SRS and RMD as "Tandem Repeat" when appropriate
-    srs_df = rename_tandem_repeat(srs_df, seqobj, isCircular)
-    rmd_df = rename_tandem_repeat(rmd_df, seqobj, isCircular)
-
-
     # Apply annotations
     if seqobj.annotations:
         ssr_df = assign_features_ssr(ssr_df, seqobj, isCircular)
         srs_df = assign_features_rmd(srs_df, seqobj, isCircular)
         rmd_df = assign_features_rmd(rmd_df, seqobj, isCircular)
+
+    # Classify SRS and RMD as "Tandem Repeat" when appropriate
+    srs_df = rename_tandem_repeat(srs_df, seqobj, isCircular)
+    rmd_df = rename_tandem_repeat(rmd_df, seqobj, isCircular)
 
     return ssr_df, srs_df, rmd_df
