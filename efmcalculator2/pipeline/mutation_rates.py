@@ -4,7 +4,7 @@ import sys
 from ..constants import SUB_RATE
 
 try:
-    gam_result_filepath = filepath = os.path.dirname(sys.modules['efmcalculator'].__file__)+'/data/gam_df.csv'
+    gam_result_filepath = filepath = os.path.dirname(sys.modules['efmcalculator2'].__file__)+'/data/gam_df_new.csv'
 except e:
     print("Error while loading gam results")
     exit(1)
@@ -148,6 +148,7 @@ def rip_score(ssr_df, srs_df, rmd_df, sequence_length):
     # Add in the mutation rate of an individual nucleotide
     r_sum = float(ssr_sum + srs_sum + rmd_sum  + base_rate)
 
+    
     # Set the maximum rate sum to 1 for now.
     '''
     if r_sum > 1:

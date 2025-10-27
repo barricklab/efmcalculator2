@@ -34,6 +34,8 @@ class SequenceState():
         self.srskey = f"srstable{self.counter}"
         self.rmdkey = f"rmdtable{self.counter}"
 
+        self._last_filters = []
+
     # Data from upstream EFMSequence
 
     @property
@@ -66,7 +68,6 @@ class SequenceState():
         self._filtered_srss = None
         self._filtered_rmds = None
         self._filtered_top = None
-        self._last_filters = []
         self.set_filters(None)
 
         self.last_top_selections = None
@@ -82,7 +83,7 @@ class SequenceState():
         if not self.efmsequence.annotations:
             return None
         if isinstance(self._unique_annotations, dict) and self._unique_annotations == {}:
-            self._unique_annotations = sequence_to_features_df(self.efmsequence, self.efmsequence.is_circular)
+            self._unique_annotations = sequence_to_features_df(self.efmsequence, self.efmsequence.is_circular, self.efmsequence.oneindex)
             self._unique_annotations = self._unique_annotations.with_columns(
                 pl.concat_str([pl.col("annotations"), pl.lit(" ("), pl.col("left_bound"), pl.lit("-"), pl.col("right_bound"), pl.lit(")")]).alias("annotationobjexpanded_names")
             )
@@ -136,10 +137,9 @@ class SequenceState():
         builder.configure_selection(selection_mode='multiple', use_checkbox= True, pre_selected_rows= preselected_indices)
 
         builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
-        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
+        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat", editable=True)
         builder.configure_column("mutation_rate", header_name="Mutation Rate",
                     type=["numericColumn"], valueFormatter="x.toExponential(2)")
-        builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
         builder.configure_column("predid", hide = True)
         builder.configure_column("annotationobjects", hide = True)
         grid_options = builder.build()
@@ -178,6 +178,7 @@ class SequenceState():
         """Streamlit aggrid table representing ssr data"""
 
         pandas_conversion = self._filtered_ssrs.to_pandas()
+
         return AgGrid(pandas_conversion,
                             gridOptions=self._ssr_webapp_state,
                             height=500,
@@ -222,11 +223,11 @@ class SequenceState():
             self.last_ssr_selections = preselected_indices
 
         pandas_conversion = self._filtered_ssrs.to_pandas()
+
         builder = GridOptionsBuilder.from_dataframe(pandas_conversion)
         builder.configure_selection(selection_mode='multiple', use_checkbox= True, pre_selected_rows= preselected_indices)
-
         builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
-        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
+        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat", editable=True)
         builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
         builder.configure_column("start", header_name="Start", type=["numericColumn"])
         builder.configure_column("count", header_name="Count", type=["numericColumn"])
@@ -306,11 +307,22 @@ class SequenceState():
         if self.last_srs_selections is None:
             self.last_srs_selections = preselected_indices
 
+        order = [
+            "repeat",
+            "repeat_len",
+            "count",
+            "start",
+            "mutation_rate",
+            "annotations",
+            "predid",
+            "annotationobjects"
+        ]
         pandas_conversion = self._filtered_srss.to_pandas()
+        pandas_conversion = pandas_conversion[[col for col in order if col in pandas_conversion.columns]]
         builder = GridOptionsBuilder.from_dataframe(pandas_conversion)
         builder.configure_selection(selection_mode='multiple', use_checkbox= True, pre_selected_rows= preselected_indices)
         builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
-        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
+        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat", editable=True)
         builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
         builder.configure_column("first_repeat", header_name="First Repeat", type=["numericColumn"])
         builder.configure_column("second_repeat", header_name="Second Repeat", type=["numericColumn"])
@@ -318,6 +330,7 @@ class SequenceState():
         builder.configure_column("mutation_rate", header_name="Mutation Rate",
                     type=["numericColumn"], valueFormatter="x.toExponential(2)")
         builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
+        builder.configure_column("tandem_repeat", header_name="Tandem Repeat", type=["boolColumn"])
         builder.configure_column("predid", hide = True)
         builder.configure_column("annotationobjects", hide = True)
 
@@ -392,11 +405,23 @@ class SequenceState():
         if self.last_rmd_selections is None:
             self.last_rmd_selections = preselected_indices
 
+        order = [
+            "repeat",
+            "repeat_len",
+            "count",
+            "start",
+            "mutation_rate",
+            "annotations",
+            "predid",
+            "annotationobjects"
+        ]
+
         pandas_conversion = self._filtered_rmds.to_pandas()
+        pandas_conversion = pandas_conversion[[col for col in order if col in pandas_conversion.columns]]
         builder = GridOptionsBuilder.from_dataframe(pandas_conversion)
         builder.configure_selection(selection_mode='multiple', use_checkbox= True, pre_selected_rows= preselected_indices)
         builder.configure_grid_options(onCellMouseOver=cell_hover_handler)
-        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat")
+        builder.configure_column("repeat", header_name="Sequence", tooltipField="repeat", editable=True)
         builder.configure_column("repeat_len", header_name="Repeat Length", type=["numericColumn"])
         builder.configure_column("first_repeat", header_name="First Repeat", type=["numericColumn"])
         builder.configure_column("second_repeat", header_name="Second Repeat", type=["numericColumn"])
@@ -404,6 +429,7 @@ class SequenceState():
         builder.configure_column("mutation_rate", header_name="Mutation Rate",
                     type=["numericColumn"], valueFormatter="x.toExponential(2)")
         builder.configure_column("annotations", header_name="Annotations", tooltipField="annotations")
+        builder.configure_column("tandem_repeat", header_name="Tandem Repeat", type=["boolColumn"])
         builder.configure_column("predid", hide = True)
         builder.configure_column("annotationobjects", hide = True)
 
@@ -415,6 +441,8 @@ class SequenceState():
         state = callbackobj.grid_response["gridState"]
         new_selection = state.get('rowSelection', [])
 
+        print(f"Before: {self.last_rmd_selections}, {new_selection}")
+
         if self.last_rmd_selections is not None and self.last_rmd_selections == new_selection:
             return
         if self.last_rmd_selections is None:
@@ -422,16 +450,17 @@ class SequenceState():
         if self.last_rmd_selections == new_selection:
             return
 
+
         self.counter += 1
         self.topkey = f"toptable{self.counter}"
 
         to_drop = [int(x) for x in self.last_rmd_selections if x not in new_selection]
         to_add = [int(x) for x in new_selection if x not in self.last_rmd_selections]
 
-
         self._update_general_table(self._filtered_rmds, to_drop, to_add)
 
         self.last_rmd_selections = new_selection
+        print(f"After: {self.last_rmd_selections}, {new_selection}")
 
 
     def annotation_coverage(self, annotations):
@@ -452,7 +481,7 @@ class SequenceState():
                     break
             else:
                 # entirely outside
-                coverage.append((row['left_bound'], row['right_bound']))
+                coverage.append([row['left_bound'], row['right_bound']])
         base_coverage = 0
         for region in coverage:
             base_coverage += region[1] - region[0] + 1

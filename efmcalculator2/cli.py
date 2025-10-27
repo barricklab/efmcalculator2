@@ -9,7 +9,6 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 from .utilities import (
-    is_path_creatable,
     is_pathname_valid,
 )
 from .ingest.EFMSequence import EFMSequence
@@ -155,7 +154,9 @@ def main():
     elif not is_pathname_valid(args.outpath):
         logger.error(f"File {args.outpath} is not a valid path.")
         exit(1)
-    elif not is_path_creatable(args.outpath):
+    try:
+        os.makedirs(args.outpath, exist_ok=True)
+    except:
         logger.error(f"Cannot write to {args.outpath}")
         exit(1)
 
@@ -216,7 +217,7 @@ def main():
     t_min, t_sec = divmod(t_sec, 60)
     t_hour, t_min = divmod(t_min, 60)
     logger.info(
-        f"EFMCalculator completed in {t_hour:02d}h:{t_min:02d}m:{t_sec:02d}s:{t_msec:02d}ms"
+        f"EFMCalculator2 completed in {t_hour:02d}h:{t_min:02d}m:{t_sec:02d}s:{t_msec:02d}ms"
     )
 
 if __name__ == "__main__":

@@ -6,13 +6,13 @@ import subprocess
 import csv
 import shutil
 import pathlib
-import efmcalculator
+import efmcalculator2
 import Bio.SeqIO as SeqIO
 import polars as pl
-import efmcalculator
+import efmcalculator2
 from itertools import chain
 
-from efmcalculator.ingest.bad_state_mitigation import detect_special_cases
+from efmcalculator2.ingest.bad_state_mitigation import detect_special_cases
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 output_directory_path = os.path.join(THIS_DIR)
@@ -64,9 +64,9 @@ class test_unit_run_complete_wo_errors(unittest.TestCase):
         print("Test: Run complete without errors")
         L6_10_plasmid = output_directory_path  + "/../examples/1_L6-10_plasmid.gb"
         L6_10_plasmid = pathlib.Path(L6_10_plasmid)
-        L6_10_plasmid = efmcalculator.ingest.parse_file(L6_10_plasmid)
+        L6_10_plasmid = efmcalculator2.ingest.parse_file(L6_10_plasmid)
         inseqs = list()
-        statemachine = efmcalculator.StateMachine.StateMachine()
+        statemachine = efmcalculator2.StateMachine.StateMachine()
         statemachine.import_sequences(inseqs)
         for seqobject in statemachine.user_sequences.values():
             seqobject.call_predictions()
@@ -98,8 +98,8 @@ class test_unit_filtering_ssr(unittest.TestCase):
             if not is_circular:
                 should_exist += ["T", "CA"]
 
-            ssr_df, _, _ = efmcalculator.predict(test_sequence, "pairwise", is_circular)
-            ssr_df = efmcalculator.pipeline.filtering.filter_ssrs(ssr_df, len(test_sequence), is_circular)
+            ssr_df, _, _ = efmcalculator2.predict(test_sequence, "pairwise", is_circular)
+            ssr_df = efmcalculator2.pipeline.filtering.filter_ssrs(ssr_df, len(test_sequence), is_circular)
 
             ssr_df = ssr_df.with_columns(
                 pl.lit(shouldnt_exist).alias("test_case")
@@ -115,7 +115,7 @@ class test_unit_filtering_rmd(unittest.TestCase):
     def test_unit_filtering_rmd(self):
         test_sequence = "AGTCCAA" + "AAAAAAAAAAAAAAAAAAAAA" + "AGTCCAA"
         is_circular = False
-        ssr_df, srs_df, rmd_df = efmcalculator.predict(test_sequence, "pairwise", is_circular)
+        ssr_df, srs_df, rmd_df = efmcalculator2.predict(test_sequence, "pairwise", is_circular)
 
 if __name__ == "__main__":
     unittest.main()

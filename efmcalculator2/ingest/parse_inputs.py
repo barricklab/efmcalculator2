@@ -79,7 +79,7 @@ def validate_sequence(seq):
     IUPAC_BASES = set("ACGTURYSWKMBDHVNacgturyswkmbdhvn")
     sequence = str(seq.seq)
     seq_set = set(sequence.upper().replace(" ", ""))
-    if sequence is "":
+    if sequence == "":
         raise BadSequenceError(
             f"Input contains an empty sequence."
         )

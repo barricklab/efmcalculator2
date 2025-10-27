@@ -403,8 +403,11 @@ def rename_tandem_repeat(repeat_dataframe, sequence, circular):
             if(circular):
                 if(tandem_bp > len(sequence)):
                     tandem_bp = tandem_bp - len(sequence)
-            if(sequence[spacer] == sequence[tandem_bp]):
-                return True
+            if(tandem_bp < len(sequence)):
+                if(sequence[spacer] == sequence[tandem_bp]):
+                    return True
+                else:
+                    return False
             else:
                 return False
         else:

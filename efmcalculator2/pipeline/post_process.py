@@ -47,4 +47,8 @@ def post_process(ssr_df, srs_df, rmd_df, seqobj, isCircular):
         srs_df = assign_features_rmd(srs_df, seqobj, isCircular)
         rmd_df = assign_features_rmd(rmd_df, seqobj, isCircular)
 
+    # Classify SRS and RMD as "Tandem Repeat" when appropriate
+    srs_df = rename_tandem_repeat(srs_df, seqobj, isCircular)
+    rmd_df = rename_tandem_repeat(rmd_df, seqobj, isCircular)
+
     return ssr_df, srs_df, rmd_df

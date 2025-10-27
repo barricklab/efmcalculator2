@@ -24,7 +24,7 @@ def eval_top(ssr_df=None, srs_df=None, rmd_df=None, num_report: int = 10):
         )
         valid_dataframes.append(srs_df_top)
 
-    if isinstance(srs_df, pl.DataFrame) and not ssr_df.is_empty():
+    if isinstance(rmd_df, pl.DataFrame) and not rmd_df.is_empty():
         rmd_df = rmd_df.sort(by="mutation_rate")
         rmd_df_top = (
             rmd_df.with_columns(source=pl.lit("RMD"))

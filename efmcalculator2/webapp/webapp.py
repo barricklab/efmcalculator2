@@ -1,3 +1,4 @@
+from os.path import normpath
 import streamlit as st
 import subprocess
 import io
@@ -38,40 +39,34 @@ import pandas as pd
 import base64
 import json
 
-
-
-
-def download_data(): # https://gist.github.com/snehankekre/2dcce9fb42b2f7e1742de7431326b263
-    with TemporaryDirectory() as tempdir:
+@st.fragment
+def downloadfragment():
+    def download_data(tempdir):
         outputdir = tempdir + "/results"
         os.mkdir(outputdir)
         statemachine = st.session_state["statemachine"]
         filetype = st.session_state["dlft"]
-        statemachine.save_results(outputdir, filetype=filetype)
-        filestream=io.BytesIO() # https://stackoverflow.com/questions/75304410/streamlit-download-button-not-working-when-trying-to-download-files-as-zip
-        with zipfile.ZipFile(filestream, mode='w', compression=zipfile.ZIP_DEFLATED) as zipf:
+        statemachine.save_results(outputdir, filetype=filetype, prediction_style="pairwise")
+        with zipfile.ZipFile(f"{outputdir}/results.zip", mode='w', compression=zipfile.ZIP_DEFLATED) as zipf:
             for root, dirs, files in os.walk(outputdir):
                     for file in files:
                         zipf.write(os.path.join(root, file),
                                     os.path.relpath(os.path.join(root, file),
                                                     os.path.join(outputdir, '..')))
-        b64 = base64.b64encode(filestream.getvalue()).decode()
+        return f"{outputdir}/results.zip"
 
-    dl_link = f"""
-    <html>
-    <head>
-    <title>Start Auto Download file</title>
-    <script src="http://code.jquery.com/jquery-3.2.1.min.js"></script>
-    <script>
-    $('<a href="data:application/zip;base64,{b64}" download="results.zip">')[0].click()
-    </script>
-    </head>
-    </html>
-    """
-    components.html(
-        dl_link,
-        height=0,
-    )
+
+    with TemporaryDirectory() as tempdir:
+        if not st.session_state.get("dlft"):
+            st.session_state["dlft"] = "csv"
+        with open(download_data(tempdir), "rb") as fp:
+            st.download_button(label = "Download",
+                data = fp,
+                mime="application/zip",
+                use_container_width=True,
+                file_name="results.zip")
+        st.selectbox("Download File Format",["csv", "parquet"], key="dlft",
+            help="CSV files are easily usable in most spreadsheat programs but lack annotation information. Parquet files require specialized tooling but include annotation metadata")
 
 
 def check_feats_look_circular(seq):
@@ -154,8 +149,13 @@ def run_webapp():
            }
     </style>""", unsafe_allow_html=True)
 
-    collogo,_,colbadge = st.columns([2,1,2], vertical_alignment="bottom")
-    with collogo:
+    # Initialize session state
+    if not st.session_state.get("statemachine", False):
+        st.session_state["statemachine"] = StateMachine()
+    statemachine = st.session_state["statemachine"]
+
+    col1,col2,col3 = st.columns([2,0.5,2])
+    with col1:
         st.markdown(
             f"""
             <div class="container">
@@ -163,20 +163,8 @@ def run_webapp():
                 <p class="logo-text">EFM Calculator</p>
             </div>
             """,
-            unsafe_allow_html=True
-        )
-        try:
-            from .._version import version_tuple
-            st.markdown(f"Version {version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]} ([{str(version_tuple[4])[1:8]}](https://www.github.com/barricklab/efm-calculator2/commit/{str(version_tuple[4]).split('.')[0][1:8]}))")
-        except:
-            pass
-    with colbadge:
-        st.html(r'<a href="https://github.com/barricklab/efm-calculator2"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/barricklab/efm-calculator2?style=social&label=barricklab%2Fefm-calculator2"></a>')
+            unsafe_allow_html=True)
 
-
-    col1,col2,col3 = st.columns([2,1,2])
-
-    with col1:
         upload_option = "Upload files (FASTA, GenBank, or CSV)"
         enter_option = "Copy/Paste Plain Text"
         example_option = "Example"
@@ -189,22 +177,22 @@ def run_webapp():
         inSeq = None
 
     with col3:
-        st.write("The EFM Calculator predicts mutational hotspots as a result of DNA polymerase slippage. It classifies these hotspots into three categories, Short Sequence Repeats, Short Repeated Sequences, and Repeat Mediated Deletions. For more information, please see the paper. If you have found this tool helpful, please remember to cite it as well.")
-        st.write("Jack, B. R., Leonard, S. P., Mishler, D. M., Renda, B. A., Leon, D., Suárez, G. A., & Barrick, J. E. (2015). Predicting the Genetic Stability of Engineered DNA Sequences with the EFM Calculator. ACS Synthetic Biology, 4(8), 939–943. https://doi.org/10.1021/acssynbio.5b00068")
-
-
-    # Initialize session state
-    if not st.session_state.get("statemachine", False):
-        st.session_state["statemachine"] = StateMachine()
-    statemachine = st.session_state["statemachine"]
+        st.text("")
+        st.text("")
+        try:
+            from .._version import version_tuple
+            st.markdown(f"Version {version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]} ([{str(version_tuple[4])[1:8]}](https://www.github.com/barricklab/efmcalculator2/commit/{str(version_tuple[4]).split('.')[0][1:8]}))")
+        except:
+            pass
 
     with TemporaryDirectory() as tempdir:
         is_circular = True
+        field = None
         if option == upload_option:
-            with col1:
+            with col3:
                 is_circular = st.checkbox(label="Circular Prediction", value=True)
-            upload_disclaimer = f"Total sequence length must be less than {MAX_SIZE+1}. CSV files must have a 'seq' column and may have a 'name' column."
-            uploaded_files = st.file_uploader("Choose a file:", type=VALID_EXTS, accept_multiple_files = True)
+                upload_disclaimer = f"Total sequence length must be less than {MAX_SIZE+1}. CSV files must have a 'seq' column and may have a 'name' column."
+                uploaded_files = st.file_uploader("Choose a file:", type=VALID_EXTS, accept_multiple_files = True)
             st.write(upload_disclaimer)
             if uploaded_files:
                 inSeq = []
@@ -231,6 +219,8 @@ def run_webapp():
                     inSeq.extend(file_sequences)
 
                 st.success("Files uploaded.")
+            else:
+                st.session_state["statemachine"] = StateMachine()
 
         elif option == enter_option:
             with col1:
@@ -243,14 +233,17 @@ def run_webapp():
             field = field.replace("\n", "")
             field = field.replace(" ", "")
             field = "".join([i for i in field if not i.isdigit()])
+            last_text_input = st.session_state.get("last_text_input", "")
             if field:
                 record = SeqRecord(Seq(field), id="sequence")
                 originhash = hashlib.md5(("string" + field).encode())
                 record = EFMSequence(record, is_circular, originhash)
                 inSeq = [record]
+            else:
+                st.session_state["statemachine"] = StateMachine()
 
         elif option == example_option:
-            with col1:
+            with col3:
                 gbs = []
                 examples_path = "examples/"
                 for infile_loc in glob.glob(os.path.join(examples_path, "*.gb")) + glob.glob(os.path.join(examples_path, "*.fasta")):
@@ -266,14 +259,28 @@ def run_webapp():
         if not inSeq:
             st.stop()
 
-        statemachine.import_sequences(inSeq, max_size=50000, webapp = True)
+        for seq in inSeq:
+            seq.oneindex = True
+
+
+        if option == enter_option and field == st.session_state.get("last_text_input", ""):
+            pass
+        else:
+            statemachine.import_sequences(inSeq, max_size=50000, webapp = True)
+        st.session_state["last_text_input"] = field
+
+        for seq in statemachine.sequencestates.values():
+            if not seq.predicted:
+                seq.efmsequence.call_predictions(strategy="pairwise")
+                seq.post_predict_processing()
+                seq.reset_selected_predictions()
 
         if len(inSeq) == 1:
             disable_dropdown = True
         else:
             disable_dropdown = False
 
-        col4,col5,col6 = st.columns([2,1,2])
+        col4,col5,col6 = st.columns([2,0.5,2])
 
         with col4:
             selected_sequence = st.selectbox(
@@ -283,20 +290,10 @@ def run_webapp():
             selectedhash = statemachine.named_sequences[selected_sequence]
             seq_record = statemachine.sequencestates[selectedhash]
 
-        with col6:
-                with TemporaryDirectory() as tempdir:
-                    submit = st.button("Download results",
-                                       on_click=download_data,
-                                       use_container_width=True,
-                                       type="primary")
-                st.selectbox("Download File Format",["csv", "parquet"], key="dlft",
-                    help="CSV files are easily usable in most spreadsheat programs but lack annotation information. Parquet files require specialized tooling but include annotation metadata")
-
         unique_features = seq_record.unique_annotations
 
-        if not seq_record.predicted:
-            seq_record.efmsequence.call_predictions(strategy="pairwise")
-            seq_record.post_predict_processing()
+        with col6:
+            downloadfragment()
 
         figcontainer = st.container(height=340)
 
@@ -370,3 +367,6 @@ def run_webapp():
 
     add_vertical_space(4)
     seq_record.refreshed = False
+
+    st.write("The EFM Calculator predicts mutational hotspots as a result of DNA polymerase slippage. It classifies these hotspots into three categories, Short Sequence Repeats, Short Repeated Sequences, and Repeat Mediated Deletions. For more information, please see the paper. If you have found this tool helpful, please remember to cite it as well.")
+    st.write("Jack, B. R., Leonard, S. P., Mishler, D. M., Renda, B. A., Leon, D., Suárez, G. A., & Barrick, J. E. (2015). Predicting the Genetic Stability of Engineered DNA Sequences with the EFM Calculator. ACS Synthetic Biology, 4(8), 939–943. https://doi.org/10.1021/acssynbio.5b00068")

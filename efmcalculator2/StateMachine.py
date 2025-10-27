@@ -11,6 +11,8 @@ import threading
 import multiprocessing as mp
 from .pipeline.mutation_rates import rip_score
 from .webapp.SequenceState import SequenceState
+from .utilities import sanitize_filename
+from copy import deepcopy
 
 class ThreadSafeBar(Bar):
     def __init__(self, *args, **kwargs):
@@ -57,10 +59,13 @@ class StateMachine:
         """Import newly uploaded sequences while retaining state of existing sequences"""
         # Import sequences without overwriting old ones
         new = {seq._originhash: seq for seq in sequences}
+        retained_states = {}
         for key in new:
             if key in self.user_sequences:
                 new[key] = self.user_sequences[key]
-        if new == self.user_sequences:
+                if webapp:
+                    retained_states[key] = deepcopy(self.sequencestates[key])
+        if new.keys() == self.user_sequences.keys():
             return
         self.user_sequences = new
 
@@ -69,7 +74,9 @@ class StateMachine:
 
         # Make webapp states
         if webapp:
-            self.sequencestates = {key: SequenceState(value) for key, value in self.user_sequences.items()}
+            self.sequencestates = {key: SequenceState(value) for key, value in self.user_sequences.items() if key not in retained_states.keys()}
+            self.sequencestates.update(retained_states)
+
 
         # Update sequence names
         self.named_sequences = {}
