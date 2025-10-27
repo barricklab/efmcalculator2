@@ -1,4 +1,4 @@
-RBP_Length,TBD_length,Prediction
+repeat_len,distance,mutation_rate
 5,1,1.72E-09
 5,2,1.70E-09
 5,3,1.67E-09
